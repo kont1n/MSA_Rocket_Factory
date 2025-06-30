@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP-код ошибки
+    example: 401
+  message:
+    type: string
+    description: Описание ошибки
+    example: "Unauthorized: Invalid token"  

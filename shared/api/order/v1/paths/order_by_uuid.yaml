@@ -1,0 +1,74 @@
+get:
+  summary: Получение заказа по UUID
+  operationId: GetOrderByUUID
+  tags:
+    - orders
+  parameters:
+    - $ref: ../params/order_uuid.yaml
+  responses:
+    '200':
+      description: Заказ успешно получен
+      content:
+        application/json:
+          schema:
+            $ref: ../components/get_order_response.yaml
+    '400':
+      description: Ошибка при получении заказа
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/bad_request_error.yaml
+    '401':  
+      description: Неверный токен для авторизации
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/unauthorized_error.yaml
+    '403':
+      description: Недостаточно прав для получения заказа
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/forbidden_error.yaml
+    '404':
+      description: Не удалось найти заказ с таким UUID
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/not_found_error.yaml
+    '409':
+      description: Заказ с таким UUID уже существует
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/conflict_error.yaml
+    '429':
+      description: Слишком много заказов с таким UUID
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/rate_limit_error.yaml
+    '500':
+      description: Внутренняя ошибка сервиса
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/internal_server_error.yaml
+    '502':
+      description: Ошибка при соединении с сервером
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/bad_gateway_error.yaml
+    '503':
+      description: Сервис временно недоступен
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/service_unavailable_error.yaml
+    default:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/errors/generic_error.yaml

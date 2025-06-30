@@ -1,0 +1,8 @@
+type: object
+properties:
+  code:
+    type: integer
+    description: HTTP-код ошибки
+  message:
+    type: string
+    description: Описание ошибки 

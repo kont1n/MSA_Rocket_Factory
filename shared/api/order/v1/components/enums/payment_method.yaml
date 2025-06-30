@@ -1,0 +1,13 @@
+type: integer
+enum:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+x-speakeasy-enums:
+  0: UNKNOWN
+  1: CARD
+  2: SBP
+  3: CREDIT_CARD
+  4: INVESTOR_MONEY

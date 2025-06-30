@@ -1,0 +1,23 @@
+info:
+  title: Order DTO
+  version: 1.0.0    
+
+dtos:
+  order:
+    attributes :
+      - name: order_uuid
+        type: string
+      - name: user_uuid
+        type: string
+      - name: part_uuids
+        type: array
+        items:
+          type: string
+      - name: total_price
+        type: double
+      - name: transaction_uuid
+        type: string
+      - name: payment_method
+        type: integer
+      - name: status
+        type: string  

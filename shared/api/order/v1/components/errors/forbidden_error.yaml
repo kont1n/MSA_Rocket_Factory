@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP-код ошибки
+    example: 403
+  message:  
+    type: string
+    description: Описание ошибки
+    example: "Forbidden: Insufficient permissions to perform this action" 
