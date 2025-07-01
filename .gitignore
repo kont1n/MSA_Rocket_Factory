@@ -26,4 +26,7 @@ go.work.sum
 .idea
 .vscode
 .cursor
-bin/
+
+# folder for downloaded files
+
+node_modules/

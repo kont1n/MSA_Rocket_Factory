@@ -1,0 +1,28 @@
+version: v2
+# Удаляет сгенеренное ранее, то что находится в out каждого плагина.
+clean: true
+
+plugins:
+  - local: ../bin/protoc-gen-go
+    out: ../pkg/proto
+    opt:
+      - paths=source_relative
+  - local: ../bin/protoc-gen-go-grpc
+    out: ../pkg/proto
+    opt:
+      - paths=source_relative
+  - local: ../bin/protoc-gen-grpc-gateway
+    out: ../pkg/proto
+    opt:
+      - paths=source_relative
+  - local: ../bin/protoc-gen-validate
+    out: ../pkg/proto
+    opt:
+      - paths=source_relative
+      - lang=go
+  - local: ../bin/protoc-gen-openapiv2
+    out: ../pkg
+    opt:
+      - allow_merge=true
+      - merge_file_name=swagger.json
+      - json_names_for_fields=false

@@ -3,6 +3,7 @@ required:
   - payment_method
 properties:
   payment_method:
+    type: integer
     schema:
       $ref: ../components/enums/payment_method.yaml
     description: Способ оплаты

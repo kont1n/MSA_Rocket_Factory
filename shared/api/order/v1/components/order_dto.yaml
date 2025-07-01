@@ -1,23 +1,36 @@
-info:
-  title: Order DTO
-  version: 1.0.0    
-
-dtos:
-  order:
-    attributes :
-      - name: order_uuid
-        type: string
-      - name: user_uuid
-        type: string
-      - name: part_uuids
-        type: array
-        items:
-          type: string
-      - name: total_price
-        type: double
-      - name: transaction_uuid
-        type: string
-      - name: payment_method
-        type: integer
-      - name: status
-        type: string  
+type : object
+required:
+  - order_uuid
+  - user_uuid
+  - status
+properties:
+  order_uuid:
+    type: string
+    description: UUID заказа
+    example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+  user_uuid:
+    type: string
+    description: UUID пользователя
+    example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+  part_uuids:
+    type: array
+    items:
+      type: string
+      description: UUID детали
+      example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+  total_price:
+    type: number
+    description: Сумма заказа
+    example: 100.00
+  transaction_uuid:
+    type: string
+    description: UUID транзакции
+    example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+  payment_method:
+    type: integer
+    description: Способ оплаты
+    example: 1
+  status:
+    type: string  
+    description: Статус заказа  
+    example: PENDING_PAYMENT

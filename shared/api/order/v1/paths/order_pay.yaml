@@ -3,6 +3,8 @@ post:
   operationId: PayOrder
   tags:
     - orders
+  parameters:
+    - $ref: ../params/order_uuid.yaml    
   requestBody:
     required: true
     content:
