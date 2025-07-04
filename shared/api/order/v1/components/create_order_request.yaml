@@ -9,11 +9,19 @@ properties:
   user_uuid:
     allOf:
       - $ref: ./order_dto.yaml#/properties/user_uuid
-      - description: UUID пользователя
+      - type: string
+        format: uuid
+        description: UUID пользователя
         example: 00000000-0000-0000-0000-000000000000
 
   part_uuids:
     allOf:
       - $ref: ./order_dto.yaml#/properties/part_uuids
-      - description: UUID деталей
-        example: [00000000-0000-0000-0000-000000000000]
+      - type: array
+        description: UUID деталей
+        items:
+          type: string
+          format: uuid
+        example:
+          - 00000000-0000-0000-0000-000000000000
+          - 11111111-1111-1111-1111-111111111111

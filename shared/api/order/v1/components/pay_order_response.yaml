@@ -8,5 +8,7 @@ properties:
   transaction_uuid:
     allOf:
       - $ref: ./order_dto.yaml#/properties/transaction_uuid
-      - description: UUID транзакции
+      - type: string
+        format: uuid
+        description: UUID транзакции
         example: 00000000-0000-0000-0000-000000000000

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -28,13 +29,7 @@ const (
 )
 
 type Order struct {
-	OrderUUID uuid.UUID
-	UserUUID uuid.UUID
-	PartUUIDs []uuid.UUID
-	TotalPrice float64
-	TransactionUUID uuid.UUID
-	PaymentMethod string
-	Status string
+	orderV1.GetOrderResponse
 }
 
 func main() {
@@ -103,13 +98,13 @@ func main() {
 // OrderStorage представляет потокобезопасное хранилище данных для заказов
 type OrderStorage struct {
 	mu       sync.RWMutex
-	orders map[string]*Order
+	orders map[uuid.UUID]*Order
 }
 
 // NewOrderStorage создает новое хранилище данных для заказов
 func NewOrderStorage() *OrderStorage {
 	return &OrderStorage{
-		orders: make(map[string]*Order),
+		orders: make(map[uuid.UUID]*Order),
 	}
 }
 
@@ -125,18 +120,14 @@ func NewOrderHandler(storage *OrderStorage) *OrderHandler {
 	}
 }
 
-// PostOrder обрабатывает запрос создания заказа
-func (h *OrderHandler) PostOrder(ctx context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
+// CreateOrder обрабатывает запрос создания заказа
+func (h *OrderHandler) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
 	order := h.storage.CreateOrder(req.UserUUID, req.PartUUIDs)
 	if order == nil {
 		return &orderV1.InternalServerError{
-			StatusCode: http.StatusInternalServerError,
-			Response:   orderV1.InternalServerErrorResponse{
-				Code:    http.StatusInternalServerError,
-				Message: "Внутренняя ошибка сервиса",
-		},
+			Code:    http.StatusInternalServerError,
+			Message: "Внутренняя ошибка сервиса",
 		}, nil
-
 	}
 	return order, nil
 }
@@ -146,80 +137,64 @@ func (h *OrderHandler) GetOrderByUUID(ctx context.Context, params orderV1.GetOrd
 	order := h.storage.GetOrder(params.OrderUUID)
 	if order == nil {
 		return &orderV1.NotFoundError{
-			StatusCode: http.StatusNotFound,
-			Response:   orderV1.NotFoundErrorResponse{
-				Code:    http.StatusNotFound,
-				Message: "Не удалось найти заказ с таким UUID: " + params.OrderUUID,
-		},
+			Code:    http.StatusNotFound,
+			Message:	fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
 		}, nil
-
 	}
 	return order, nil
 }
 
 // PostOrderPayment обрабатывает запрос оплаты заказа
-func (h *OrderHandler) PostOrderPayment(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
-	order := h.storage.PayOrder(params.OrderUUID, req.PaymentMethod)
-	if order == nil {
-		return &orderV1.NotFoundError{
-			StatusCode: http.StatusNotFound,
-			Response:   orderV1.NotFoundErrorResponse{
-				Code:    http.StatusNotFound,
-				Message: "Не удалось найти заказ с таким UUID: " + params.OrderUUID,
-		},
-		}, nil
-
-	}
-	return order, nil
-}
+func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
+	return nil, nil
+}	
 
 // PostOrderCancel обрабатывает запрос отмены заказа
-func (h *OrderHandler) PostOrderCancel(ctx context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {
-	order:= h.storage.CancelOrder(params.OrderUUID)
-	if order == nil {
-
-	}
-	return order, nil
+func (h *OrderHandler) CancelOrder(ctx context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {
+		return nil, nil
 }
 
 // NewError создает новую ошибку в формате GenericError
 func (h *OrderHandler) NewError(ctx context.Context, err error) *orderV1.GenericErrorStatusCode {
+	code := orderV1.OptInt{}
+	code.SetTo(http.StatusInternalServerError)
+
+	message := orderV1.OptString{}
+	message.SetTo(err.Error())
+
 	return &orderV1.GenericErrorStatusCode{
 		StatusCode: http.StatusInternalServerError,
-		Response:   orderV1.GenericErrorResponse{
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
+		Response:   orderV1.GenericError{
+			Code: code,
+			Message: message,
 		},
-	}	
+	}
 }
 
 // CreateOrder создает заказ
 func (s *OrderStorage) CreateOrder(userUUID string, partUUIDs []string) *Order {
-/*
-Поведение:
-	- Получает детали через InventoryService.ListParts.
-	- Проверяет, что все детали существуют. Если хотя бы одной нет — возвращает ошибку.
-	- Считает total_price.
-	- Генерирует order_uuid.
-	- Сохраняет заказ со статусом PENDING_PAYMENT.
-*/
-	addOrder := &orderV1.Order{
-		OrderUUID: uuid.NewString(),
-		UserUUID: userUUID,
-		PartUUIDs: partUUIDs,
-		TotalPrice: 100,
-		Status: orderV1.OrderStatusPendingPayment,
-	}
+	addOrder := &Order{}
+	addOrder.SetOrderUUID(uuid.NewString())
+	addOrder.UserUUID = userUUID
+	addOrder.SetPartUuids(partUUIDs)
+
+	price := orderV1.OptFloat64{}
+	price.SetTo(100.00)
+	addOrder.SetTotalPrice(price)
+
+	status := orderV1.OptGetOrderResponseStatus{}
+	status.SetTo(orderV1.GetOrderResponseStatusPendingPayment)
+	addOrder.SetStatus(status)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.orders[uuid.NewString()] = addOrder
+	s.orders[addOrder.OrderUUID] = addOrder
 	return addOrder
 }
 
 // GetOrder получает информацию о заказе
-func (s *OrderStorage) GetOrder(orderUUID string) *Order {
+func (s *OrderStorage) GetOrder(orderUUID uuid.UUID) *Order {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -231,36 +206,11 @@ func (s *OrderStorage) GetOrder(orderUUID string) *Order {
 }
 
 // PayOrder оплачивает заказ
-func (s *OrderStorage) PayOrder(orderUUID string, paymentMethod orderV1.PaymentMethod) *Order {
-/*
-Поведение:
-	- Находит заказ по order_uuid. Если не существует — возвращает 404 Not Found.
-	- Вызывает PaymentService.PayOrder, передаёт user_uuid, order_uuid и payment_method. Получаетtransaction_uuid.
-	- Обновляет заказ: статус → PAID, сохраняет transaction_uuid, payment_method.
-*/
-	order:= s.GetOrder(orderUUID)
-	if order == nil {
-		return nil
-	}
-	
-	return order
+func (s *OrderStorage) PayOrder(orderUUID string, paymentMethod int) *Order {
+	return nil
 }
 
 // CancelOrder отменяет заказ
-func (s *OrderStorage) CancelOrder(orderUUID string) *Order {	
-/*
-Поведение:
-	- Проверяет статус заказа.
-	- Если PENDING_PAYMENT — меняет статус на CANCELLED.
-	- Если PAID — возвращает ошибку 409.
-*/
-	order:= s.GetOrder(orderUUID)
-	if order == nil {
-		return nil
-	}
-	
-	return order
-}
-	
-	
-	
+func (s *OrderStorage) CancelOrder(orderUUID string) *Order {
+	return nil
+}	
