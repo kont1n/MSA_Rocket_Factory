@@ -349,14 +349,12 @@ components:
       properties:
         order_uuid:
           type: string
-          format: uuid
-          description: UUID заказа
-          example: 00000000-0000-0000-0000-000000000000
+          schema:
+            ref: ./order_dto.yaml#/properties/order_uuid
         total_price:
           type: number
-          format: float
-          description: Сумма заказа
-          example: 100
+          schema:
+            ref: ./order_dto.yaml#/properties/total_price
     bad_request_error:
       type: object
       required:

@@ -145,29 +145,27 @@ func (s *CreateOrderRequest) SetPartUuids(val []uuid.UUID) {
 
 // Ref: #/components/schemas/create_order_response
 type CreateOrderResponse struct {
-	// UUID заказа.
-	OrderUUID uuid.UUID `json:"order_uuid"`
-	// Сумма заказа.
-	TotalPrice OptFloat32 `json:"total_price"`
+	OrderUUID  string     `json:"order_uuid"`
+	TotalPrice OptFloat64 `json:"total_price"`
 }
 
 // GetOrderUUID returns the value of OrderUUID.
-func (s *CreateOrderResponse) GetOrderUUID() uuid.UUID {
+func (s *CreateOrderResponse) GetOrderUUID() string {
 	return s.OrderUUID
 }
 
 // GetTotalPrice returns the value of TotalPrice.
-func (s *CreateOrderResponse) GetTotalPrice() OptFloat32 {
+func (s *CreateOrderResponse) GetTotalPrice() OptFloat64 {
 	return s.TotalPrice
 }
 
 // SetOrderUUID sets the value of OrderUUID.
-func (s *CreateOrderResponse) SetOrderUUID(val uuid.UUID) {
+func (s *CreateOrderResponse) SetOrderUUID(val string) {
 	s.OrderUUID = val
 }
 
 // SetTotalPrice sets the value of TotalPrice.
-func (s *CreateOrderResponse) SetTotalPrice(val OptFloat32) {
+func (s *CreateOrderResponse) SetTotalPrice(val OptFloat64) {
 	s.TotalPrice = val
 }
 
@@ -455,6 +453,52 @@ func (o OptFloat32) Get() (v float32, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptFloat32) Or(d float32) float32 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptFloat64 returns new OptFloat64 with value set to v.
+func NewOptFloat64(v float64) OptFloat64 {
+	return OptFloat64{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptFloat64 is optional float64.
+type OptFloat64 struct {
+	Value float64
+	Set   bool
+}
+
+// IsSet returns true if OptFloat64 was set.
+func (o OptFloat64) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptFloat64) Reset() {
+	var v float64
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptFloat64) SetTo(v float64) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptFloat64) Get() (v float64, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptFloat64) Or(d float64) float64 {
 	if v, ok := o.Get(); ok {
 		return v
 	}
