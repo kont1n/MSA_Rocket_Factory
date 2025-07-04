@@ -489,7 +489,7 @@ func (s *CreateOrderResponse) Encode(e *jx.Encoder) {
 func (s *CreateOrderResponse) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("order_uuid")
-		e.Str(s.OrderUUID)
+		s.OrderUUID.Encode(e)
 	}
 	{
 		if s.TotalPrice.Set {
@@ -516,9 +516,7 @@ func (s *CreateOrderResponse) Decode(d *jx.Decoder) error {
 		case "order_uuid":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Str()
-				s.OrderUUID = string(v)
-				if err != nil {
+				if err := s.OrderUUID.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -995,6 +993,80 @@ func (s *GetOrderResponse) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes GetOrderResponsePaymentMethod as json.
+func (s GetOrderResponsePaymentMethod) Encode(e *jx.Encoder) {
+	e.Int(int(s))
+}
+
+// Decode decodes GetOrderResponsePaymentMethod from json.
+func (s *GetOrderResponsePaymentMethod) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetOrderResponsePaymentMethod to nil")
+	}
+	v, err := d.Int()
+	if err != nil {
+		return err
+	}
+	*s = GetOrderResponsePaymentMethod(v)
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s GetOrderResponsePaymentMethod) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetOrderResponsePaymentMethod) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetOrderResponseStatus as json.
+func (s GetOrderResponseStatus) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes GetOrderResponseStatus from json.
+func (s *GetOrderResponseStatus) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetOrderResponseStatus to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch GetOrderResponseStatus(v) {
+	case GetOrderResponseStatusPENDINGPAYMENT:
+		*s = GetOrderResponseStatusPENDINGPAYMENT
+	case GetOrderResponseStatusPAID:
+		*s = GetOrderResponseStatusPAID
+	case GetOrderResponseStatusCANCELLED:
+		*s = GetOrderResponseStatusCANCELLED
+	default:
+		*s = GetOrderResponseStatus(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s GetOrderResponseStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetOrderResponseStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *InternalServerError) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -1256,37 +1328,68 @@ func (s *OptFloat32) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes float64 as json.
-func (o OptFloat64) Encode(e *jx.Encoder) {
+// Encode encodes GetOrderResponsePaymentMethod as json.
+func (o OptGetOrderResponsePaymentMethod) Encode(e *jx.Encoder) {
 	if !o.Set {
 		return
 	}
-	e.Float64(float64(o.Value))
+	e.Int(int(o.Value))
 }
 
-// Decode decodes float64 from json.
-func (o *OptFloat64) Decode(d *jx.Decoder) error {
+// Decode decodes GetOrderResponsePaymentMethod from json.
+func (o *OptGetOrderResponsePaymentMethod) Decode(d *jx.Decoder) error {
 	if o == nil {
-		return errors.New("invalid: unable to decode OptFloat64 to nil")
+		return errors.New("invalid: unable to decode OptGetOrderResponsePaymentMethod to nil")
 	}
 	o.Set = true
-	v, err := d.Float64()
-	if err != nil {
+	if err := o.Value.Decode(d); err != nil {
 		return err
 	}
-	o.Value = float64(v)
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s OptFloat64) MarshalJSON() ([]byte, error) {
+func (s OptGetOrderResponsePaymentMethod) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OptFloat64) UnmarshalJSON(data []byte) error {
+func (s *OptGetOrderResponsePaymentMethod) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetOrderResponseStatus as json.
+func (o OptGetOrderResponseStatus) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes GetOrderResponseStatus from json.
+func (o *OptGetOrderResponseStatus) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptGetOrderResponseStatus to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptGetOrderResponseStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptGetOrderResponseStatus) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -1361,6 +1464,39 @@ func (s *OptString) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes TotalPrice as json.
+func (o OptTotalPrice) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes TotalPrice from json.
+func (o *OptTotalPrice) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptTotalPrice to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptTotalPrice) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptTotalPrice) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes uuid.UUID as json.
 func (o OptUUID) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -1396,6 +1532,46 @@ func (s *OptUUID) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes OrderUUID as json.
+func (s OrderUUID) Encode(e *jx.Encoder) {
+	unwrapped := string(s)
+
+	e.Str(unwrapped)
+}
+
+// Decode decodes OrderUUID from json.
+func (s *OrderUUID) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode OrderUUID to nil")
+	}
+	var unwrapped string
+	if err := func() error {
+		v, err := d.Str()
+		unwrapped = string(v)
+		if err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = OrderUUID(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OrderUUID) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OrderUUID) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *PayOrderRequest) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -1407,7 +1583,7 @@ func (s *PayOrderRequest) Encode(e *jx.Encoder) {
 func (s *PayOrderRequest) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("payment_method")
-		e.Int(s.PaymentMethod)
+		s.PaymentMethod.Encode(e)
 	}
 }
 
@@ -1427,9 +1603,7 @@ func (s *PayOrderRequest) Decode(d *jx.Decoder) error {
 		case "payment_method":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Int()
-				s.PaymentMethod = int(v)
-				if err != nil {
+				if err := s.PaymentMethod.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -1488,6 +1662,38 @@ func (s *PayOrderRequest) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *PayOrderRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PayOrderRequestPaymentMethod as json.
+func (s PayOrderRequestPaymentMethod) Encode(e *jx.Encoder) {
+	e.Int(int(s))
+}
+
+// Decode decodes PayOrderRequestPaymentMethod from json.
+func (s *PayOrderRequestPaymentMethod) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PayOrderRequestPaymentMethod to nil")
+	}
+	v, err := d.Int()
+	if err != nil {
+		return err
+	}
+	*s = PayOrderRequestPaymentMethod(v)
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s PayOrderRequestPaymentMethod) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PayOrderRequestPaymentMethod) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -1810,6 +2016,46 @@ func (s *ServiceUnavailableError) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *ServiceUnavailableError) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TotalPrice as json.
+func (s TotalPrice) Encode(e *jx.Encoder) {
+	unwrapped := float64(s)
+
+	e.Float64(unwrapped)
+}
+
+// Decode decodes TotalPrice from json.
+func (s *TotalPrice) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TotalPrice to nil")
+	}
+	var unwrapped float64
+	if err := func() error {
+		v, err := d.Float64()
+		unwrapped = float64(v)
+		if err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = TotalPrice(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TotalPrice) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TotalPrice) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

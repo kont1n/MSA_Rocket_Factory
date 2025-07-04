@@ -40,8 +40,8 @@ func (s *CreateOrderResponse) Validate() error {
 	if err := func() error {
 		if value, ok := s.TotalPrice.Get(); ok {
 			if err := func() error {
-				if err := (validate.Float{}).Validate(float64(value)); err != nil {
-					return errors.Wrap(err, "float")
+				if err := value.Validate(); err != nil {
+					return err
 				}
 				return nil
 			}(); err != nil {
@@ -85,8 +85,122 @@ func (s *GetOrderResponse) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if value, ok := s.PaymentMethod.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "payment_method",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if value, ok := s.Status.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "status",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s GetOrderResponsePaymentMethod) Validate() error {
+	switch s {
+	case 0:
+		return nil
+	case 1:
+		return nil
+	case 2:
+		return nil
+	case 3:
+		return nil
+	case 4:
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s GetOrderResponseStatus) Validate() error {
+	switch s {
+	case "PENDING_PAYMENT":
+		return nil
+	case "PAID":
+		return nil
+	case "CANCELLED":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s *PayOrderRequest) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.PaymentMethod.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "payment_method",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s PayOrderRequestPaymentMethod) Validate() error {
+	switch s {
+	case 0:
+		return nil
+	case 1:
+		return nil
+	case 2:
+		return nil
+	case 3:
+		return nil
+	case 4:
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s TotalPrice) Validate() error {
+	alias := (float64)(s)
+	if err := (validate.Float{}).Validate(float64(alias)); err != nil {
+		return errors.Wrap(err, "float")
 	}
 	return nil
 }
