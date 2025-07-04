@@ -67,4 +67,4 @@ post:
       content:
         application/json:
           schema: 
-            $ref: ../components/errors/generic_error.yaml   
+            $ref: ../components/errors/generic_error.yaml

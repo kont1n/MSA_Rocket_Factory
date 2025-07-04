@@ -1,14 +1,10 @@
 type: integer
-oneOf:
-  - enum: [0]
-    description: UNKNOWN
-  - enum: [1]
-    description: CARD
-  - enum: [2]
-    description: SBP
-  - enum: [3]
-    description: CREDIT_CARD
-  - enum: [4]
-    description: INVESTOR_MONEY
 description: Способ оплаты
+enum: [0, 1, 2, 3, 4]
 example: 1
+x-enum-descriptions:
+  0: UNKNOWN
+  1: CARD
+  2: SBP
+  3: CREDIT_CARD
+  4: INVESTOR_MONEY

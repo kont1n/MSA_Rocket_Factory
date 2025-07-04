@@ -43,13 +43,7 @@ properties:
   payment_method:
     allOf:
       - $ref: ../components/enums/payment_method.yaml
-      - type: integer
-        description: Способ оплаты
-        example: 1
 
   status:
     allOf:
       - $ref: ../components/enums/order_status.yaml
-      - type: string
-        description: Статус заказа
-        example: PENDING_PAYMENT

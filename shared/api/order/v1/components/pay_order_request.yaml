@@ -8,6 +8,3 @@ properties:
   payment_method:
     allOf:
       - $ref: ../components/enums/payment_method.yaml
-      - type: integer
-        description: Способ оплаты
-        example: 1

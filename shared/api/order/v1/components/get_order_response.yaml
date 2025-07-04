@@ -3,63 +3,34 @@ required:
   - order_uuid
   - user_uuid
   - part_uuids
+  - status
 
 properties:
 
   order_uuid:
     allOf:
       - $ref: ./order_dto.yaml#/properties/order_uuid
-      - type: string
-        format: uuid
-        description: UUID заказа
-        example: 00000000-0000-0000-0000-000000000000
 
   user_uuid:
     allOf:
       - $ref: ./order_dto.yaml#/properties/user_uuid
-      - type: string
-        format: uuid
-        description: UUID пользователя
-        example: 00000000-0000-0000-0000-000000000000
 
   part_uuids:
     allOf:
       - $ref: ./order_dto.yaml#/properties/part_uuids
-      - type: array
-        description: UUID деталей
-        items:
-          type: string
-          format: uuid
-        example:
-          - 00000000-0000-0000-0000-000000000000
-          - 11111111-1111-1111-1111-111111111111
 
   total_price:
     allOf:
       - $ref: ./order_dto.yaml#/properties/total_price
-      - type: number
-        format: float
-        description: Сумма заказа
-        example: 100.00
 
   transaction_uuid:
     allOf:
       - $ref: ./order_dto.yaml#/properties/transaction_uuid
-      - type: string
-        format: uuid
-        description: UUID транзакции
-        example: 00000000-0000-0000-0000-000000000000
 
   payment_method:
     allOf:
       - $ref: ../components/enums/payment_method.yaml
-      - type: integer
-        description: Способ оплаты
-        example: 1
 
   status:
     allOf:
       - $ref: ../components/enums/order_status.yaml
-      - type: string
-        description: Статус заказа
-        example: PENDING_PAYMENT

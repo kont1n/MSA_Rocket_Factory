@@ -97,7 +97,7 @@ func main() {
 
 // OrderStorage представляет потокобезопасное хранилище данных для заказов
 type OrderStorage struct {
-	mu       sync.RWMutex
+	mu     sync.RWMutex
 	orders map[uuid.UUID]*Order
 }
 
@@ -109,20 +109,20 @@ func NewOrderStorage() *OrderStorage {
 }
 
 // OrderHandler реализует интерфейс orderV1.Handler для обработки запросов к API заказа
-type OrderHandler struct {	
+type OrderHandler struct {
 	storage *OrderStorage
 }
 
 // NewOrderHandler создает новый обработчик запросов к API заказа
 func NewOrderHandler(storage *OrderStorage) *OrderHandler {
 	return &OrderHandler{
-		storage: storage,	
+		storage: storage,
 	}
 }
 
 // CreateOrder обрабатывает запрос создания заказа
 func (h *OrderHandler) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
-	order := h.storage.CreateOrder(req.UserUUID, req.PartUUIDs)
+	order := h.storage.CreateOrder(uuid.UUID(req.UserUUID), req.PartUuids)
 	if order == nil {
 		return &orderV1.InternalServerError{
 			Code:    http.StatusInternalServerError,
@@ -138,7 +138,7 @@ func (h *OrderHandler) GetOrderByUUID(ctx context.Context, params orderV1.GetOrd
 	if order == nil {
 		return &orderV1.NotFoundError{
 			Code:    http.StatusNotFound,
-			Message:	fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
+			Message: fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
 		}, nil
 	}
 	return order, nil
@@ -147,11 +147,11 @@ func (h *OrderHandler) GetOrderByUUID(ctx context.Context, params orderV1.GetOrd
 // PostOrderPayment обрабатывает запрос оплаты заказа
 func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
 	return nil, nil
-}	
+}
 
 // PostOrderCancel обрабатывает запрос отмены заказа
 func (h *OrderHandler) CancelOrder(ctx context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {
-		return nil, nil
+	return nil, nil
 }
 
 // NewError создает новую ошибку в формате GenericError
@@ -164,27 +164,17 @@ func (h *OrderHandler) NewError(ctx context.Context, err error) *orderV1.Generic
 
 	return &orderV1.GenericErrorStatusCode{
 		StatusCode: http.StatusInternalServerError,
-		Response:   orderV1.GenericError{
-			Code: code,
+		Response: orderV1.GenericError{
+			Code:    code,
 			Message: message,
 		},
 	}
 }
 
 // CreateOrder создает заказ
-func (s *OrderStorage) CreateOrder(userUUID string, partUUIDs []string) *Order {
+func (s *OrderStorage) CreateOrder(userUUID uuid.UUID, partUUIDs []uuid.UUID) *Order {
+
 	addOrder := &Order{}
-	addOrder.SetOrderUUID(uuid.NewString())
-	addOrder.UserUUID = userUUID
-	addOrder.SetPartUuids(partUUIDs)
-
-	price := orderV1.OptFloat64{}
-	price.SetTo(100.00)
-	addOrder.SetTotalPrice(price)
-
-	status := orderV1.OptGetOrderResponseStatus{}
-	status.SetTo(orderV1.GetOrderResponseStatusPendingPayment)
-	addOrder.SetStatus(status)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -213,4 +203,4 @@ func (s *OrderStorage) PayOrder(orderUUID string, paymentMethod int) *Order {
 // CancelOrder отменяет заказ
 func (s *OrderStorage) CancelOrder(orderUUID string) *Order {
 	return nil
-}	
+}
