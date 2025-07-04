@@ -40,8 +40,8 @@ func (s *CreateOrderResponse) Validate() error {
 	if err := func() error {
 		if value, ok := s.TotalPrice.Get(); ok {
 			if err := func() error {
-				if err := value.Validate(); err != nil {
-					return err
+				if err := (validate.Float{}).Validate(float64(value)); err != nil {
+					return errors.Wrap(err, "float")
 				}
 				return nil
 			}(); err != nil {
@@ -195,12 +195,4 @@ func (s PayOrderRequestPaymentMethod) Validate() error {
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}
-}
-
-func (s TotalPrice) Validate() error {
-	alias := (float64)(s)
-	if err := (validate.Float{}).Validate(float64(alias)); err != nil {
-		return errors.Wrap(err, "float")
-	}
-	return nil
 }

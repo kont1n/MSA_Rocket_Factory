@@ -1,17 +1,19 @@
 type: object
+
 required:
   - user_uuid
   - part_uuids
+
 properties:
+
   user_uuid:
-    type: string
-    format: uuid
-    description: UUID пользователя
-    example: 00000000-0000-0000-0000-000000000000
+    allOf:
+      - $ref: ./order_dto.yaml#/properties/user_uuid
+      - description: UUID пользователя
+        example: 00000000-0000-0000-0000-000000000000
+
   part_uuids:
-    type: array
-    items:
-      type: string
-      format: uuid
-      description: UUID детали
-      example: 00000000-0000-0000-0000-000000000000
+    allOf:
+      - $ref: ./order_dto.yaml#/properties/part_uuids
+      - description: UUID деталей
+        example: [00000000-0000-0000-0000-000000000000]

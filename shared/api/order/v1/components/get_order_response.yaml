@@ -1,40 +1,47 @@
 type: object
+
 required:
   - order_uuid
   - user_uuid
+
 properties:
+
   order_uuid:
-    type: string
-    format: uuid
-    description: UUID заказа
-    example: 00000000-0000-0000-0000-000000000000
+    allOf:
+      - $ref: ./order_dto.yaml#/properties/order_uuid
+      - description: UUID заказа
+        example: 00000000-0000-0000-0000-000000000000
+
   user_uuid:
-    type: string
-    format: uuid
-    description: UUID пользователя
-    example: 00000000-0000-0000-0000-000000000000
+    allOf:
+      - $ref: ./order_dto.yaml#/properties/order_uuid
+      - description: UUID пользователя
+        example: 00000000-0000-0000-0000-000000000000
+
   part_uuids:
-    type: array
-    items:
-      type: string
-      format: uuid
-      description: UUID детали
-      example: 00000000-0000-0000-0000-000000000000
+    allOf:
+      - $ref: ./order_dto.yaml#/properties/part_uuids
+      - description: UUID деталей
+        example: [00000000-0000-0000-0000-000000000000]
+
   total_price:
-    type: number
-    format: float
-    description: Сумма заказа
-    example: 100.00
+    allOf:
+      - $ref: ./order_dto.yaml#/properties/total_price
+      - description: Сумма заказа
+        example: 100.00
+
   transaction_uuid:
-    type: string
-    format: uuid
-    description: UUID транзакции
-    example: 00000000-0000-0000-0000-000000000000
+    allOf:
+      - $ref: ./order_dto.yaml#/properties/transaction_uuid
+      - description: UUID транзакции
+        example: 00000000-0000-0000-0000-000000000000
+
   payment_method:
     allOf:
       - $ref: ../components/enums/payment_method.yaml
       - description: Способ оплаты
         example: 1
+
   status:
     allOf:
       - $ref: ../components/enums/order_status.yaml

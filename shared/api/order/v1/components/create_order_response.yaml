@@ -1,10 +1,18 @@
 type: object
+
 required:
   - order_uuid
+
 properties:
+
   order_uuid:
     allOf:
       - $ref: ./order_dto.yaml#/properties/order_uuid
+      - description: UUID заказа
+        example: 00000000-0000-0000-0000-000000000000
+      
   total_price:
     allOf:
       - $ref: ./order_dto.yaml#/properties/total_price
+      - description: Сумма заказа
+        example: 100.00

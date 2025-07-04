@@ -8,9 +8,7 @@ import (
 
 	"github.com/go-faster/errors"
 	"github.com/go-faster/jx"
-	"github.com/google/uuid"
 
-	"github.com/ogen-go/ogen/json"
 	"github.com/ogen-go/ogen/validate"
 )
 
@@ -364,13 +362,13 @@ func (s *CreateOrderRequest) Encode(e *jx.Encoder) {
 func (s *CreateOrderRequest) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("user_uuid")
-		json.EncodeUUID(e, s.UserUUID)
+		e.Str(s.UserUUID)
 	}
 	{
 		e.FieldStart("part_uuids")
 		e.ArrStart()
 		for _, elem := range s.PartUuids {
-			json.EncodeUUID(e, elem)
+			e.Str(elem)
 		}
 		e.ArrEnd()
 	}
@@ -393,8 +391,8 @@ func (s *CreateOrderRequest) Decode(d *jx.Decoder) error {
 		case "user_uuid":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.UserUUID = v
+				v, err := d.Str()
+				s.UserUUID = string(v)
 				if err != nil {
 					return err
 				}
@@ -405,11 +403,11 @@ func (s *CreateOrderRequest) Decode(d *jx.Decoder) error {
 		case "part_uuids":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				s.PartUuids = make([]uuid.UUID, 0)
+				s.PartUuids = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
-					var elem uuid.UUID
-					v, err := json.DecodeUUID(d)
-					elem = v
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
 					if err != nil {
 						return err
 					}
@@ -489,7 +487,7 @@ func (s *CreateOrderResponse) Encode(e *jx.Encoder) {
 func (s *CreateOrderResponse) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("order_uuid")
-		s.OrderUUID.Encode(e)
+		e.Str(s.OrderUUID)
 	}
 	{
 		if s.TotalPrice.Set {
@@ -516,7 +514,9 @@ func (s *CreateOrderResponse) Decode(d *jx.Decoder) error {
 		case "order_uuid":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				if err := s.OrderUUID.Decode(d); err != nil {
+				v, err := d.Str()
+				s.OrderUUID = string(v)
+				if err != nil {
 					return err
 				}
 				return nil
@@ -793,18 +793,18 @@ func (s *GetOrderResponse) Encode(e *jx.Encoder) {
 func (s *GetOrderResponse) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("order_uuid")
-		json.EncodeUUID(e, s.OrderUUID)
+		e.Str(s.OrderUUID)
 	}
 	{
 		e.FieldStart("user_uuid")
-		json.EncodeUUID(e, s.UserUUID)
+		e.Str(s.UserUUID)
 	}
 	{
 		if s.PartUuids != nil {
 			e.FieldStart("part_uuids")
 			e.ArrStart()
 			for _, elem := range s.PartUuids {
-				json.EncodeUUID(e, elem)
+				e.Str(elem)
 			}
 			e.ArrEnd()
 		}
@@ -857,8 +857,8 @@ func (s *GetOrderResponse) Decode(d *jx.Decoder) error {
 		case "order_uuid":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.OrderUUID = v
+				v, err := d.Str()
+				s.OrderUUID = string(v)
 				if err != nil {
 					return err
 				}
@@ -869,8 +869,8 @@ func (s *GetOrderResponse) Decode(d *jx.Decoder) error {
 		case "user_uuid":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.UserUUID = v
+				v, err := d.Str()
+				s.UserUUID = string(v)
 				if err != nil {
 					return err
 				}
@@ -880,11 +880,11 @@ func (s *GetOrderResponse) Decode(d *jx.Decoder) error {
 			}
 		case "part_uuids":
 			if err := func() error {
-				s.PartUuids = make([]uuid.UUID, 0)
+				s.PartUuids = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
-					var elem uuid.UUID
-					v, err := json.DecodeUUID(d)
-					elem = v
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
 					if err != nil {
 						return err
 					}
@@ -1293,37 +1293,37 @@ func (s *NotFoundError) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes float32 as json.
-func (o OptFloat32) Encode(e *jx.Encoder) {
+// Encode encodes float64 as json.
+func (o OptFloat64) Encode(e *jx.Encoder) {
 	if !o.Set {
 		return
 	}
-	e.Float32(float32(o.Value))
+	e.Float64(float64(o.Value))
 }
 
-// Decode decodes float32 from json.
-func (o *OptFloat32) Decode(d *jx.Decoder) error {
+// Decode decodes float64 from json.
+func (o *OptFloat64) Decode(d *jx.Decoder) error {
 	if o == nil {
-		return errors.New("invalid: unable to decode OptFloat32 to nil")
+		return errors.New("invalid: unable to decode OptFloat64 to nil")
 	}
 	o.Set = true
-	v, err := d.Float32()
+	v, err := d.Float64()
 	if err != nil {
 		return err
 	}
-	o.Value = float32(v)
+	o.Value = float64(v)
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s OptFloat32) MarshalJSON() ([]byte, error) {
+func (s OptFloat64) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OptFloat32) UnmarshalJSON(data []byte) error {
+func (s *OptFloat64) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -1460,114 +1460,6 @@ func (s OptString) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptString) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes TotalPrice as json.
-func (o OptTotalPrice) Encode(e *jx.Encoder) {
-	if !o.Set {
-		return
-	}
-	o.Value.Encode(e)
-}
-
-// Decode decodes TotalPrice from json.
-func (o *OptTotalPrice) Decode(d *jx.Decoder) error {
-	if o == nil {
-		return errors.New("invalid: unable to decode OptTotalPrice to nil")
-	}
-	o.Set = true
-	if err := o.Value.Decode(d); err != nil {
-		return err
-	}
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s OptTotalPrice) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OptTotalPrice) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes uuid.UUID as json.
-func (o OptUUID) Encode(e *jx.Encoder) {
-	if !o.Set {
-		return
-	}
-	json.EncodeUUID(e, o.Value)
-}
-
-// Decode decodes uuid.UUID from json.
-func (o *OptUUID) Decode(d *jx.Decoder) error {
-	if o == nil {
-		return errors.New("invalid: unable to decode OptUUID to nil")
-	}
-	o.Set = true
-	v, err := json.DecodeUUID(d)
-	if err != nil {
-		return err
-	}
-	o.Value = v
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s OptUUID) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OptUUID) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes OrderUUID as json.
-func (s OrderUUID) Encode(e *jx.Encoder) {
-	unwrapped := string(s)
-
-	e.Str(unwrapped)
-}
-
-// Decode decodes OrderUUID from json.
-func (s *OrderUUID) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode OrderUUID to nil")
-	}
-	var unwrapped string
-	if err := func() error {
-		v, err := d.Str()
-		unwrapped = string(v)
-		if err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		return errors.Wrap(err, "alias")
-	}
-	*s = OrderUUID(unwrapped)
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s OrderUUID) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OrderUUID) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -1709,7 +1601,7 @@ func (s *PayOrderResponse) Encode(e *jx.Encoder) {
 func (s *PayOrderResponse) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("transaction_uuid")
-		json.EncodeUUID(e, s.TransactionUUID)
+		e.Str(s.TransactionUUID)
 	}
 }
 
@@ -1729,8 +1621,8 @@ func (s *PayOrderResponse) Decode(d *jx.Decoder) error {
 		case "transaction_uuid":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.TransactionUUID = v
+				v, err := d.Str()
+				s.TransactionUUID = string(v)
 				if err != nil {
 					return err
 				}
@@ -2016,46 +1908,6 @@ func (s *ServiceUnavailableError) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *ServiceUnavailableError) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes TotalPrice as json.
-func (s TotalPrice) Encode(e *jx.Encoder) {
-	unwrapped := float64(s)
-
-	e.Float64(unwrapped)
-}
-
-// Decode decodes TotalPrice from json.
-func (s *TotalPrice) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode TotalPrice to nil")
-	}
-	var unwrapped float64
-	if err := func() error {
-		v, err := d.Float64()
-		unwrapped = float64(v)
-		if err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		return errors.Wrap(err, "alias")
-	}
-	*s = TotalPrice(unwrapped)
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s TotalPrice) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TotalPrice) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
