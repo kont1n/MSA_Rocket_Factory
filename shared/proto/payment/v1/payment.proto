@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+// Package payment.v1 содержит API для оплаты заказов.
+package payment.v1;
+
+option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1;payment_v1";
+
+// PaymentService предоставляет API для оплаты заказов
+service PaymentService {
+
+  // PayOrder оплачивает заказ
+  rpc PayOrder(PayOrderRequest) returns (PayOrderResponse);
+}
+
+// PayOrderRequest запрашивает оплату заказа
+message PayOrderRequest {
+  // order_uuid уникальный идентификатор заказа
+  string order_uuid = 1;
+
+  // user_uuid уникальный идентификатор пользователя, который инициирует оплату
+  string user_uuid = 2;
+
+  // payment_method выбранный способ оплаты
+  PaymentMethod payment_method = 3;
+}
+
+// PayOrderResponse отвечает за оплату заказа
+message PayOrderResponse {
+  // transaction_uuid уникальный идентификатор транзакции
+  string transaction_uuid = 1;
+}
+
+// PaymentMethod представляет возможные способы оплаты
+enum PaymentMethod {
+  // 0 - Неизвестный способ
+  PAYMENT_METHOD_UNSPECIFIED = 0;
+
+  // 1 - Банковская карта
+  PAYMENT_METHOD_CARD = 1;
+
+  // 2 - Система быстрых платежей
+  PAYMENT_METHOD_SBP = 2;
+
+  // 3 - Кредитная карта
+  PAYMENT_METHOD_CREDIT_CARD = 3;
+
+  // 4 - Деньги инвестора (внутренний метод)
+  PAYMENT_METHOD_INVESTOR_MONEY = 4;
+}
