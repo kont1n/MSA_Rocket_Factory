@@ -181,7 +181,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/get_order_response'
+                $ref: '#/components/schemas/order_dto'
         '400':
           description: Ошибка при получении заказа
           content:
@@ -540,7 +540,7 @@ components:
         - PAID
         - CANCELLED
       example: PENDING_PAYMENT
-    get_order_response:
+    order_dto:
       type: object
       required:
         - order_uuid
@@ -549,20 +549,32 @@ components:
         - status
       properties:
         order_uuid:
-          allOf:
-            - $ref: '#/components/schemas/order_uuid'
+          type: string
+          format: uuid
+          description: UUID заказа
+          example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
         user_uuid:
-          allOf:
-            - $ref: '#/components/schemas/user_uuid'
+          type: string
+          format: uuid
+          description: UUID пользователя
+          example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
         part_uuids:
-          allOf:
-            - $ref: '#/components/schemas/part_uuids'
+          type: array
+          description: Список UUID деталей
+          items:
+            type: string
+            format: uuid
+            example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
         total_price:
-          allOf:
-            - $ref: '#/components/schemas/total_price'
+          type: number
+          format: float
+          description: Сумма заказа
+          example: 100
         transaction_uuid:
-          allOf:
-            - $ref: '#/components/schemas/transaction_uuid'
+          type: string
+          format: uuid
+          description: UUID транзакции
+          example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
         payment_method:
           allOf:
             - $ref: '#/components/schemas/payment_method'

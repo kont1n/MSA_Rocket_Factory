@@ -28,10 +28,6 @@ const (
 	shutdownTimeout   = 10 * time.Second
 )
 
-type Order struct {
-	orderV1.GetOrderResponse
-}
-
 func main() {
 	// Создаем хранилище для данных о погоде
 	storage := NewOrderStorage()
@@ -98,13 +94,13 @@ func main() {
 // OrderStorage представляет потокобезопасное хранилище данных для заказов
 type OrderStorage struct {
 	mu     sync.RWMutex
-	orders map[uuid.UUID]*Order
+	orders map[uuid.UUID]*orderV1.OrderDto
 }
 
 // NewOrderStorage создает новое хранилище данных для заказов
 func NewOrderStorage() *OrderStorage {
 	return &OrderStorage{
-		orders: make(map[uuid.UUID]*Order),
+		orders: make(map[uuid.UUID]*orderV1.OrderDto),
 	}
 }
 
@@ -129,7 +125,13 @@ func (h *OrderHandler) CreateOrder(ctx context.Context, req *orderV1.CreateOrder
 			Message: "Внутренняя ошибка сервиса",
 		}, nil
 	}
-	return order, nil
+	return &orderV1.CreateOrderResponse{
+		OrderUUID:  orderV1.OrderUUID(order.GetOrderUUID()),
+		TotalPrice: orderV1.OptTotalPrice{
+			Value: orderV1.TotalPrice(order.GetTotalPrice().Value),
+			Set:   order.GetTotalPrice().Set,
+		},
+	}, nil
 }
 
 // GetOrderByUUID обрабатывает запрос получения информации о заказе по UUID
@@ -146,11 +148,27 @@ func (h *OrderHandler) GetOrderByUUID(ctx context.Context, params orderV1.GetOrd
 
 // PostOrderPayment обрабатывает запрос оплаты заказа
 func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
-	return nil, nil
+	payOrder := h.storage.PayOrder(params.OrderUUID, int(req.PaymentMethod))
+	if payOrder == nil {
+		return &orderV1.NotFoundError{
+			Code:    http.StatusNotFound,
+			Message: fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
+		}, nil
+	}
+	return &orderV1.PayOrderResponse{
+		TransactionUUID: orderV1.TransactionUUID(payOrder.GetTransactionUUID().Value),
+	}, nil
 }
 
 // PostOrderCancel обрабатывает запрос отмены заказа
 func (h *OrderHandler) CancelOrder(ctx context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {
+	cancelOrder := h.storage.CancelOrder(params.OrderUUID)
+	if cancelOrder == nil {
+		return &orderV1.NotFoundError{
+			Code:    http.StatusNotFound,
+			Message: fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
+		}, nil
+	}
 	return nil, nil
 }
 
@@ -172,19 +190,28 @@ func (h *OrderHandler) NewError(ctx context.Context, err error) *orderV1.Generic
 }
 
 // CreateOrder создает заказ
-func (s *OrderStorage) CreateOrder(userUUID uuid.UUID, partUUIDs []uuid.UUID) *Order {
+func (s *OrderStorage) CreateOrder(userUUID uuid.UUID, partUUIDs []uuid.UUID) *orderV1.OrderDto {
 
-	addOrder := &Order{}
+	newOrder := &orderV1.OrderDto{
+		OrderUUID: uuid.New(),
+		UserUUID:  userUUID,
+		PartUuids: partUUIDs,
+		Status:    orderV1.OrderStatus("PENDING_PAYMENT"),
+		TotalPrice: orderV1.OptFloat32{
+			Value: 0,
+			Set:   true,
+		},
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.orders[addOrder.OrderUUID] = addOrder
-	return addOrder
+	s.orders[newOrder.OrderUUID] = newOrder
+	return newOrder
 }
 
 // GetOrder получает информацию о заказе
-func (s *OrderStorage) GetOrder(orderUUID uuid.UUID) *Order {
+func (s *OrderStorage) GetOrder(orderUUID uuid.UUID) *orderV1.OrderDto {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -196,11 +223,38 @@ func (s *OrderStorage) GetOrder(orderUUID uuid.UUID) *Order {
 }
 
 // PayOrder оплачивает заказ
-func (s *OrderStorage) PayOrder(orderUUID string, paymentMethod int) *Order {
-	return nil
+func (s *OrderStorage) PayOrder(orderUUID uuid.UUID, paymentMethod int) *orderV1.OrderDto {
+	payOrder := s.GetOrder(orderUUID)
+	if payOrder == nil {
+		return nil
+	}
+
+	s.mu.Lock()
+	payOrder.Status = orderV1.OrderStatus("PAID")
+	payOrder.TransactionUUID = orderV1.OptUUID{
+		Value: uuid.New(),
+		Set:   true,
+	}
+	payOrder.PaymentMethod = orderV1.OptPaymentMethod{
+		Value: orderV1.PaymentMethod(paymentMethod),
+		Set:   true,
+	}
+	defer s.mu.Unlock()
+
+	return payOrder
 }
 
 // CancelOrder отменяет заказ
-func (s *OrderStorage) CancelOrder(orderUUID string) *Order {
+func (s *OrderStorage) CancelOrder(orderUUID uuid.UUID) *orderV1.OrderDto {
+	cancelOrder := s.GetOrder(orderUUID)
+	if cancelOrder == nil {
+		return nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cancelOrder.Status = orderV1.OrderStatus("CANCELLED")
+
 	return nil
 }

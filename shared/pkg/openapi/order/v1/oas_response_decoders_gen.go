@@ -803,7 +803,7 @@ func decodeGetOrderByUUIDResponse(resp *http.Response) (res GetOrderByUUIDRes, _
 			}
 			d := jx.DecodeBytes(buf)
 
-			var response GetOrderResponse
+			var response OrderDto
 			if err := func() error {
 				if err := response.Decode(d); err != nil {
 					return err
