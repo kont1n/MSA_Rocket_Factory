@@ -183,16 +183,36 @@ func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderReques
 		}, nil
 	}
 
-	//payOrder = getOrder
+	// Формируем заказ для оплаты
+	payOrder = getOrder.(*orderV1.OrderDto)
+	payOrder.PaymentMethod = orderV1.OptPaymentMethod{
+		Value: orderV1.PaymentMethod(req.PaymentMethod),
+		Set:   true,
+	}
 
 	// Оплачиваем заказ с помощью gRPC клиента
-	h.paymentClient.PayOrder(ctx, &paymentV1.PayOrderRequest{
-		OrderUuid: params.OrderUUID.String(),
-		UserUuid:  "todo",
-		PaymentMethod: paymentV1.PaymentMethod(req.PaymentMethod),
+	response, err := h.paymentClient.PayOrder(ctx, &paymentV1.PayOrderRequest{
+		OrderUuid: payOrder.GetOrderUUID().String(),
+		UserUuid:  payOrder.GetUserUUID().String(),
+		PaymentMethod: paymentV1.PaymentMethod(payOrder.GetPaymentMethod().Value),
 	})
 
+	if err != nil {
+		return &orderV1.InternalServerError{
+			Code:    http.StatusInternalServerError,
+			Message: "Внутренняя ошибка сервиса - не удалось оплатить заказ",
+		}, nil
+	}
 
+	// Обновляем заказ
+	payOrder.TransactionUUID = orderV1.OptUUID{
+		Value: uuid.MustParse(response.GetTransactionUuid()),
+		Set:   true,
+	}
+	payOrder.Status = orderV1.OrderStatus("PAID")
+
+	// Сохраняем оплату заказа в хранилище
+	h.storage.PayOrder(payOrder)
 
 	return &orderV1.PayOrderResponse{
 		TransactionUUID: orderV1.TransactionUUID(payOrder.GetTransactionUUID().Value),
@@ -201,14 +221,36 @@ func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderReques
 
 // PostOrderCancel обрабатывает запрос отмены заказа
 func (h *OrderHandler) CancelOrder(ctx context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {
-	cancelOrder := h.storage.CancelOrder(params.OrderUUID)
-	if cancelOrder == nil {
+	var cancelOrder *orderV1.OrderDto
+
+	// Получаем заказ по UUID
+	getOrder, _ := h.GetOrderByUUID(ctx, orderV1.GetOrderByUUIDParams{OrderUUID: params.OrderUUID})
+	if getOrder == nil {
 		return &orderV1.NotFoundError{
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
 		}, nil
 	}
-	return nil, nil
+
+	// Формируем отмену заказа
+	cancelOrder = getOrder.(*orderV1.OrderDto)
+
+	// Проверяем статус заказа
+	if cancelOrder.GetStatus() == orderV1.OrderStatus("PAID") {
+		return &orderV1.ConflictError{
+			Code:    http.StatusConflict,
+			Message: "Заказ уже оплачен и не может быть отменён",
+		}, nil
+	}
+	if cancelOrder.GetStatus() == orderV1.OrderStatus("CANCELLED") {
+		return &orderV1.CancelOrderNoContent{}, nil
+	}
+
+	// Сохраняем отмену заказа в хранилище
+	cancelOrder.Status = orderV1.OrderStatus("CANCELLED")
+	h.storage.CancelOrder(cancelOrder)
+
+	return &orderV1.CancelOrderNoContent{}, nil
 }
 
 // NewError создает новую ошибку в формате GenericError
@@ -228,9 +270,8 @@ func (h *OrderHandler) NewError(ctx context.Context, err error) *orderV1.Generic
 	}
 }
 
-// CreateOrder создает заказ
+// CreateOrder создает заказ в хранилище
 func (s *OrderStorage) CreateOrder(userUUID uuid.UUID, partUUIDs []uuid.UUID) *orderV1.OrderDto {
-
 	newOrder := &orderV1.OrderDto{
 		OrderUUID: uuid.New(),
 		UserUUID:  userUUID,
@@ -249,7 +290,7 @@ func (s *OrderStorage) CreateOrder(userUUID uuid.UUID, partUUIDs []uuid.UUID) *o
 	return newOrder
 }
 
-// GetOrder получает информацию о заказе
+// GetOrder получает информацию о заказе из хранилища
 func (s *OrderStorage) GetOrder(orderUUID uuid.UUID) *orderV1.OrderDto {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -261,39 +302,18 @@ func (s *OrderStorage) GetOrder(orderUUID uuid.UUID) *orderV1.OrderDto {
 	return order
 }
 
-// PayOrder оплачивает заказ
-func (s *OrderStorage) PayOrder(orderUUID uuid.UUID, paymentMethod int) *orderV1.OrderDto {
-	payOrder := s.GetOrder(orderUUID)
-	if payOrder == nil {
-		return nil
-	}
-
+// PayOrder сохраняет оплату заказа в хранилище
+func (s *OrderStorage) PayOrder(payOrder *orderV1.OrderDto) {
 	s.mu.Lock()
-	payOrder.Status = orderV1.OrderStatus("PAID")
-	payOrder.TransactionUUID = orderV1.OptUUID{
-		Value: uuid.New(),
-		Set:   true,
-	}
-	payOrder.PaymentMethod = orderV1.OptPaymentMethod{
-		Value: orderV1.PaymentMethod(paymentMethod),
-		Set:   true,
-	}
 	defer s.mu.Unlock()
 
-	return payOrder
+	s.orders[payOrder.OrderUUID] = payOrder
 }
 
-// CancelOrder отменяет заказ
-func (s *OrderStorage) CancelOrder(orderUUID uuid.UUID) *orderV1.OrderDto {
-	cancelOrder := s.GetOrder(orderUUID)
-	if cancelOrder == nil {
-		return nil
-	}
-
+// CancelOrder сохраняет отмену заказа в хранилище
+func (s *OrderStorage) CancelOrder(cancelOrder *orderV1.OrderDto) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	cancelOrder.Status = orderV1.OrderStatus("CANCELLED")
-
-	return nil
+	
+	s.orders[cancelOrder.OrderUUID] = cancelOrder
 }

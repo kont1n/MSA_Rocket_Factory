@@ -24,6 +24,7 @@ type paymentService struct {
 }
 
 func main() {
+	// Создаем gRPC соединение
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 	if err != nil {
 		log.Printf("failed to listen: %v\n", err)
@@ -63,6 +64,7 @@ func main() {
 	log.Println("✅ Server stopped")
 }
 
+// PayOrder оплачивает заказ
 func (s *paymentService) PayOrder(ctx context.Context, req *paymentV1.PayOrderRequest) (*paymentV1.PayOrderResponse, error) {
 	transaction_uuid := uuid.New()
 	log.Printf("Оплата прошла успешно, transaction_uuid: %s\n", transaction_uuid)
