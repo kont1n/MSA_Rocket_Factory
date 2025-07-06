@@ -22,11 +22,13 @@ import (
 	customMiddleware "github.com/kont1n/MSA_Rocket_Factory/order/internal/middleware"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
+	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
 const (
 	httpPort = "8080"
 	paymentPort = "50051"
+	inventoryPort = "50052"
 	// Таймауты для HTTP-сервера
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second
@@ -36,8 +38,8 @@ func main() {
 	// Создаем хранилище для данных о погоде
 	storage := NewOrderStorage()
 
-	// Создаем gRPC соединение
-	conn, err := grpc.NewClient(
+	// Создаем gRPC соединение к API платежа
+	paymentConn, err := grpc.NewClient(
 		net.JoinHostPort("localhost", paymentPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -46,16 +48,34 @@ func main() {
 		return
 	}
 	defer func() {
-		if cerr := conn.Close(); cerr != nil {
+		if cerr := paymentConn.Close(); cerr != nil {
+			log.Printf("failed to close connect: %v", cerr)
+		}
+	}()
+
+	// Создаем gRPC соединение к API инвентаря
+	inventoryConn, err := grpc.NewClient(
+		net.JoinHostPort("localhost", inventoryPort),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Printf("failed to connect: %v\n", err)
+		return
+	}
+	defer func() {
+		if cerr := inventoryConn.Close(); cerr != nil {
 			log.Printf("failed to close connect: %v", cerr)
 		}
 	}()
 
 	// Создаем gRPC клиент для обработки запросов к API платежа
-	paymentClient := paymentV1.NewPaymentServiceClient(conn)
+	paymentClient := paymentV1.NewPaymentServiceClient(paymentConn)
+
+	// Создаем gRPC клиент для обработки запросов к API инвентаря
+	inventoryClient := inventoryV1.NewInventoryServiceClient(inventoryConn)
 
 	// Создаем обработчик API погоды
-	orderHandler := NewOrderHandler(storage, paymentClient)
+	orderHandler := NewOrderHandler(storage, paymentClient, inventoryClient)
 
 	// Создаем OpenAPI сервер
 	orderServer, err := orderV1.NewServer(orderHandler)
@@ -130,30 +150,73 @@ func NewOrderStorage() *OrderStorage {
 type OrderHandler struct {
 	storage *OrderStorage
 	paymentClient paymentV1.PaymentServiceClient
+	inventoryClient inventoryV1.InventoryServiceClient
 }
 
 // NewOrderHandler создает новый обработчик запросов к API заказа
-func NewOrderHandler(storage *OrderStorage, paymentClient paymentV1.PaymentServiceClient) *OrderHandler {
+func NewOrderHandler(storage *OrderStorage, paymentClient paymentV1.PaymentServiceClient, inventoryClient inventoryV1.InventoryServiceClient) *OrderHandler {
 	return &OrderHandler{
 		storage: storage,
 		paymentClient: paymentClient,
+		inventoryClient: inventoryClient,
 	}
 }
 
 // CreateOrder обрабатывает запрос создания заказа
 func (h *OrderHandler) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
-	order := h.storage.CreateOrder(uuid.UUID(req.UserUUID), req.PartUuids)
-	if order == nil {
+	// Получаем список UUID деталей заказа
+	partUuids := []string{}
+	for _, partUUID := range req.PartUuids {
+		partUuids = append(partUuids, partUUID.String())
+	}
+
+	// Выполняем запрос к API инвентаря для получения деталей заказа
+	parts, err := h.inventoryClient.ListParts(ctx, &inventoryV1.ListPartsRequest{
+		Filter: &inventoryV1.PartsFilter{
+			PartUuid: partUuids,
+		},
+	})
+	
+	if err != nil {
 		return &orderV1.InternalServerError{
 			Code:    http.StatusInternalServerError,
-			Message: "Внутренняя ошибка сервиса",
+			Message: "Внутренняя ошибка сервиса - не удалось получить детали заказа",
 		}, nil
 	}
+	
+	if (len(parts.GetParts()) == 0) || (len(parts.GetParts()) != len(req.PartUuids)) {
+		return &orderV1.BadRequestError{
+			Code:    http.StatusBadRequest,
+			Message: "Не найдены указанные детали",
+		}, nil
+	}
+
+	// Считаем общую стоимость заказа
+	totalPrice := 0.0
+	for _, part := range parts.GetParts() {
+		totalPrice += part.GetPrice()
+	}
+
+	// Создаем заказ
+	createOrder := &orderV1.OrderDto{
+		OrderUUID: uuid.New(),
+		UserUUID:  uuid.UUID(req.UserUUID),
+		PartUuids: req.PartUuids,
+		Status:    orderV1.OrderStatus("PENDING_PAYMENT"),
+		TotalPrice: orderV1.OptFloat32{
+			Value: float32(totalPrice),
+			Set:   true,
+		},
+	}
+
+	// Сохраняем заказ в хранилище
+	h.storage.CreateOrder(createOrder)
+
 	return &orderV1.CreateOrderResponse{
-		OrderUUID:  orderV1.OrderUUID(order.GetOrderUUID()),
+		OrderUUID:  orderV1.OrderUUID(createOrder.GetOrderUUID()),
 		TotalPrice: orderV1.OptTotalPrice{
-			Value: orderV1.TotalPrice(order.GetTotalPrice().Value),
-			Set:   order.GetTotalPrice().Set,
+			Value: orderV1.TotalPrice(createOrder.GetTotalPrice().Value),
+			Set:   createOrder.GetTotalPrice().Set,
 		},
 	}, nil
 }
@@ -271,23 +334,11 @@ func (h *OrderHandler) NewError(ctx context.Context, err error) *orderV1.Generic
 }
 
 // CreateOrder создает заказ в хранилище
-func (s *OrderStorage) CreateOrder(userUUID uuid.UUID, partUUIDs []uuid.UUID) *orderV1.OrderDto {
-	newOrder := &orderV1.OrderDto{
-		OrderUUID: uuid.New(),
-		UserUUID:  userUUID,
-		PartUuids: partUUIDs,
-		Status:    orderV1.OrderStatus("PENDING_PAYMENT"),
-		TotalPrice: orderV1.OptFloat32{
-			Value: 0,
-			Set:   true,
-		},
-	}
-
+func (s *OrderStorage) CreateOrder(createOrder *orderV1.OrderDto) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.orders[newOrder.OrderUUID] = newOrder
-	return newOrder
+	s.orders[createOrder.OrderUUID] = createOrder
 }
 
 // GetOrder получает информацию о заказе из хранилища
