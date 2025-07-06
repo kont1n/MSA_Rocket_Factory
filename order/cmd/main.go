@@ -16,13 +16,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	customMiddleware "github.com/kont1n/MSA_Rocket_Factory/order/internal/middleware"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
+	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
 const (
 	httpPort = "8080"
+	paymentPort = "50051"
 	// Таймауты для HTTP-сервера
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second
@@ -32,8 +36,26 @@ func main() {
 	// Создаем хранилище для данных о погоде
 	storage := NewOrderStorage()
 
+	// Создаем gRPC соединение
+	conn, err := grpc.NewClient(
+		net.JoinHostPort("localhost", paymentPort),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Printf("failed to connect: %v\n", err)
+		return
+	}
+	defer func() {
+		if cerr := conn.Close(); cerr != nil {
+			log.Printf("failed to close connect: %v", cerr)
+		}
+	}()
+
+	// Создаем gRPC клиент для обработки запросов к API платежа
+	paymentClient := paymentV1.NewPaymentServiceClient(conn)
+
 	// Создаем обработчик API погоды
-	orderHandler := NewOrderHandler(storage)
+	orderHandler := NewOrderHandler(storage, paymentClient)
 
 	// Создаем OpenAPI сервер
 	orderServer, err := orderV1.NewServer(orderHandler)
@@ -107,12 +129,14 @@ func NewOrderStorage() *OrderStorage {
 // OrderHandler реализует интерфейс orderV1.Handler для обработки запросов к API заказа
 type OrderHandler struct {
 	storage *OrderStorage
+	paymentClient paymentV1.PaymentServiceClient
 }
 
 // NewOrderHandler создает новый обработчик запросов к API заказа
-func NewOrderHandler(storage *OrderStorage) *OrderHandler {
+func NewOrderHandler(storage *OrderStorage, paymentClient paymentV1.PaymentServiceClient) *OrderHandler {
 	return &OrderHandler{
 		storage: storage,
+		paymentClient: paymentClient,
 	}
 }
 
@@ -148,13 +172,28 @@ func (h *OrderHandler) GetOrderByUUID(ctx context.Context, params orderV1.GetOrd
 
 // PostOrderPayment обрабатывает запрос оплаты заказа
 func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
-	payOrder := h.storage.PayOrder(params.OrderUUID, int(req.PaymentMethod))
-	if payOrder == nil {
+	var payOrder *orderV1.OrderDto
+
+	// Получаем заказ по UUID
+	getOrder, _ := h.GetOrderByUUID(ctx, orderV1.GetOrderByUUIDParams{OrderUUID: params.OrderUUID})
+	if getOrder == nil {
 		return &orderV1.NotFoundError{
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
 		}, nil
 	}
+
+	//payOrder = getOrder
+
+	// Оплачиваем заказ с помощью gRPC клиента
+	h.paymentClient.PayOrder(ctx, &paymentV1.PayOrderRequest{
+		OrderUuid: params.OrderUUID.String(),
+		UserUuid:  "todo",
+		PaymentMethod: paymentV1.PaymentMethod(req.PaymentMethod),
+	})
+
+
+
 	return &orderV1.PayOrderResponse{
 		TransactionUUID: orderV1.TransactionUUID(payOrder.GetTransactionUUID().Value),
 	}, nil
