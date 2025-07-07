@@ -776,24 +776,65 @@ func (*PayOrderResponse) payOrderRes() {}
 
 // Способ оплаты.
 // Ref: #/components/schemas/payment_method
-type PaymentMethod int
+type PaymentMethod string
 
 const (
-	PaymentMethod0 PaymentMethod = 0
-	PaymentMethod1 PaymentMethod = 1
-	PaymentMethod2 PaymentMethod = 2
-	PaymentMethod3 PaymentMethod = 3
-	PaymentMethod4 PaymentMethod = 4
+	PaymentMethodUNKNOWN       PaymentMethod = "UNKNOWN"
+	PaymentMethodCARD          PaymentMethod = "CARD"
+	PaymentMethodSBP           PaymentMethod = "SBP"
+	PaymentMethodCREDITCARD    PaymentMethod = "CREDIT_CARD"
+	PaymentMethodINVESTORMONEY PaymentMethod = "INVESTOR_MONEY"
 )
 
 // AllValues returns all PaymentMethod values.
 func (PaymentMethod) AllValues() []PaymentMethod {
 	return []PaymentMethod{
-		PaymentMethod0,
-		PaymentMethod1,
-		PaymentMethod2,
-		PaymentMethod3,
-		PaymentMethod4,
+		PaymentMethodUNKNOWN,
+		PaymentMethodCARD,
+		PaymentMethodSBP,
+		PaymentMethodCREDITCARD,
+		PaymentMethodINVESTORMONEY,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PaymentMethod) MarshalText() ([]byte, error) {
+	switch s {
+	case PaymentMethodUNKNOWN:
+		return []byte(s), nil
+	case PaymentMethodCARD:
+		return []byte(s), nil
+	case PaymentMethodSBP:
+		return []byte(s), nil
+	case PaymentMethodCREDITCARD:
+		return []byte(s), nil
+	case PaymentMethodINVESTORMONEY:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PaymentMethod) UnmarshalText(data []byte) error {
+	switch PaymentMethod(data) {
+	case PaymentMethodUNKNOWN:
+		*s = PaymentMethodUNKNOWN
+		return nil
+	case PaymentMethodCARD:
+		*s = PaymentMethodCARD
+		return nil
+	case PaymentMethodSBP:
+		*s = PaymentMethodSBP
+		return nil
+	case PaymentMethodCREDITCARD:
+		*s = PaymentMethodCREDITCARD
+		return nil
+	case PaymentMethodINVESTORMONEY:
+		*s = PaymentMethodINVESTORMONEY
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
 	}
 }
 

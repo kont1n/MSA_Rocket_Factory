@@ -296,7 +296,7 @@ tasks:
         fi
         
         # Извлекаем UUID первой детали для дальнейших тестов
-        PART_UUID=$(echo $PARTS_RESPONSE | grep -o '"uuid": "[^"]*' | head -1 | cut -d'"' -f4)
+        PART_UUID=$(echo $PARTS_RESPONSE | grep -o '"partUuid": "[^"]*' | head -1 | cut -d'"' -f4)
         if [ -z "$PART_UUID" ]; then
           echo "❌ Не удалось найти UUID детали в ответе."
           echo "🔍 Ответ сервера: $PARTS_RESPONSE"
@@ -306,7 +306,7 @@ tasks:
         
         echo
         echo "🔍 Тест 2: Получение информации о детали по UUID"
-        PART_RESPONSE=$({{.GRPCURL}} -plaintext -d "{\"uuid\":\"$PART_UUID\"}" localhost:50051 inventory.v1.InventoryService/GetPart)
+        PART_RESPONSE=$({{.GRPCURL}} -plaintext -d "{\"partUuid\":\"$PART_UUID\"}" localhost:50051 inventory.v1.InventoryService/GetPart)
         
         if [[ -z "$PART_RESPONSE" || "$PART_RESPONSE" == *"error"* ]]; then
           echo "❌ Не удалось получить информацию о детали."
@@ -342,9 +342,9 @@ tasks:
         fi
         
         # Извлекаем UUID заказа с учетом разных форматов JSON
-        ORDER_UUID=$(echo $ORDER_RESPONSE | grep -o '"uuid":"[^"]*' | cut -d'"' -f4)
+        ORDER_UUID=$(echo $ORDER_RESPONSE | grep -o '"order_uuid":"[^"]*' | cut -d'"' -f4)
         if [ -z "$ORDER_UUID" ]; then
-          ORDER_UUID=$(echo $ORDER_RESPONSE | grep -o '"uuid": "[^"]*' | cut -d'"' -f4)
+          ORDER_UUID=$(echo $ORDER_RESPONSE | grep -o '"order_uuid": "[^"]*' | cut -d'"' -f4)
           if [ -z "$ORDER_UUID" ]; then
             echo "❌ Не удалось извлечь UUID заказа из ответа."
             echo "🔍 Ответ сервера: $ORDER_RESPONSE"

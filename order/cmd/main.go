@@ -21,20 +21,21 @@ import (
 
 	customMiddleware "github.com/kont1n/MSA_Rocket_Factory/order/internal/middleware"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
-	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
+	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
 const (
-	httpPort = "8080"
-	paymentPort = "50051"
-	inventoryPort = "50052"
+	httpPort      = "8080"
+	paymentPort   = "50052"
+	inventoryPort = "50051"
 	// Таймауты для HTTP-сервера
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second
 )
 
 func main() {
+	log.Printf("Order service starting...")
 	// Создаем хранилище для данных о погоде
 	storage := NewOrderStorage()
 
@@ -148,16 +149,16 @@ func NewOrderStorage() *OrderStorage {
 
 // OrderHandler реализует интерфейс orderV1.Handler для обработки запросов к API заказа
 type OrderHandler struct {
-	storage *OrderStorage
-	paymentClient paymentV1.PaymentServiceClient
+	storage         *OrderStorage
+	paymentClient   paymentV1.PaymentServiceClient
 	inventoryClient inventoryV1.InventoryServiceClient
 }
 
 // NewOrderHandler создает новый обработчик запросов к API заказа
 func NewOrderHandler(storage *OrderStorage, paymentClient paymentV1.PaymentServiceClient, inventoryClient inventoryV1.InventoryServiceClient) *OrderHandler {
 	return &OrderHandler{
-		storage: storage,
-		paymentClient: paymentClient,
+		storage:         storage,
+		paymentClient:   paymentClient,
 		inventoryClient: inventoryClient,
 	}
 }
@@ -176,14 +177,14 @@ func (h *OrderHandler) CreateOrder(ctx context.Context, req *orderV1.CreateOrder
 			PartUuid: partUuids,
 		},
 	})
-	
+
 	if err != nil {
 		return &orderV1.InternalServerError{
 			Code:    http.StatusInternalServerError,
 			Message: "Внутренняя ошибка сервиса - не удалось получить детали заказа",
 		}, nil
 	}
-	
+
 	if (len(parts.GetParts()) == 0) || (len(parts.GetParts()) != len(req.PartUuids)) {
 		return &orderV1.BadRequestError{
 			Code:    http.StatusBadRequest,
@@ -213,7 +214,7 @@ func (h *OrderHandler) CreateOrder(ctx context.Context, req *orderV1.CreateOrder
 	h.storage.CreateOrder(createOrder)
 
 	return &orderV1.CreateOrderResponse{
-		OrderUUID:  orderV1.OrderUUID(createOrder.GetOrderUUID()),
+		OrderUUID: orderV1.OrderUUID(createOrder.GetOrderUUID()),
 		TotalPrice: orderV1.OptTotalPrice{
 			Value: orderV1.TotalPrice(createOrder.GetTotalPrice().Value),
 			Set:   createOrder.GetTotalPrice().Set,
@@ -233,7 +234,7 @@ func (h *OrderHandler) GetOrderByUUID(ctx context.Context, params orderV1.GetOrd
 	return order, nil
 }
 
-// PostOrderPayment обрабатывает запрос оплаты заказа
+// PayOrder обрабатывает запрос оплаты заказа
 func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
 	var payOrder *orderV1.OrderDto
 
@@ -246,18 +247,20 @@ func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderReques
 		}, nil
 	}
 
+	log.Printf("Req: %v", req)
+	log.Printf("Get: %v", getOrder)
+
 	// Формируем заказ для оплаты
 	payOrder = getOrder.(*orderV1.OrderDto)
-	payOrder.PaymentMethod = orderV1.OptPaymentMethod{
-		Value: orderV1.PaymentMethod(req.PaymentMethod),
-		Set:   true,
-	}
+	payOrder.PaymentMethod = orderV1.OptPaymentMethod{}
+	math := paymentV1.PaymentMethod_value
+	log.Printf("Method: %v", math)
 
 	// Оплачиваем заказ с помощью gRPC клиента
 	response, err := h.paymentClient.PayOrder(ctx, &paymentV1.PayOrderRequest{
-		OrderUuid: payOrder.GetOrderUUID().String(),
-		UserUuid:  payOrder.GetUserUUID().String(),
-		PaymentMethod: paymentV1.PaymentMethod(payOrder.GetPaymentMethod().Value),
+		OrderUuid:     payOrder.GetOrderUUID().String(),
+		UserUuid:      payOrder.GetUserUUID().String(),
+		PaymentMethod: 1,
 	})
 
 	if err != nil {
@@ -365,6 +368,6 @@ func (s *OrderStorage) PayOrder(payOrder *orderV1.OrderDto) {
 func (s *OrderStorage) CancelOrder(cancelOrder *orderV1.OrderDto) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.orders[cancelOrder.OrderUUID] = cancelOrder
 }

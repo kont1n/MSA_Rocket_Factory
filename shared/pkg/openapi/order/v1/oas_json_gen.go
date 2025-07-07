@@ -1067,7 +1067,7 @@ func (o OptPaymentMethod) Encode(e *jx.Encoder) {
 	if !o.Set {
 		return
 	}
-	e.Int(int(o.Value))
+	e.Str(string(o.Value))
 }
 
 // Decode decodes PaymentMethod from json.
@@ -1730,7 +1730,7 @@ func (s *PayOrderResponse) UnmarshalJSON(data []byte) error {
 
 // Encode encodes PaymentMethod as json.
 func (s PaymentMethod) Encode(e *jx.Encoder) {
-	e.Int(int(s))
+	e.Str(string(s))
 }
 
 // Decode decodes PaymentMethod from json.
@@ -1738,11 +1738,25 @@ func (s *PaymentMethod) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode PaymentMethod to nil")
 	}
-	v, err := d.Int()
+	v, err := d.StrBytes()
 	if err != nil {
 		return err
 	}
-	*s = PaymentMethod(v)
+	// Try to use constant string.
+	switch PaymentMethod(v) {
+	case PaymentMethodUNKNOWN:
+		*s = PaymentMethodUNKNOWN
+	case PaymentMethodCARD:
+		*s = PaymentMethodCARD
+	case PaymentMethodSBP:
+		*s = PaymentMethodSBP
+	case PaymentMethodCREDITCARD:
+		*s = PaymentMethodCREDITCARD
+	case PaymentMethodINVESTORMONEY:
+		*s = PaymentMethodINVESTORMONEY
+	default:
+		*s = PaymentMethod(v)
+	}
 
 	return nil
 }

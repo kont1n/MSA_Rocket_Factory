@@ -1,10 +1,9 @@
-type: integer
-description: Способ оплаты
-enum: [0, 1, 2, 3, 4]
-example: 1
-x-enum-descriptions:
-  0: UNKNOWN
-  1: CARD
-  2: SBP
-  3: CREDIT_CARD
-  4: INVESTOR_MONEY
+  type: string
+  description: Способ оплаты
+  enum:
+    - UNKNOWN
+    - CARD
+    - SBP
+    - CREDIT_CARD
+    - INVESTOR_MONEY
+  example: CARD

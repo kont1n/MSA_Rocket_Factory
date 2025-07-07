@@ -12,11 +12,11 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	
+
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
-const grpcPort = 50051
+const grpcPort = 50052
 
 // PaymentService реализует интерфейс paymentV1.Service для обработки запросов к API платежа
 type paymentService struct {
@@ -24,6 +24,7 @@ type paymentService struct {
 }
 
 func main() {
+	log.Printf("Payment service starting...")
 	// Создаем gRPC соединение
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 	if err != nil {
