@@ -236,31 +236,30 @@ func (h *OrderHandler) GetOrderByUUID(ctx context.Context, params orderV1.GetOrd
 
 // PayOrder обрабатывает запрос оплаты заказа
 func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
-	var payOrder *orderV1.OrderDto
-
 	// Получаем заказ по UUID
-	getOrder, _ := h.GetOrderByUUID(ctx, orderV1.GetOrderByUUIDParams{OrderUUID: params.OrderUUID})
-	if getOrder == nil {
+	payOrder := h.storage.GetOrder(params.OrderUUID)
+	if payOrder == nil {
 		return &orderV1.NotFoundError{
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
 		}, nil
 	}
 
-	log.Printf("Req: %v", req)
-	log.Printf("Get: %v", getOrder)
-
 	// Формируем заказ для оплаты
-	payOrder = getOrder.(*orderV1.OrderDto)
-	payOrder.PaymentMethod = orderV1.OptPaymentMethod{}
-	math := paymentV1.PaymentMethod_value
-	log.Printf("Method: %v", math)
+	payOrder.PaymentMethod = orderV1.OptPaymentMethod{
+		Value: orderV1.PaymentMethod(req.PaymentMethod),
+		Set:   true,
+	}
+	intPaymentMethod, ok := paymentV1.PaymentMethod_value["PAYMENT_METHOD_"+string(req.GetPaymentMethod())]
+	if !ok {
+		intPaymentMethod = int32(paymentV1.PaymentMethod_PAYMENT_METHOD_UNSPECIFIED)
+	}
 
 	// Оплачиваем заказ с помощью gRPC клиента
 	response, err := h.paymentClient.PayOrder(ctx, &paymentV1.PayOrderRequest{
 		OrderUuid:     payOrder.GetOrderUUID().String(),
 		UserUuid:      payOrder.GetUserUUID().String(),
-		PaymentMethod: 1,
+		PaymentMethod: paymentV1.PaymentMethod(intPaymentMethod),
 	})
 
 	if err != nil {
@@ -287,19 +286,14 @@ func (h *OrderHandler) PayOrder(ctx context.Context, req *orderV1.PayOrderReques
 
 // PostOrderCancel обрабатывает запрос отмены заказа
 func (h *OrderHandler) CancelOrder(ctx context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {
-	var cancelOrder *orderV1.OrderDto
-
 	// Получаем заказ по UUID
-	getOrder, _ := h.GetOrderByUUID(ctx, orderV1.GetOrderByUUIDParams{OrderUUID: params.OrderUUID})
-	if getOrder == nil {
+	cancelOrder := h.storage.GetOrder(params.OrderUUID)
+	if cancelOrder == nil {
 		return &orderV1.NotFoundError{
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
 		}, nil
 	}
-
-	// Формируем отмену заказа
-	cancelOrder = getOrder.(*orderV1.OrderDto)
 
 	// Проверяем статус заказа
 	if cancelOrder.GetStatus() == orderV1.OrderStatus("PAID") {
