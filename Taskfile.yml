@@ -385,7 +385,7 @@ tasks:
         echo "💰 Тест 6: Оплата заказа (REST API)"
         PAY_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER_UUID/pay" \
           -H "Content-Type: application/json" \
-          -d "{\"payment_method\":\"PAYMENT_METHOD_CARD\"}")
+          -d "{\"payment_method\":\"CARD\"}")
         
         if [[ "$PAY_RESPONSE" == *"error"* ]]; then
           echo "❌ Ошибка при оплате заказа."
@@ -424,9 +424,9 @@ tasks:
         fi
         
         # Извлекаем UUID второго заказа с учетом разных форматов JSON
-        ORDER2_UUID=$(echo $ORDER2_RESPONSE | grep -o '"uuid":"[^"]*' | cut -d'"' -f4)
+        ORDER2_UUID=$(echo $ORDER2_RESPONSE | grep -o '"order_uuid":"[^"]*' | cut -d'"' -f4)
         if [ -z "$ORDER2_UUID" ]; then
-          ORDER2_UUID=$(echo $ORDER2_RESPONSE | grep -o '"uuid": "[^"]*' | cut -d'"' -f4)
+          ORDER2_UUID=$(echo $ORDER2_RESPONSE | grep -o '"order_uuid": "[^"]*' | cut -d'"' -f4)
           if [ -z "$ORDER2_UUID" ]; then
             echo "❌ Не удалось извлечь UUID второго заказа из ответа."
             echo "🔍 Ответ сервера: $ORDER2_RESPONSE"
