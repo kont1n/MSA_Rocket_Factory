@@ -424,7 +424,7 @@ components:
         message:
           type: string
           description: Описание ошибки
-          example: 'Not Found: Order with UUID ''00000000-0000-0000-0000-000000000000'' not found'
+          example: 'Not Found: Order with UUID ''00000000-0000-0000-0000-000000000000'''
     conflict_error:
       type: object
       required:

@@ -6,7 +6,7 @@
 
 // Package inventory.v1 содержит API для хранения и предоставления информации о деталях для сборки космических кораблей.
 
-package ufo_v1
+package inventory_v1
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -814,7 +814,7 @@ const file_inventory_v1_inventory_proto_rawDesc = "" +
 	"\rCATEGORY_WING\x10\x042\xa8\x01\n" +
 	"\x10InventoryService\x12F\n" +
 	"\aGetPart\x12\x1c.inventory.v1.GetPartRequest\x1a\x1d.inventory.v1.GetPartResponse\x12L\n" +
-	"\tListParts\x12\x1e.inventory.v1.ListPartsRequest\x1a\x1f.inventory.v1.ListPartsResponseBEZCgithub.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/ufo/v1;ufo_v1b\x06proto3"
+	"\tListParts\x12\x1e.inventory.v1.ListPartsRequest\x1a\x1f.inventory.v1.ListPartsResponseBQZOgithub.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1;inventory_v1b\x06proto3"
 
 var (
 	file_inventory_v1_inventory_proto_rawDescOnce sync.Once

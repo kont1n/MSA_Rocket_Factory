@@ -5,7 +5,7 @@ package inventory.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/ufo/v1;ufo_v1";
+option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1;inventory_v1";
 
 // InventoryService предоставляет API для работы с деталями
 service InventoryService {

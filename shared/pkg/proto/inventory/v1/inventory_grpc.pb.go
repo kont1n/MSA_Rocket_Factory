@@ -6,7 +6,7 @@
 
 // Package inventory.v1 содержит API для хранения и предоставления информации о деталях для сборки космических кораблей.
 
-package ufo_v1
+package inventory_v1
 
 import (
 	context "context"

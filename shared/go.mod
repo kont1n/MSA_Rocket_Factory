@@ -3,6 +3,7 @@ module github.com/kont1n/MSA_Rocket_Factory/shared
 go 1.24
 
 require (
+	go.opentelemetry.io/otel/sdk/metric v1.37.0
 	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.1.0
 	github.com/google/uuid v1.6.0
@@ -13,6 +14,8 @@ require (
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )
+
+replace github.com/kont1n/MSA_Rocket_Factory/shared => ../shared
 
 require (
 	github.com/dlclark/regexp2 v1.11.5 // indirect

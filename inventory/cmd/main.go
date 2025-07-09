@@ -83,114 +83,84 @@ func (s *inventoryService) GetPart(ctx context.Context, req *inventoryV1.GetPart
 
 // ListParts получает список деталей по фильтру
 func (s *inventoryService) ListParts(ctx context.Context, req *inventoryV1.ListPartsRequest) (*inventoryV1.ListPartsResponse, error) {
-
-	var nameSet []*inventoryV1.Part
-	var categorySet []*inventoryV1.Part
-	var manufacturerCountrySet []*inventoryV1.Part
-	var tagSet []*inventoryV1.Part
-
-	filter := req.GetFilter()
+	partsFiltered := make([]*inventoryV1.Part, len(s.parts))
 
 	s.mu.RLock()
-
-	// Если фильтр не задан, возвращаем все детали
-	partsFiltered := make([]*inventoryV1.Part, 0)
-	if filter == nil {
-		for _, part := range s.parts {
-			partsFiltered = append(partsFiltered, part)
-		}
-		return &inventoryV1.ListPartsResponse{
-			Parts: partsFiltered,
-		}, nil
+	for _, part := range s.parts {
+		partsFiltered = append(partsFiltered, part)
 	}
-
-	// Фильтруем детали по UUID
-	uuids := filter.GetPartUuid()
-	if len(uuids) > 0 {
-		for _, uuid := range uuids {
-			part, ok := s.parts[uuid]
-			if ok {
-				partsFiltered = append(partsFiltered, part)
-			}
-		}
-	} else {
-		for _, part := range s.parts {
-			partsFiltered = append(partsFiltered, part)
-		}
-	}
-
 	s.mu.RUnlock()
 
-	// Фильтруем детали по имени
-	names := filter.GetPartName()
-	if len(names) > 0 {
-		for _, name := range names {
-			for _, part := range partsFiltered {
-				if part.GetName() == name {
-					nameSet = append(nameSet, part)
-				}
-			}
-		}
-	} else {
-		nameSet = partsFiltered
-	}
-
-	// Фильтруем детали по категории
-	categories := filter.GetCategory()
-	if len(categories) > 0 {
-		for _, category := range categories {
-			for _, part := range partsFiltered {
-				if part.GetCategory() == category {
-					categorySet = append(categorySet, part)
-				}
-			}
-		}
-	} else {
-		categorySet = nameSet
-	}
-
-	// Фильтруем детали по стране производителя
-	manufacturerCountries := filter.GetManufacturerCountry()
-	if len(manufacturerCountries) > 0 {
-		for _, manufacturerCountry := range manufacturerCountries {
-			for _, part := range partsFiltered {
-				if part.GetManufacturer().GetCountry() == manufacturerCountry {
-					manufacturerCountrySet = append(manufacturerCountrySet, part)
-				}
-			}
-		}
-	} else {
-		manufacturerCountrySet = categorySet
-	}
-
-	// Фильтруем детали по тегам
-	tags := filter.GetTags()
-	if len(tags) > 0 {
-		tagSet = tagFilter(manufacturerCountrySet, tags)
-	} else {
-		tagSet = manufacturerCountrySet
-	}
+	filter := req.GetFilter()
+	if filter != nil {
+		partsFiltered = filtration(filter, partsFiltered)
+	} 
 
 	return &inventoryV1.ListPartsResponse{
-		Parts: tagSet,
+		Parts: partsFiltered,
 	}, nil
 }
 
-// tagFilter фильтрует детали по тегам
-func tagFilter(details []*inventoryV1.Part, tagsFilter []string) (result []*inventoryV1.Part) {
-	m := map[string]bool{}
-	for _, tag := range tagsFilter {
-		m[tag] = true
+func filtration(filter *inventoryV1.PartsFilter, parts []*inventoryV1.Part) (result []*inventoryV1.Part) {
+	// Создаем мап для фильтрации
+	uuidSet := make(map[string]bool)
+	for _, uuid := range filter.GetPartUuid() {
+		uuidSet[uuid] = true
 	}
 
-	for _, detail := range details {
-		detailTags := detail.GetTags()
-		for _, tag := range detailTags {
-			if m[tag] {
-				result = append(result, detail)
-				break
+	nameSet := make(map[string]bool)
+	for _, name := range filter.GetPartName() {
+		nameSet[name] = true
+	}
+
+	categorySet := make(map[inventoryV1.Category]bool)
+	for _, category := range filter.GetCategory() {
+		categorySet[category] = true
+	}
+
+	manufacturerCountrySet := make(map[string]bool)
+	for _, manufacturerCountry := range filter.GetManufacturerCountry() {
+		manufacturerCountrySet[manufacturerCountry] = true
+	}
+
+	tagSet := make(map[string]bool)
+	for _, tag := range filter.GetTags() {
+		tagSet[tag] = true
+	}
+
+	// Фильтруем детали
+	for _, part := range parts {
+		if len(uuidSet) > 0 {
+			if _, ok := uuidSet[part.PartUuid]; !ok {
+				continue
 			}
 		}
+
+		if len(nameSet) > 0 {
+			if _, ok := nameSet[part.Name]; !ok {
+				continue
+			}
+		}
+
+		if len(categorySet) > 0 {
+			if _, ok := categorySet[part.Category]; !ok {
+				continue
+			}
+		}
+
+		if len(manufacturerCountrySet) > 0 {
+			if _, ok := manufacturerCountrySet[part.Manufacturer.Country]; !ok {
+				continue
+			}
+		}
+
+		if len(tagSet) > 0 {
+			if _, ok := tagSet[part.Tags[0]]; !ok {
+				continue
+			}
+		}
+
+		result = append(result, part)
 	}
 
 	return result
