@@ -83,7 +83,7 @@ func (s *inventoryService) GetPart(ctx context.Context, req *inventoryV1.GetPart
 
 // ListParts получает список деталей по фильтру
 func (s *inventoryService) ListParts(ctx context.Context, req *inventoryV1.ListPartsRequest) (*inventoryV1.ListPartsResponse, error) {
-	partsFiltered := make([]*inventoryV1.Part, len(s.parts))
+	partsFiltered := make([]*inventoryV1.Part, 0)
 
 	s.mu.RLock()
 	for _, part := range s.parts {
@@ -94,7 +94,7 @@ func (s *inventoryService) ListParts(ctx context.Context, req *inventoryV1.ListP
 	filter := req.GetFilter()
 	if filter != nil {
 		partsFiltered = filtration(filter, partsFiltered)
-	} 
+	}
 
 	return &inventoryV1.ListPartsResponse{
 		Parts: partsFiltered,
@@ -102,6 +102,9 @@ func (s *inventoryService) ListParts(ctx context.Context, req *inventoryV1.ListP
 }
 
 func filtration(filter *inventoryV1.PartsFilter, parts []*inventoryV1.Part) (result []*inventoryV1.Part) {
+	log.Printf("filter: %v", filter)
+	log.Printf("parts: %v", parts)
+
 	// Создаем мап для фильтрации
 	uuidSet := make(map[string]bool)
 	for _, uuid := range filter.GetPartUuid() {
@@ -129,6 +132,7 @@ func filtration(filter *inventoryV1.PartsFilter, parts []*inventoryV1.Part) (res
 	}
 
 	// Фильтруем детали
+	log.Printf("uuidSet: %v", uuidSet)
 	for _, part := range parts {
 		if len(uuidSet) > 0 {
 			if _, ok := uuidSet[part.PartUuid]; !ok {
