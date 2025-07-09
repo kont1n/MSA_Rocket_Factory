@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP-код ошибки
+    example: 503
+  message:
+    type: string
+    description: Описание ошибки
+    example: "Service Unavailable: Service is unavailable"

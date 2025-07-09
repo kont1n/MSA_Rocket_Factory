@@ -1,0 +1,10 @@
+type: object
+
+required:
+  - payment_method
+
+properties:
+  
+  payment_method:
+    allOf:
+      - $ref: ../components/enums/payment_method.yaml

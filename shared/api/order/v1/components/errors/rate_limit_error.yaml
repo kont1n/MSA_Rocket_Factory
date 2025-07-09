@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP-код ошибки
+    example: 429
+  message:
+    type: string
+    description: Описание ошибки
+    example: "Too Many Requests: Too many requests for this endpoint" 

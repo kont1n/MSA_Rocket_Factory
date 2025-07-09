@@ -1,0 +1,591 @@
+openapi: 3.0.3
+info:
+  title: Order API
+  version: 1.0.0
+  description: API для работы с заказами
+tags:
+  - name: orders
+    description: Операции с заказами
+paths:
+  /api/v1/orders:
+    post:
+      summary: Создание заказа
+      operationId: CreateOrder
+      tags:
+        - orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create_order_request'
+      responses:
+        '200':
+          description: Заказ успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/create_order_response'
+        '400':
+          description: Ошибка при создании заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bad_request_error'
+        '401':
+          description: Неверный токен для авторизации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/unauthorized_error'
+        '403':
+          description: Недостаточно прав для создания заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/forbidden_error'
+        '404':
+          description: Не удалось найти пользователя с таким UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/not_found_error'
+        '409':
+          description: Заказ с таким UUID уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/conflict_error'
+        '429':
+          description: Слишком много заказов с таким UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rate_limit_error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_server_error'
+        '502':
+          description: Ошибка при соединении с сервером
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bad_gateway_error'
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/service_unavailable_error'
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+  /api/v1/orders/{order_uuid}/pay:
+    post:
+      summary: Оплата заказа
+      operationId: PayOrder
+      tags:
+        - orders
+      parameters:
+        - $ref: '#/components/parameters/order_uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/pay_order_request'
+      responses:
+        '200':
+          description: Заказ успешно оплачен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pay_order_response'
+        '400':
+          description: Ошибка при оплате заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bad_request_error'
+        '401':
+          description: Неверный токен для авторизации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/unauthorized_error'
+        '403':
+          description: Недостаточно прав для оплаты заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/forbidden_error'
+        '404':
+          description: Не удалось найти заказ с таким UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/not_found_error'
+        '409':
+          description: Заказ с таким UUID уже оплачен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/conflict_error'
+        '429':
+          description: Слишком много оплат заказов с таким UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rate_limit_error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_server_error'
+        '502':
+          description: Ошибка при соединении с сервером
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bad_gateway_error'
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/service_unavailable_error'
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+  /api/v1/orders/{order_uuid}:
+    get:
+      summary: Получение заказа по UUID
+      operationId: GetOrderByUUID
+      tags:
+        - orders
+      parameters:
+        - $ref: '#/components/parameters/order_uuid'
+      responses:
+        '200':
+          description: Заказ успешно получен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/order_dto'
+        '400':
+          description: Ошибка при получении заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bad_request_error'
+        '401':
+          description: Неверный токен для авторизации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/unauthorized_error'
+        '403':
+          description: Недостаточно прав для получения заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/forbidden_error'
+        '404':
+          description: Не удалось найти заказ с таким UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/not_found_error'
+        '409':
+          description: Заказ с таким UUID уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/conflict_error'
+        '429':
+          description: Слишком много заказов с таким UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rate_limit_error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_server_error'
+        '502':
+          description: Ошибка при соединении с сервером
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bad_gateway_error'
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/service_unavailable_error'
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+  /api/v1/orders/{order_uuid}/cancel:
+    post:
+      summary: Отмена заказа
+      operationId: CancelOrder
+      tags:
+        - orders
+      parameters:
+        - $ref: '#/components/parameters/order_uuid'
+      responses:
+        '204':
+          description: Заказ успешно отменен
+        '400':
+          description: Ошибка при отмене заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bad_request_error'
+        '401':
+          description: Неверный токен для авторизации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/unauthorized_error'
+        '403':
+          description: Недостаточно прав для отмены заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/forbidden_error'
+        '404':
+          description: Не удалось найти заказ с таким UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/not_found_error'
+        '409':
+          description: Заказ с таким UUID уже отменен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/conflict_error'
+        '429':
+          description: Слишком много отмен заказов с таким UUID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rate_limit_error'
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/internal_server_error'
+        '502':
+          description: Ошибка при соединении с сервером
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/bad_gateway_error'
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/service_unavailable_error'
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/generic_error'
+components:
+  schemas:
+    user_uuid:
+      type: string
+      format: uuid
+      description: UUID пользователя
+      example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+    part_uuids:
+      type: array
+      description: Список UUID деталей
+      items:
+        type: string
+        format: uuid
+        example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+    create_order_request:
+      type: object
+      required:
+        - user_uuid
+        - part_uuids
+      properties:
+        user_uuid:
+          allOf:
+            - $ref: '#/components/schemas/user_uuid'
+        part_uuids:
+          allOf:
+            - $ref: '#/components/schemas/part_uuids'
+    generic_error:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+        message:
+          type: string
+          description: Описание ошибки
+    order_uuid:
+      type: string
+      format: uuid
+      description: UUID заказа
+      example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+    total_price:
+      type: number
+      format: float
+      description: Сумма заказа
+      example: 100
+    create_order_response:
+      type: object
+      required:
+        - order_uuid
+      properties:
+        order_uuid:
+          allOf:
+            - $ref: '#/components/schemas/order_uuid'
+        total_price:
+          allOf:
+            - $ref: '#/components/schemas/total_price'
+    bad_request_error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 400
+        message:
+          type: string
+          description: Описание ошибки
+          example: 'Bad Request: Invalid parameter format'
+    unauthorized_error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 401
+        message:
+          type: string
+          description: Описание ошибки
+          example: 'Unauthorized: Invalid token'
+    forbidden_error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 403
+        message:
+          type: string
+          description: Описание ошибки
+          example: 'Forbidden: Insufficient permissions to perform this action'
+    not_found_error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 404
+        message:
+          type: string
+          description: Описание ошибки
+          example: 'Not Found: Order with UUID ''00000000-0000-0000-0000-000000000000'''
+    conflict_error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 409
+        message:
+          type: string
+          description: Описание ошибки
+          example: 'Conflict: Order with UUID ''00000000-0000-0000-0000-000000000000'' already exists'
+    rate_limit_error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 429
+        message:
+          type: string
+          description: Описание ошибки
+          example: 'Too Many Requests: Too many requests for this endpoint'
+    internal_server_error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 500
+        message:
+          type: string
+          description: Описание ошибки
+          example: Internal server error occurred
+    bad_gateway_error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 502
+        message:
+          type: string
+          description: Описание ошибки
+          example: 'Bad Gateway: Service is unavailable'
+    service_unavailable_error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 503
+        message:
+          type: string
+          description: Описание ошибки
+          example: 'Service Unavailable: Service is unavailable'
+    payment_method:
+      type: string
+      description: Способ оплаты
+      enum:
+        - UNKNOWN
+        - CARD
+        - SBP
+        - CREDIT_CARD
+        - INVESTOR_MONEY
+      example: CARD
+    pay_order_request:
+      type: object
+      required:
+        - payment_method
+      properties:
+        payment_method:
+          allOf:
+            - $ref: '#/components/schemas/payment_method'
+    transaction_uuid:
+      type: string
+      format: uuid
+      description: UUID транзакции
+      example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+    pay_order_response:
+      type: object
+      required:
+        - transaction_uuid
+      properties:
+        transaction_uuid:
+          allOf:
+            - $ref: '#/components/schemas/transaction_uuid'
+    order_status:
+      type: string
+      description: Статус заказа
+      enum:
+        - PENDING_PAYMENT
+        - PAID
+        - CANCELLED
+      example: PENDING_PAYMENT
+    order_dto:
+      type: object
+      required:
+        - order_uuid
+        - user_uuid
+        - part_uuids
+        - status
+      properties:
+        order_uuid:
+          type: string
+          format: uuid
+          description: UUID заказа
+          example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+        user_uuid:
+          type: string
+          format: uuid
+          description: UUID пользователя
+          example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+        part_uuids:
+          type: array
+          description: Список UUID деталей
+          items:
+            type: string
+            format: uuid
+            example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+        total_price:
+          type: number
+          format: float
+          description: Сумма заказа
+          example: 100
+        transaction_uuid:
+          type: string
+          format: uuid
+          description: UUID транзакции
+          example: c9b9c2e6-a2d9-4f9d-b3b4-e2b2c3d4e5f6
+        payment_method:
+          allOf:
+            - $ref: '#/components/schemas/payment_method'
+        status:
+          allOf:
+            - $ref: '#/components/schemas/order_status'
+  parameters:
+    order_uuid:
+      name: order_uuid
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: UUID заказа
+      example: 00000000-0000-0000-0000-000000000000
+x-ogen:
+  target: ./shared/pkg/openapi/order/v1
+  package: order_v1
+  clean: true

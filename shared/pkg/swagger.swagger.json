@@ -1,0 +1,73 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "payment/v1/payment.proto",
+    "description": "Package payment.v1 содержит API для оплаты заказов.",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "PaymentService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1PayOrderResponse": {
+      "type": "object",
+      "properties": {
+        "transaction_uuid": {
+          "type": "string",
+          "title": "transaction_uuid уникальный идентификатор транзакции"
+        }
+      },
+      "title": "PayOrderResponse отвечает за оплату заказа"
+    },
+    "v1PaymentMethod": {
+      "type": "string",
+      "enum": [
+        "PAYMENT_METHOD_UNSPECIFIED",
+        "PAYMENT_METHOD_CARD",
+        "PAYMENT_METHOD_SBP",
+        "PAYMENT_METHOD_CREDIT_CARD",
+        "PAYMENT_METHOD_INVESTOR_MONEY"
+      ],
+      "default": "PAYMENT_METHOD_UNSPECIFIED",
+      "description": "- PAYMENT_METHOD_UNSPECIFIED: 0 - Неизвестный способ\n - PAYMENT_METHOD_CARD: 1 - Банковская карта\n - PAYMENT_METHOD_SBP: 2 - Система быстрых платежей\n - PAYMENT_METHOD_CREDIT_CARD: 3 - Кредитная карта\n - PAYMENT_METHOD_INVESTOR_MONEY: 4 - Деньги инвестора (внутренний метод)",
+      "title": "PaymentMethod представляет возможные способы оплаты"
+    }
+  }
+}

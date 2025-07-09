@@ -1,0 +1,15 @@
+type: object
+
+required:
+  - user_uuid
+  - part_uuids
+
+properties:
+
+  user_uuid:
+    allOf:
+      - $ref: ./order_dto.yaml#/properties/user_uuid
+
+  part_uuids:
+    allOf:
+      - $ref: ./order_dto.yaml#/properties/part_uuids
