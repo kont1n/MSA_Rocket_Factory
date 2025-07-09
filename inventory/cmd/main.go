@@ -31,7 +31,7 @@ type inventoryService struct {
 
 func main() {
 	log.Printf("Inventory service starting...")
-	// Создаем gRPC соединение
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 	if err != nil {
 		log.Printf("failed to listen: %v\n", err)
@@ -83,24 +83,24 @@ func (s *inventoryService) GetPart(ctx context.Context, req *inventoryV1.GetPart
 
 // ListParts получает список деталей по фильтру
 func (s *inventoryService) ListParts(ctx context.Context, req *inventoryV1.ListPartsRequest) (*inventoryV1.ListPartsResponse, error) {
-	var list []*inventoryV1.Part
+
 	var nameSet []*inventoryV1.Part
 	var categorySet []*inventoryV1.Part
 	var manufacturerCountrySet []*inventoryV1.Part
 	var tagSet []*inventoryV1.Part
 
-	s.mu.RLock()
-
-	// Получаем фильтр
 	filter := req.GetFilter()
 
+	s.mu.RLock()
+
 	// Если фильтр не задан, возвращаем все детали
+	partsFiltered := make([]*inventoryV1.Part, 0)
 	if filter == nil {
 		for _, part := range s.parts {
-			list = append(list, part)
+			partsFiltered = append(partsFiltered, part)
 		}
 		return &inventoryV1.ListPartsResponse{
-			Parts: list,
+			Parts: partsFiltered,
 		}, nil
 	}
 
@@ -110,12 +110,12 @@ func (s *inventoryService) ListParts(ctx context.Context, req *inventoryV1.ListP
 		for _, uuid := range uuids {
 			part, ok := s.parts[uuid]
 			if ok {
-				list = append(list, part)
+				partsFiltered = append(partsFiltered, part)
 			}
 		}
 	} else {
 		for _, part := range s.parts {
-			list = append(list, part)
+			partsFiltered = append(partsFiltered, part)
 		}
 	}
 
@@ -125,21 +125,21 @@ func (s *inventoryService) ListParts(ctx context.Context, req *inventoryV1.ListP
 	names := filter.GetPartName()
 	if len(names) > 0 {
 		for _, name := range names {
-			for _, part := range list {
+			for _, part := range partsFiltered {
 				if part.GetName() == name {
 					nameSet = append(nameSet, part)
 				}
 			}
 		}
 	} else {
-		nameSet = list
+		nameSet = partsFiltered
 	}
 
 	// Фильтруем детали по категории
 	categories := filter.GetCategory()
 	if len(categories) > 0 {
 		for _, category := range categories {
-			for _, part := range list {
+			for _, part := range partsFiltered {
 				if part.GetCategory() == category {
 					categorySet = append(categorySet, part)
 				}
@@ -153,7 +153,7 @@ func (s *inventoryService) ListParts(ctx context.Context, req *inventoryV1.ListP
 	manufacturerCountries := filter.GetManufacturerCountry()
 	if len(manufacturerCountries) > 0 {
 		for _, manufacturerCountry := range manufacturerCountries {
-			for _, part := range list {
+			for _, part := range partsFiltered {
 				if part.GetManufacturer().GetCountry() == manufacturerCountry {
 					manufacturerCountrySet = append(manufacturerCountrySet, part)
 				}

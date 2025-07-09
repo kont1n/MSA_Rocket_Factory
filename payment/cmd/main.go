@@ -25,7 +25,7 @@ type paymentService struct {
 
 func main() {
 	log.Printf("Payment service starting...")
-	// Создаем gRPC соединение
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 	if err != nil {
 		log.Printf("failed to listen: %v\n", err)
