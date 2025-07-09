@@ -31,20 +31,12 @@ func main() {
 		log.Printf("failed to listen: %v\n", err)
 		return
 	}
-	defer func() {
-		if cerr := lis.Close(); cerr != nil {
-			log.Printf("failed to close listener: %v\n", cerr)
-		}
-	}()
 
-	// Создаем gRPC сервер
 	s := grpc.NewServer()
 
-	// Регистрируем наш сервис
 	service := &paymentService{}
 	paymentV1.RegisterPaymentServiceServer(s, service)
 
-	// Включаем рефлексию для отладки
 	reflection.Register(s)
 
 	go func() {

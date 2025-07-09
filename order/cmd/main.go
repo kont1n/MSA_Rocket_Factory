@@ -29,14 +29,14 @@ const (
 	httpPort      = "8080"
 	paymentPort   = "50052"
 	inventoryPort = "50051"
-	// Таймауты для HTTP-сервера
+
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second
 )
 
 func main() {
 	log.Printf("Order service starting...")
-	// Создаем хранилище для данных о погоде
+
 	storage := NewOrderStorage()
 
 	// Создаем gRPC соединение к API платежа
@@ -69,44 +69,32 @@ func main() {
 		}
 	}()
 
-	// Создаем gRPC клиент для обработки запросов к API платежа
+	// Создаем gRPC клиент
 	paymentClient := paymentV1.NewPaymentServiceClient(paymentConn)
-
-	// Создаем gRPC клиент для обработки запросов к API инвентаря
 	inventoryClient := inventoryV1.NewInventoryServiceClient(inventoryConn)
 
-	// Создаем обработчик API погоды
+	// Создаем обработчик API погоды и OpenAPI сервер
 	orderHandler := NewOrderHandler(storage, paymentClient, inventoryClient)
-
-	// Создаем OpenAPI сервер
 	orderServer, err := orderV1.NewServer(orderHandler)
 	if err != nil {
 		log.Fatalf("ошибка создания сервера OpenAPI: %v", err)
 	}
 
-	// Инициализируем роутер Chi
 	r := chi.NewRouter()
 
-	// Добавляем middleware
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
 	r.Use(customMiddleware.RequestLogger)
 
-	// Монтируем обработчики OpenAPI
 	r.Mount("/", orderServer)
 
 	// Запускаем HTTP-сервер
 	server := &http.Server{
 		Addr:              net.JoinHostPort("localhost", httpPort),
 		Handler:           r,
-		ReadHeaderTimeout: readHeaderTimeout, // Защита от Slowloris атак - тип DDoS-атаки, при которой
-		// атакующий умышленно медленно отправляет HTTP-заголовки, удерживая соединения открытыми и истощая
-		// пул доступных соединений на сервере. ReadHeaderTimeout принудительно закрывает соединение,
-		// если клиент не успел отправить все заголовки за отведенное время.
+		ReadHeaderTimeout: readHeaderTimeout, // Защита от Slowloris атак.
 	}
-
-	// Запускаем сервер в отдельной горутине
 	go func() {
 		log.Printf("🚀 HTTP-сервер запущен на порту %s\n", httpPort)
 		err = server.ListenAndServe()
