@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API для работы с заказами
 x-ogen:
-  target: ./shared/pkg/openapi/order/v1
+  target: ./shared/pkg/openapi/inmemory/v1
   package: order_v1
   clean: true
 

@@ -12,5 +12,4 @@ type OrderRepository interface {
 	CreateOrder(ctx context.Context, order *model.Order) (*model.Order, error)
 	GetOrder(ctx context.Context, id uuid.UUID) (*model.Order, error)
 	UpdateOrder(ctx context.Context, order *model.Order) (*model.Order, error)
-	DeleteOrder(ctx context.Context, id uuid.UUID) error
 }

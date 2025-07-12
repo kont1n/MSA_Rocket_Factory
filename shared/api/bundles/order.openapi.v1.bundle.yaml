@@ -586,6 +586,6 @@ components:
       description: UUID заказа
       example: 00000000-0000-0000-0000-000000000000
 x-ogen:
-  target: ./shared/pkg/openapi/order/v1
+  target: ./shared/pkg/openapi/inmemory/v1
   package: order_v1
   clean: true

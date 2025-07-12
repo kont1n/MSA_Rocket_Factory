@@ -1,0 +1,63 @@
+package converter
+
+import (
+	"github.com/google/uuid"
+	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	repoModel "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/model"
+)
+
+func ModelToRepo(order *model.Order) *repoModel.Order {
+	parts := make([]string, 0, len(order.PartUUIDs))
+	for _, partUUID := range order.PartUUIDs {
+		parts = append(parts, partUUID.String())
+	}
+
+	repoOrder := &repoModel.Order{
+		OrderUUID:       order.OrderUUID.String(),
+		UserUUID:        order.UserUUID.String(),
+		PartUUIDs:       parts,
+		TotalPrice:      order.TotalPrice,
+		TransactionUUID: order.TransactionUUID.String(),
+		PaymentMethod:   order.PaymentMethod,
+		Status:          order.Status,
+	}
+	return repoOrder
+}
+
+func RepoToModel(repoOrder *repoModel.Order) (*model.Order, error) {
+	orderId, err := uuid.Parse(repoOrder.OrderUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	userId, err := uuid.Parse(repoOrder.UserUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	transactionId, err := uuid.Parse(repoOrder.TransactionUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	parts := make([]uuid.UUID, 0, len(repoOrder.PartUUIDs))
+	for _, partUUID := range repoOrder.PartUUIDs {
+		partId, err := uuid.Parse(partUUID)
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts, partId)
+	}
+
+	order := &model.Order{
+		OrderUUID:       orderId,
+		UserUUID:        userId,
+		PartUUIDs:       parts,
+		TotalPrice:      repoOrder.TotalPrice,
+		TransactionUUID: transactionId,
+		PaymentMethod:   repoOrder.PaymentMethod,
+		Status:          repoOrder.Status,
+	}
+
+	return order, nil
+}

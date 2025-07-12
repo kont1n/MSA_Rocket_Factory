@@ -2,14 +2,13 @@ package converter
 
 import (
 	"github.com/google/uuid"
-	
+
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
 func ProtoToModel(req *inventoryV1.ListPartsRequest) *model.Filter {
 	if req.Filter != nil {
-		// Конвертируем proto фильтр в model фильтр
 		uuids := make([]uuid.UUID, 0, len(req.Filter.PartUuid))
 		for _, uuidStr := range req.Filter.PartUuid {
 			if uuid, err := uuid.Parse(uuidStr); err == nil {
