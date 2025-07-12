@@ -10,6 +10,8 @@ import (
 func RepoToModel(repoPart *repoModel.RepositoryPart) (part *model.Part) {
 	uuid, err := uuid.Parse(repoPart.OrderUuid)
 	if err != nil {
+		// В случае ошибки парсинга UUID, возвращаем пустой UUID
+		uuid = [16]byte{}
 	}
 
 	manufacturer := model.Manufacturer{

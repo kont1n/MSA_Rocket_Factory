@@ -11,6 +11,7 @@ require (
 replace github.com/kont1n/MSA_Rocket_Factory/shared => ../shared
 
 require (
+	github.com/google/uuid v1.6.0
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
