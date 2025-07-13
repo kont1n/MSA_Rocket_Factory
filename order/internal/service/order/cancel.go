@@ -24,6 +24,7 @@ func (s service) CancelOrder(ctx context.Context, order *model.Order) (*model.Or
 		return nil, status.Error(codes.FailedPrecondition, "order status is cancelled")
 	}
 
+	order.Status = model.StatusCancelled
 	// Сохраняем отмену заказа в хранилище
 	order, err = s.orderRepository.UpdateOrder(ctx, order)
 	if err != nil {

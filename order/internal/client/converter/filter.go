@@ -5,7 +5,7 @@ import (
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
-func PartsFilterToProto(filter model.Filter) *inventoryV1.PartsFilter {
+func PartsFilterToProto(filter *model.Filter) *inventoryV1.PartsFilter {
 	uuids := make([]string, 0, len(filter.PartUUIDs))
 	for _, id := range filter.PartUUIDs {
 		uuids = append(uuids, id.String())

@@ -18,6 +18,8 @@ import (
 
 	customMiddleware "github.com/kont1n/MSA_Rocket_Factory/order/internal/api/middleware"
 	orderV1API "github.com/kont1n/MSA_Rocket_Factory/order/internal/api/order/v1"
+	invClient "github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc/inventory/v1"
+	payClient "github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc/payment/v1"
 	oredrRepository "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/inmemory"
 	oredrService "github.com/kont1n/MSA_Rocket_Factory/order/internal/service/order"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
@@ -68,8 +70,10 @@ func main() {
 	}()
 
 	// Создаем gRPC клиент
-	paymentClient := paymentV1.NewPaymentServiceClient(paymentConn)
-	inventoryClient := inventoryV1.NewInventoryServiceClient(inventoryConn)
+	paymentGRPC := paymentV1.NewPaymentServiceClient(paymentConn)
+	inventoryGRPC := inventoryV1.NewInventoryServiceClient(inventoryConn)
+	paymentClient := payClient.NewClient(paymentGRPC)
+	inventoryClient := invClient.NewClient(inventoryGRPC)
 
 	repo := oredrRepository.NewRepository()
 	service := oredrService.NewService(repo, inventoryClient, paymentClient)

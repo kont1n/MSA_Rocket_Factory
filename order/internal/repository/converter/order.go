@@ -16,10 +16,10 @@ func ModelToRepo(order *model.Order) *repoModel.Order {
 		OrderUUID:       order.OrderUUID.String(),
 		UserUUID:        order.UserUUID.String(),
 		PartUUIDs:       parts,
-		TotalPrice:      order.TotalPrice,
+		TotalPrice:      float32(order.TotalPrice),
 		TransactionUUID: order.TransactionUUID.String(),
 		PaymentMethod:   order.PaymentMethod,
-		Status:          order.Status,
+		Status:          string(order.Status),
 	}
 	return repoOrder
 }
@@ -53,10 +53,10 @@ func RepoToModel(repoOrder *repoModel.Order) (*model.Order, error) {
 		OrderUUID:       orderId,
 		UserUUID:        userId,
 		PartUUIDs:       parts,
-		TotalPrice:      repoOrder.TotalPrice,
+		TotalPrice:      float64(repoOrder.TotalPrice),
 		TransactionUUID: transactionId,
 		PaymentMethod:   repoOrder.PaymentMethod,
-		Status:          repoOrder.Status,
+		Status:          model.OrderStatus(repoOrder.Status),
 	}
 
 	return order, nil

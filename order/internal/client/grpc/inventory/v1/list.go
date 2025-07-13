@@ -8,7 +8,7 @@ import (
 	generaredInventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
-func (c inventoryClient) ListParts(ctx context.Context, filter model.Filter) (*[]model.Part, error) {
+func (c inventoryClient) ListParts(ctx context.Context, filter *model.Filter) (*[]model.Part, error) {
 	parts, err := c.generatedClient.ListParts(ctx, &generaredInventoryV1.ListPartsRequest{
 		Filter: converter.PartsFilterToProto(filter),
 	})
