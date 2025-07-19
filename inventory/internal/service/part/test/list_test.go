@@ -1,4 +1,4 @@
-package tests
+package part_test
 
 import (
 	"time"
