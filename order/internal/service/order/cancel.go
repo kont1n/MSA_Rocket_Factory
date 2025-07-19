@@ -13,7 +13,7 @@ func (s service) CancelOrder(ctx context.Context, order *model.Order) (*model.Or
 	// Получаем заказ по UUID
 	order, err := s.orderRepository.GetOrder(ctx, order.OrderUUID)
 	if err != nil {
-		return nil, status.Error(codes.FailedPrecondition, "order not found")
+		return nil, status.Error(codes.NotFound, "order not found")
 	}
 
 	// Проверяем статус заказа

@@ -13,7 +13,7 @@ func (s service) PayOrder(ctx context.Context, order *model.Order) (*model.Order
 	// Получаем заказ по UUID
 	order, err := s.orderRepository.GetOrder(ctx, order.OrderUUID)
 	if err != nil {
-		return nil, status.Error(codes.FailedPrecondition, "order not found")
+		return nil, status.Error(codes.NotFound, "order not found")
 	}
 
 	// Выполняем запрос к API для оплаты заказа
@@ -25,7 +25,7 @@ func (s service) PayOrder(ctx context.Context, order *model.Order) (*model.Order
 	// Обновляем заказ в хранилище
 	order, err = s.orderRepository.UpdateOrder(ctx, order)
 	if err != nil {
-		return nil, status.Error(codes.FailedPrecondition, "failed to update order ")
+		return nil, status.Error(codes.Internal, "failed to update order ")
 	}
 
 	return order, nil

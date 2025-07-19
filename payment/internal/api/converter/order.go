@@ -7,7 +7,7 @@ import (
 )
 
 func PayOrderRqToModel(req *paymentV1.PayOrderRequest) (model.Order, error) {
-	orderUuid, err := uuid.Parse(req.GetUserUuid())
+	orderUuid, err := uuid.Parse(req.GetOrderUuid())
 	if err != nil {
 		return model.Order{}, err
 	}
@@ -20,6 +20,6 @@ func PayOrderRqToModel(req *paymentV1.PayOrderRequest) (model.Order, error) {
 	return model.Order{
 		OrderUuid:     orderUuid,
 		UserUuid:      userUuid,
-		PaymentMethod: model.PaymentMethodName(1),
+		PaymentMethod: "CARD", // Используем строковое значение по умолчанию
 	}, nil
 }

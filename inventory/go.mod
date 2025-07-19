@@ -1,6 +1,6 @@
 module github.com/kont1n/MSA_Rocket_Factory/inventory
 
-go 1.24
+go 1.24.4
 
 require (
 	github.com/kont1n/MSA_Rocket_Factory/shared v0.0.0-00010101000000-000000000000
@@ -20,8 +20,8 @@ replace github.com/kont1n/MSA_Rocket_Factory/shared => ../shared
 
 require (
 	github.com/google/uuid v1.6.0
-	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
+	golang.org/x/net v0.42.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250715232539-7130f93afb79 // indirect
 )

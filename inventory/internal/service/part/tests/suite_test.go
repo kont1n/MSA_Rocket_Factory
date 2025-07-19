@@ -21,9 +21,12 @@ type ServiceSuite struct {
 func (s *ServiceSuite) SetupSuite() {
 	s.ctx = context.Background()
 	s.inventoryRepo = mocks.NewInventoryRepository(s.T())
-	s.service = part.NewService(
-		s.inventoryRepo,
-	)
+	s.service = part.NewService(s.inventoryRepo)
+}
+
+func (s *ServiceSuite) SetupTest() {
+	// Сбрасываем моки перед каждым тестом
+	s.inventoryRepo.ExpectedCalls = nil
 }
 
 func (s *ServiceSuite) TearDownSuite() {
