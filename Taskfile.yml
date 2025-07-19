@@ -67,7 +67,6 @@ tasks:
     status:
       - test -x {{.GOFUMPT}}
       - test -x {{.GCI}}
-
   format:
     desc: "Форматирует весь проект gofumpt + gci, исключая mocks"
     summary: |
@@ -114,7 +113,6 @@ tasks:
         }
     status:
       - test -x {{.GOLANGCI_LINT}}
-
   lint:
     desc: "Запускает golangci-lint для всех модулей"
     summary: |
@@ -187,14 +185,12 @@ tasks:
     dir: shared/proto
     cmds:
       - '{{.BUF}} generate'
-
   proto:lint:
     deps: [ install-buf, proto:install-plugins ]
     desc: Проверка .proto-файлов на соответствие стилю
     dir: shared/proto
     cmds:
       - '{{.BUF}} lint'
-
   redocly-cli:install:
     desc: Установить локально Redocly CLI
     cmds:
@@ -208,13 +204,11 @@ tasks:
     deps: [ redocly-cli:install ]
     cmds:
       - '{{.REDOCLY}} bundle {{.OPEN_API_ORDER_V1_BASE}} -o {{.OPEN_API_ORDER_V1_BUNDLE}}'
-
   redocly-cli:bundle:
     desc: Собрать все схемы OpenAPI в общие файлы через локальный redocly
     deps: [ redocly-cli:install ]
     cmds:
       - task: redocly-cli:order-v1-bundle
-
   ogen:install:
     desc: "Скачивает ogen в папку bin"
     cmds:
@@ -250,7 +244,6 @@ tasks:
     cmds:
       - task: proto:gen
       - task: ogen:gen
-
   deps:update:
     desc: "Обновление зависимостей в go.mod во всех модулях"
     cmds:
@@ -282,7 +275,6 @@ tasks:
         }
     status:
       - test -x {{.GRPCURL}}
-
   test-api:
     desc: "🧪 Запуск тестов для проверки API микросервисов"
     deps: [ grpcurl:install ]
@@ -487,7 +479,6 @@ tasks:
         }
     status:
       - test -x {{.MOCKERY}}
-
   mockery:gen:
     desc: "Генерирует моки интерфейсов с помощью mockery"
     deps: [ mockery:install ]
