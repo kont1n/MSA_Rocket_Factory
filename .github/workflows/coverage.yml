@@ -158,8 +158,8 @@ jobs:
       pages: write
       id-token: write
 
-    # Деплоим только для main ветки или при pull request в main
-    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'main'
+    # Деплоим для всех веток, но с разными условиями
+    if: github.event_name != 'pull_request'
 
     environment:
       name: github-pages
@@ -188,14 +188,14 @@ jobs:
           echo "   3. Ensure repository has Pages enabled"
           echo "   4. Download artifacts to view coverage locally"
 
-  # Отдельный job для веток, которые не могут деплоить на Pages
+  # Отдельный job для pull request, которые не могут деплоить на Pages
   coverage-info:
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 5
     
-    # Запускаем только для веток, которые не main
-    if: github.ref != 'refs/heads/main' && github.event_name != 'pull_request'
+    # Запускаем только для pull request
+    if: github.event_name == 'pull_request'
     
     steps:
       - name: Download coverage artifacts
@@ -218,7 +218,8 @@ jobs:
             cat coverage-report/cover.out >> coverage-report/simple-report.html
             echo "</pre>" >> coverage-report/simple-report.html
             echo "</div>" >> coverage-report/simple-report.html
-            echo "<p><strong>Branch:</strong> ${{ github.ref_name }}</p>" >> coverage-report/simple-report.html
+            echo "<p><strong>Pull Request:</strong> #${{ github.event.pull_request.number }}</p>" >> coverage-report/simple-report.html
+            echo "<p><strong>Branch:</strong> ${{ github.head_ref }}</p>" >> coverage-report/simple-report.html
             echo "<p><strong>Commit:</strong> ${{ github.sha }}</p>" >> coverage-report/simple-report.html
             echo "</body></html>" >> coverage-report/simple-report.html
           fi
@@ -234,7 +235,7 @@ jobs:
         run: |
           echo "📊 Coverage report generated successfully"
           echo "📋 Report is available as an artifact: coverage-report"
-          echo "🌐 To view the report on GitHub Pages, merge to main branch"
+          echo "🌐 To view the report on GitHub Pages, merge this PR to main branch"
           echo "📁 You can download the artifact to view the report locally"
           echo ""
           echo "📈 Coverage summary:"
