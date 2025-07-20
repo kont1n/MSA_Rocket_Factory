@@ -6,6 +6,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/kont1n/MSA_Rocket_Factory/shared v0.0.0-00010101000000-000000000000
+	github.com/samber/lo v1.51.0
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.73.0
 )
