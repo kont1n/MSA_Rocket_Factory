@@ -548,6 +548,7 @@ tasks:
       Можно указать конкретные модули через переменную MODULES.
     cmds:
       - |
+        go clean -testcache
         ERR=0
         for mod in {{.MODULES}}; do
           if [ -d "$mod" ]; then
