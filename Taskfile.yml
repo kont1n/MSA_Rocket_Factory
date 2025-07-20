@@ -33,13 +33,13 @@ vars:
   MOCKERY: "{{.BIN_DIR}}/mockery"
 
   COVERAGE_DIR: '{{.ROOT_DIR}}/coverage'
+  COVERAGE_FILE: total.out
 
   NODE_MODULES_DIR: '{{.ROOT_DIR}}/node_modules/.bin'
   REDOCLY: '{{.NODE_MODULES_DIR}}/redocly'
 
   OPEN_API_ORDER_V1_BASE: '{{.ROOT_DIR}}/shared/api/order/v1/order.openapi.yaml'
   OPEN_API_ORDER_V1_BUNDLE: '{{.ROOT_DIR}}/shared/api/bundles/order.openapi.v1.bundle.yaml'
-
   OPEN_API_FILES: '{{.ROOT_DIR}}/shared/api/bundles'
 
   MODULES: assembly inventory order payment platform iam notification
@@ -541,3 +541,18 @@ tasks:
         else
           echo "📂 Отчёт сохранён в $OUTPUT (открой вручную)"
         fi
+  test:
+    desc: "Запускает юнит-тесты для всех модулей"
+    summary: |
+      Запускает юнит-тесты для указанных модулей проекта.
+      Можно указать конкретные модули через переменную MODULES.
+    cmds:
+      - |
+        ERR=0
+        for mod in {{.MODULES}}; do
+          if [ -d "$mod" ]; then
+            echo "🧪 Тестируем модуль $mod"
+            go test -v ./$mod/... || ERR=1
+          fi
+        done
+        exit $ERR
