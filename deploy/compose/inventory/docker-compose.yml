@@ -1,0 +1,53 @@
+services: # Здесь описываются контейнеры, необходимые для Inventory-сервиса
+
+  mongo-inventory: # Контейнер с MongoDB — используется для хранения данных об инвентаре (например, запчасти, компоненты)
+    image: mongo:7.0.5 # Образ MongoDB версии 7.0.5
+
+    container_name: mongo-inventory
+    # Устанавливаем удобное читаемое имя контейнера — пригодится для логов и отладки
+
+    environment: # Переменные окружения для инициализации MongoDB
+      MONGO_INITDB_DATABASE: inventory-service # Имя базы данных, которая будет создана при запуске
+      MONGO_INITDB_ROOT_USERNAME: inventory-service-user # Имя root-пользователя MongoDB
+      MONGO_INITDB_ROOT_PASSWORD: inventory-service-password # Пароль для root-пользователя
+
+    volumes:
+      - mongo_inventory_data:/data/db
+      # Подключаем локальный Docker-том к директории MongoDB, где хранятся все данные (коллекции, документы и т.д.)
+      # Это нужно для сохранения данных между перезапусками контейнера
+
+    ports:
+      - "27017:27017"
+      # Пробрасываем внутренний порт MongoDB (27017) наружу на порт 27017
+      # Это позволяет подключаться к Mongo из внешних инструментов
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "echo 'db.runCommand({ ping: 1 }).ok' | mongosh --quiet -u inventory-service-user -p inventory-service-password --authenticationDatabase admin",
+        ]
+      # Проверка готовности MongoDB: выполняем команду ping через mongosh с указанием логина и пароля
+      # --quiet отключает лишний вывод, чтобы результатом был только "1" при успехе
+      interval: 10s # Запускаем проверку каждые 10 секунд
+      timeout: 5s # Максимальное время ожидания выполнения ping-команды
+      retries: 5 # После 5 неудачных проверок подряд контейнер считается "неработоспособным"
+
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер, если он аварийно завершился
+    # Но если мы остановим его вручную — он не запустится повторно
+
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети всех микросервисов, чтобы они могли взаимодействовать между собой по имени
+
+volumes: # Раздел с томами — определяем хранилище, которое создаст Docker
+  mongo_inventory_data:
+  # Именованный том, в котором будут храниться данные MongoDB для Inventory-сервиса
+  # Он живёт отдельно от контейнера и сохраняется даже после удаления контейнера
+
+networks: # Определение используемой сети
+  microservices-net:
+    external: true
+    # Мы не создаём новую сеть, а подключаемся к внешней, общей для всех микросервисов
+    # Её должен создать docker-compose.yml или вручную: docker network create microservices-net

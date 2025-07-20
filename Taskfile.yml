@@ -67,6 +67,7 @@ tasks:
     status:
       - test -x {{.GOFUMPT}}
       - test -x {{.GCI}}
+
   format:
     desc: "Форматирует весь проект gofumpt + gci, исключая mocks"
     summary: |
@@ -97,6 +98,7 @@ tasks:
           fi
         done
 
+
   install-golangci-lint:
     desc: "Устанавливает golangci-lint в каталог bin"
     summary: |
@@ -113,6 +115,7 @@ tasks:
         }
     status:
       - test -x {{.GOLANGCI_LINT}}
+
   lint:
     desc: "Запускает golangci-lint для всех модулей"
     summary: |
@@ -140,6 +143,7 @@ tasks:
         done
         exit $ERR
 
+
   install-buf:
     desc: "Устанавливает Buf в каталог bin"
     cmds:
@@ -153,6 +157,7 @@ tasks:
           rm -rf tmp-buf
           chmod +x {{.BUF}}
         }
+
 
   proto:install-plugins:
     desc: "Устанавливает protoc плагины в каталог bin"
@@ -179,18 +184,21 @@ tasks:
           GOBIN={{.BIN_DIR}} go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@{{.PROTOC_GEN_OPENAPIV2_VERSION}}
         }
 
+
   proto:gen:
     deps: [ install-buf, proto:install-plugins, proto:lint ]
     desc: Генерация Go-кода из .proto
     dir: shared/proto
     cmds:
       - '{{.BUF}} generate'
+
   proto:lint:
     deps: [ install-buf, proto:install-plugins ]
     desc: Проверка .proto-файлов на соответствие стилю
     dir: shared/proto
     cmds:
       - '{{.BUF}} lint'
+
   redocly-cli:install:
     desc: Установить локально Redocly CLI
     cmds:
@@ -199,16 +207,19 @@ tasks:
           npm ci
         }
 
+
   redocly-cli:order-v1-bundle:
     desc: Собрать OpenAPI в один файл через локальный redocly
     deps: [ redocly-cli:install ]
     cmds:
       - '{{.REDOCLY}} bundle {{.OPEN_API_ORDER_V1_BASE}} -o {{.OPEN_API_ORDER_V1_BUNDLE}}'
+
   redocly-cli:bundle:
     desc: Собрать все схемы OpenAPI в общие файлы через локальный redocly
     deps: [ redocly-cli:install ]
     cmds:
       - task: redocly-cli:order-v1-bundle
+
   ogen:install:
     desc: "Скачивает ogen в папку bin"
     cmds:
@@ -217,6 +228,7 @@ tasks:
           mkdir -p {{.BIN_DIR}}
           GOBIN={{.BIN_DIR}} go install github.com/ogen-go/ogen/cmd/ogen@{{.OGEN_VERSION}}
         }
+
 
   ogen:gen:
     desc: "Генерация Go-кода из всех OpenAPI-деклараций с x-ogen"
@@ -239,11 +251,13 @@ tasks:
           fi
         done
 
+
   gen:
     desc: "Генерация всех proto и OpenAPI деклараций"
     cmds:
       - task: proto:gen
       - task: ogen:gen
+
   deps:update:
     desc: "Обновление зависимостей в go.mod во всех модулях"
     cmds:
@@ -256,6 +270,7 @@ tasks:
           fi
         done
 
+
   yq:install:
     desc: "Устанавливает yq в bin/ при необходимости"
     cmds:
@@ -264,6 +279,7 @@ tasks:
           echo '📦 Installing yq...'
           GOBIN={{.BIN_DIR}} go install github.com/mikefarah/yq/v4@{{.YQ_VERSION}}
         }
+
 
   grpcurl:install:
     desc: "Устанавливает grpcurl в каталог bin"
@@ -275,6 +291,7 @@ tasks:
         }
     status:
       - test -x {{.GRPCURL}}
+
   test-api:
     desc: "🧪 Запуск тестов для проверки API микросервисов"
     deps: [ grpcurl:install ]
@@ -469,6 +486,7 @@ tasks:
         echo
         echo "🎉 Все тесты API успешно выполнены!"
 
+
   mockery:install:
     desc: "Устанавливает mockery в ./bin"
     cmds:
@@ -479,6 +497,7 @@ tasks:
         }
     status:
       - test -x {{.MOCKERY}}
+
   mockery:gen:
     desc: "Генерирует моки интерфейсов с помощью mockery"
     deps: [ mockery:install ]
@@ -486,6 +505,7 @@ tasks:
       - |
         echo '🧪 Генерация моков...'
         {{.MOCKERY}}
+
 
   test-coverage:
     desc: "Тесты с покрытием бизнес-логики, автоматический поиск и анализ всех модулей"
@@ -612,6 +632,7 @@ tasks:
           touch "{{.COVERAGE_DIR}}/coverage.out"
         fi
 
+
   coverage:html:
     desc: "Генерирует HTML-отчёт покрытия и открывает его в браузере"
     deps: [ test-coverage ]
@@ -629,6 +650,8 @@ tasks:
         else
           echo "📂 Отчёт сохранён в $OUTPUT (открой вручную)"
         fi
+
+
   test:
     desc: "Запускает юнит-тесты для всех модулей"
     summary: |
@@ -644,4 +667,62 @@ tasks:
             go test -v ./$mod/... || ERR=1
           fi
         done
-        exit $ERR
+        exit $ERR     
+
+
+
+  up-core:
+    desc: Поднять core контейнеры
+    dir: deploy/compose/core
+    cmds:
+      - echo "[task] 🚀 Поднимаем core контейнеры"
+      - docker compose up --build --detach
+
+  down-core:
+    desc: Остановить и удалить core контейнеры
+    dir: deploy/compose/core
+    cmds:
+      - echo "[task] 🛑 Останавливаем core контейнеры"
+      - docker compose down --volumes
+
+  up-inventory:
+    desc: Поднять Inventory сервис и все его зависимости
+    dir: deploy/compose/inventory
+    cmds:
+      - echo "[task] 📦 Поднимаем Inventory с зависимостями"
+      - docker compose up --build --detach
+
+  down-inventory:
+    desc: Остановить и удалить Inventory сервис и все его зависимости
+    dir: deploy/compose/inventory
+    cmds:
+      - echo "[task] 🛑 Останавливаем Inventory с зависимостями"
+      - docker compose down --volumes
+
+  up-order:
+    desc: Поднять Order сервис и все его зависимости
+    dir: deploy/compose/order
+    cmds:
+      - echo "[task] 📦 Поднимаем Order с зависимостями"
+      - docker compose up --build --detach
+
+  down-order:
+    desc: Остановить и удалить Order сервис и все его зависимости
+    dir: deploy/compose/order
+    cmds:
+      - echo "[task] 🛑 Останавливаем Order с зависимостями"
+      - docker compose down --volumes
+
+  up-all:
+    desc: Поднять все сервисы по очереди вместе с зависимостями
+    cmds:
+      - task up-core
+      - task up-inventory
+      - task up-order
+
+  down-all:
+    desc: Остановить и удалить все сервисы по очереди вместе с зависимостями
+    cmds:
+      - task down-core
+      - task down-inventory
+      - task down-order
