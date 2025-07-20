@@ -46,9 +46,18 @@ jobs:
 
       - name: Check and install dependencies
         run: |
-          go mod tidy
-          git diff --exit-code go.mod
-          git diff --exit-code go.sum
+          # Находим все go.mod файлы и выполняем go mod tidy в каждой директории
+          find . -name "go.mod" -type f | while read -r modfile; do
+            dir=$(dirname "$modfile")
+            echo "Processing module in: $dir"
+            cd "$dir"
+            go mod tidy
+            cd - > /dev/null
+          done
+          
+          # Проверяем изменения в go.mod и go.sum файлах
+          git diff --exit-code **/go.mod
+          git diff --exit-code **/go.sum
 
       - name: Install gocov-html
         run: |
@@ -58,7 +67,29 @@ jobs:
       - name: Run tests
         run: |
           mkdir -p .github_pages
-          go test ./... -coverprofile=coverage.out -covermode=atomic -coverpkg=./...
+          
+          # Создаем общий файл покрытия
+          echo "mode: atomic" > coverage.out
+          
+          # Запускаем тесты во всех модулях и объединяем результаты
+          while IFS= read -r modfile; do
+            dir=$(dirname "$modfile")
+            echo "Running tests in: $dir"
+            cd "$dir"
+            
+            # Запускаем тесты и добавляем результаты в общий файл
+            go test ./... -coverprofile=tmp_coverage.out -covermode=atomic -coverpkg=./...
+            if [ -f tmp_coverage.out ]; then
+              # Пропускаем первую строку (mode: atomic) и добавляем остальное
+              # Используем относительные пути от корня проекта
+              awk 'NR>1' tmp_coverage.out >> ../../coverage.out
+              rm tmp_coverage.out
+            fi
+            
+            cd - > /dev/null
+          done < <(find . -name "go.mod" -type f)
+          
+          # Генерируем отчеты
           go tool cover -func=coverage.out -o=cover.out
           gocov convert coverage.out | gocov-html > .github_pages/index.html
 
