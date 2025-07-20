@@ -53,3 +53,34 @@ jobs:
           MODULES: ${{ inputs.modules }}
           GOLANGCI_LINT_VERSION: ${{ inputs.golangci-lint-version }}
         run: task lint
+
+      - name: 🏷️ Generate lint status badge
+        if: github.ref == 'refs/heads/main'
+        uses: tj-actions/gh-badge@v2
+        with:
+          label: "Lint"
+          status: ${{ job.status }}
+          color: ${{ job.status == 'success' && 'brightgreen' || 'red' }}
+          path: lint-badge.svg
+          style: flat
+
+      - name: Проверить изменения бейджа линта
+        if: github.ref == 'refs/heads/main'
+        uses: tj-actions/verify-changed-files@v12
+        id: verify-lint-badge-changed
+        with:
+          files: lint-badge.svg
+
+      - name: Коммит изменений бейджа линта
+        if: github.ref == 'refs/heads/main' && steps.verify-lint-badge-changed.outputs.files_changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add lint-badge.svg
+          git commit -m "chore: update lint status badge"
+
+      - name: Пуш изменений бейджа линта
+        if: github.ref == 'refs/heads/main' && steps.verify-lint-badge-changed.outputs.files_changed == 'true'
+        run: |
+          git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+          git push origin HEAD:${{ github.ref_name }}

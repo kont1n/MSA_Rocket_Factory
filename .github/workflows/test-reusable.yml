@@ -46,3 +46,34 @@ jobs:
         env:
           MODULES: ${{ inputs.modules }}
         run: task test
+
+      - name: 🏷️ Generate test status badge
+        if: github.ref == 'refs/heads/main'
+        uses: tj-actions/gh-badge@v2
+        with:
+          label: "Tests"
+          status: ${{ job.status }}
+          color: ${{ job.status == 'success' && 'brightgreen' || 'red' }}
+          path: test-badge.svg
+          style: flat
+
+      - name: Проверить изменения бейджа
+        if: github.ref == 'refs/heads/main'
+        uses: tj-actions/verify-changed-files@v12
+        id: verify-test-badge-changed
+        with:
+          files: test-badge.svg
+
+      - name: Коммит изменений бейджа
+        if: github.ref == 'refs/heads/main' && steps.verify-test-badge-changed.outputs.files_changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add test-badge.svg
+          git commit -m "chore: update test status badge"
+
+      - name: Пуш изменений бейджа
+        if: github.ref == 'refs/heads/main' && steps.verify-test-badge-changed.outputs.files_changed == 'true'
+        run: |
+          git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+          git push origin HEAD:${{ github.ref_name }}
