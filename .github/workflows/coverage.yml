@@ -96,11 +96,23 @@ jobs:
       # pages
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload Artifact for Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: .github_pages/
+
+      - name: Upload Coverage Report as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            .github_pages/
+            coverage.out
+            cover.out
+          retention-days: 30
 
       # badge
       - name: Update coverage Badge
@@ -110,6 +122,7 @@ jobs:
           target: README.md
           filename: cover.out
           link: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        continue-on-error: true
 
       - name: Verify Changed files
         uses: tj-actions/verify-changed-files@v12
@@ -138,6 +151,7 @@ jobs:
     timeout-minutes: 10
 
     permissions:
+      contents: write
       pages: write
       id-token: write
 
@@ -148,3 +162,20 @@ jobs:
       - name: Deploy coverage report to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Check deployment status
+        if: steps.deployment.outcome == 'success'
+        run: |
+          echo "✅ Coverage report successfully deployed to GitHub Pages"
+          echo "📊 Report available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+
+      - name: Deployment failed notice
+        if: steps.deployment.outcome == 'failure'
+        run: |
+          echo "⚠️ GitHub Pages deployment failed"
+          echo "📋 Coverage report is available as an artifact: coverage-report"
+          echo "🔧 To enable GitHub Pages:"
+          echo "   1. Go to repository Settings > Pages"
+          echo "   2. Select 'GitHub Actions' as source"
+          echo "   3. Re-run this workflow"

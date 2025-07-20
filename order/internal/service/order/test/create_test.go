@@ -120,3 +120,37 @@ func (s *ServiceSuite) TestCreateOrder_InventoryError() {
 
 	s.inventoryClient.AssertExpectations(s.T())
 }
+
+func (s *ServiceSuite) TestCreateOrder_CreateError() {
+	// Тестовые данные
+	userUUID := uuid.New()
+	partUUID1 := uuid.New()
+	partUUID2 := uuid.New()
+
+	order := &model.Order{
+		UserUUID:  userUUID,
+		PartUUIDs: []uuid.UUID{partUUID1, partUUID2},
+	}
+
+	parts := []model.Part{
+		{PartUUID: partUUID1, Price: 100.0},
+		{PartUUID: partUUID2, Price: 200.0},
+	}
+
+	// Настройка моков - успешное получение деталей, но ошибка при создании заказа
+	s.inventoryClient.On("ListParts", mock.Anything, mock.AnythingOfType("*model.Filter")).
+		Return(&parts, nil)
+	s.orderRepository.On("CreateOrder", mock.Anything, mock.AnythingOfType("*model.Order")).
+		Return(nil, model.ErrOrderNotFound)
+
+	// Вызов метода
+	result, err := s.service.CreateOrder(context.Background(), order)
+
+	// Проверка результата
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, model.ErrOrderNotFound)
+
+	s.inventoryClient.AssertExpectations(s.T())
+	s.orderRepository.AssertExpectations(s.T())
+}

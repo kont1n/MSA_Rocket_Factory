@@ -148,3 +148,34 @@ func (s *ServiceSuite) TestCancelOrder_AlreadyCancelled() {
 
 	s.orderRepository.AssertExpectations(s.T())
 }
+
+func (s *ServiceSuite) TestCancelOrder_UpdateError() {
+	// Тестовые данные
+	orderUUID := uuid.New()
+	userUUID := uuid.New()
+	partUUID := uuid.New()
+
+	order := &model.Order{
+		OrderUUID:  orderUUID,
+		UserUUID:   userUUID,
+		PartUUIDs:  []uuid.UUID{partUUID},
+		TotalPrice: 100.0,
+		Status:     model.StatusPendingPayment,
+	}
+
+	// Настройка моков - успешное получение заказа, но ошибка при обновлении
+	s.orderRepository.On("GetOrder", mock.Anything, orderUUID).
+		Return(order, nil)
+	s.orderRepository.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*model.Order")).
+		Return(nil, model.ErrOrderNotFound)
+
+	// Вызов метода
+	result, err := s.service.CancelOrder(context.Background(), order)
+
+	// Проверка результата
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, model.ErrOrderNotFound)
+
+	s.orderRepository.AssertExpectations(s.T())
+}

@@ -81,3 +81,80 @@ func (s *ServiceSuite) TestPayOrder_OrderNotFound() {
 
 	s.orderRepository.AssertExpectations(s.T())
 }
+
+func (s *ServiceSuite) TestPayOrder_PaymentError() {
+	// Тестовые данные
+	orderUUID := uuid.New()
+	userUUID := uuid.New()
+	partUUID := uuid.New()
+
+	order := &model.Order{
+		OrderUUID:  orderUUID,
+		UserUUID:   userUUID,
+		PartUUIDs:  []uuid.UUID{partUUID},
+		TotalPrice: 100.0,
+		Status:     model.StatusPendingPayment,
+	}
+
+	// Настройка моков - успешное получение заказа, но ошибка при создании платежа
+	s.orderRepository.On("GetOrder", mock.Anything, orderUUID).
+		Return(order, nil)
+	s.paymentClient.On("CreatePayment", mock.Anything, order).
+		Return(nil, model.ErrPaid)
+
+	// Вызов метода
+	result, err := s.service.PayOrder(context.Background(), order)
+
+	// Проверка результата
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, model.ErrPaid)
+
+	s.orderRepository.AssertExpectations(s.T())
+	s.paymentClient.AssertExpectations(s.T())
+}
+
+func (s *ServiceSuite) TestPayOrder_UpdateError() {
+	// Тестовые данные
+	orderUUID := uuid.New()
+	userUUID := uuid.New()
+	partUUID := uuid.New()
+	transactionUUID := uuid.New()
+
+	order := &model.Order{
+		OrderUUID:  orderUUID,
+		UserUUID:   userUUID,
+		PartUUIDs:  []uuid.UUID{partUUID},
+		TotalPrice: 100.0,
+		Status:     model.StatusPendingPayment,
+	}
+
+	paidOrder := &model.Order{
+		OrderUUID:       orderUUID,
+		UserUUID:        userUUID,
+		PartUUIDs:       []uuid.UUID{partUUID},
+		TotalPrice:      100.0,
+		TransactionUUID: transactionUUID,
+		PaymentMethod:   "CARD",
+		Status:          model.StatusPaid,
+	}
+
+	// Настройка моков - успешное получение заказа и создание платежа, но ошибка при обновлении
+	s.orderRepository.On("GetOrder", mock.Anything, orderUUID).
+		Return(order, nil)
+	s.paymentClient.On("CreatePayment", mock.Anything, order).
+		Return(paidOrder, nil)
+	s.orderRepository.On("UpdateOrder", mock.Anything, paidOrder).
+		Return(nil, model.ErrOrderNotFound)
+
+	// Вызов метода
+	result, err := s.service.PayOrder(context.Background(), order)
+
+	// Проверка результата
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, model.ErrOrderNotFound)
+
+	s.orderRepository.AssertExpectations(s.T())
+	s.paymentClient.AssertExpectations(s.T())
+}
