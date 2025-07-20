@@ -44,10 +44,10 @@ func (s *ServiceSuite) TestCreateOrder_Success() {
 	result, err := s.service.CreateOrder(context.Background(), order)
 
 	// Проверка результата
-	s.NoError(err)
-	s.NotNil(result)
-	s.Equal(expectedOrder.TotalPrice, result.TotalPrice)
-	s.Equal(expectedOrder.Status, result.Status)
+	s.Require().NoError(err)
+	s.Require().NotNil(result)
+	s.Require().Equal(expectedOrder.TotalPrice, result.TotalPrice)
+	s.Require().Equal(expectedOrder.Status, result.Status)
 
 	s.inventoryClient.AssertExpectations(s.T())
 	s.orderRepository.AssertExpectations(s.T())
@@ -64,10 +64,9 @@ func (s *ServiceSuite) TestCreateOrder_EmptyParts() {
 	result, err := s.service.CreateOrder(context.Background(), order)
 
 	// Проверка результата
-	s.Error(err)
-	s.Nil(result)
-	s.Equal(codes.FailedPrecondition, status.Code(err))
-	s.Contains(status.Convert(err).Message(), "parts not specified")
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, model.ErrPartsSpecified)
 }
 
 func (s *ServiceSuite) TestCreateOrder_PartsNotFound() {
@@ -93,10 +92,9 @@ func (s *ServiceSuite) TestCreateOrder_PartsNotFound() {
 	result, err := s.service.CreateOrder(context.Background(), order)
 
 	// Проверка результата
-	s.Error(err)
-	s.Nil(result)
-	s.Equal(codes.NotFound, status.Code(err))
-	s.Contains(status.Convert(err).Message(), "parts not found")
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, model.ErrPartsListNotFound)
 
 	s.inventoryClient.AssertExpectations(s.T())
 }
@@ -116,9 +114,9 @@ func (s *ServiceSuite) TestCreateOrder_InventoryError() {
 	result, err := s.service.CreateOrder(context.Background(), order)
 
 	// Проверка результата
-	s.Error(err)
-	s.Nil(result)
-	s.Equal(codes.Internal, status.Code(err))
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, status.Error(codes.Internal, "inventory service error"))
 
 	s.inventoryClient.AssertExpectations(s.T())
 }

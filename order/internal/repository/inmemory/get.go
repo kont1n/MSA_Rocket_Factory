@@ -16,7 +16,7 @@ func (r *repository) GetOrder(ctx context.Context, id uuid.UUID) (*model.Order, 
 	r.mu.RUnlock()
 
 	if lo.ToPtr(repoOrder) == nil {
-		return nil, model.ErrPartNotFound
+		return nil, model.ErrOrderNotFound
 	}
 
 	order, err := converter.RepoToModel(lo.ToPtr(repoOrder))

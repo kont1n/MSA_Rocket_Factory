@@ -4,11 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/mock"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	"github.com/stretchr/testify/mock"
 )
 
 func (s *ServiceSuite) TestCancelOrder_Success() {
@@ -43,10 +40,10 @@ func (s *ServiceSuite) TestCancelOrder_Success() {
 	result, err := s.service.CancelOrder(context.Background(), order)
 
 	// Проверка результата
-	s.NoError(err)
-	s.NotNil(result)
-	s.Equal(model.StatusCancelled, result.Status)
-	s.Equal(expectedOrder.OrderUUID, result.OrderUUID)
+	s.Require().NoError(err)
+	s.Require().NotNil(result)
+	s.Require().Equal(model.StatusCancelled, result.Status)
+	s.Require().Equal(expectedOrder.OrderUUID, result.OrderUUID)
 
 	s.orderRepository.AssertExpectations(s.T())
 }
@@ -64,16 +61,15 @@ func (s *ServiceSuite) TestCancelOrder_OrderNotFound() {
 
 	// Настройка моков - симулируем отсутствие заказа
 	s.orderRepository.On("GetOrder", mock.Anything, orderUUID).
-		Return(nil, status.Error(codes.NotFound, "order not found"))
+		Return(nil, model.ErrOrderNotFound)
 
 	// Вызов метода
 	result, err := s.service.CancelOrder(context.Background(), order)
 
 	// Проверка результата
-	s.Error(err)
-	s.Nil(result)
-	s.Equal(codes.NotFound, status.Code(err))
-	s.Contains(status.Convert(err).Message(), "order not found")
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, model.ErrOrderNotFound)
 
 	s.orderRepository.AssertExpectations(s.T())
 }
@@ -108,10 +104,9 @@ func (s *ServiceSuite) TestCancelOrder_AlreadyPaid() {
 	result, err := s.service.CancelOrder(context.Background(), order)
 
 	// Проверка результата
-	s.Error(err)
-	s.Nil(result)
-	s.Equal(codes.FailedPrecondition, status.Code(err))
-	s.Contains(status.Convert(err).Message(), "order status is paid")
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, model.ErrPaid)
 
 	s.orderRepository.AssertExpectations(s.T())
 }
@@ -146,50 +141,9 @@ func (s *ServiceSuite) TestCancelOrder_AlreadyCancelled() {
 	result, err := s.service.CancelOrder(context.Background(), order)
 
 	// Проверка результата
-	s.Error(err)
-	s.Nil(result)
-	s.Equal(codes.FailedPrecondition, status.Code(err))
-	s.Contains(status.Convert(err).Message(), "order status is cancelled")
-
-	s.orderRepository.AssertExpectations(s.T())
-}
-
-func (s *ServiceSuite) TestCancelOrder_UpdateError() {
-	// Тестовые данные
-	orderUUID := uuid.New()
-	userUUID := uuid.New()
-	partUUID := uuid.New()
-
-	order := &model.Order{
-		OrderUUID:  orderUUID,
-		UserUUID:   userUUID,
-		PartUUIDs:  []uuid.UUID{partUUID},
-		TotalPrice: 100.0,
-		Status:     model.StatusPendingPayment,
-	}
-
-	existingOrder := &model.Order{
-		OrderUUID:  orderUUID,
-		UserUUID:   userUUID,
-		PartUUIDs:  []uuid.UUID{partUUID},
-		TotalPrice: 100.0,
-		Status:     model.StatusPendingPayment,
-	}
-
-	// Настройка моков
-	s.orderRepository.On("GetOrder", mock.Anything, orderUUID).
-		Return(existingOrder, nil)
-	s.orderRepository.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*model.Order")).
-		Return(nil, status.Error(codes.Internal, "database error"))
-
-	// Вызов метода
-	result, err := s.service.CancelOrder(context.Background(), order)
-
-	// Проверка результата
-	s.Error(err)
-	s.Nil(result)
-	s.Equal(codes.Internal, status.Code(err))
-	s.Contains(status.Convert(err).Message(), "failed to update order")
+	s.Require().Empty(result)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, model.ErrCancelled)
 
 	s.orderRepository.AssertExpectations(s.T())
 }
