@@ -14,6 +14,8 @@ jobs:
   test:
     name: Run go test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: 📦 Checkout code
@@ -49,12 +51,39 @@ jobs:
 
       - name: 🏷️ Generate test status badge
         if: github.ref == 'refs/heads/main'
-        uses: leonsteinhaeuser/status-badge@v1
-        with:
-          status: ${{ job.status }}
-          label: "Tests"
-          output: test-badge.svg
-          style: flat
+        run: |
+          # Генерируем SVG бейдж для статуса тестов
+          if [ "${{ job.status }}" = "success" ]; then
+            color="brightgreen"
+            message="passing"
+          else
+            color="red"
+            message="failing"
+          fi
+          
+          # Создаем SVG бейдж
+          cat > test-badge.svg << EOF
+          <svg xmlns="http://www.w3.org/2000/svg" width="99" height="20">
+            <linearGradient id="b" x2="0" y2="100%">
+              <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+              <stop offset="1" stop-opacity=".1"/>
+            </linearGradient>
+            <mask id="a">
+              <rect width="99" height="20" rx="3" fill="#fff"/>
+            </mask>
+            <g mask="url(#a)">
+              <path fill="#555" d="M0 0h61v20H0z"/>
+              <path fill="#$color" d="M61 0h38v20H61z"/>
+              <path fill="url(#b)" d="M0 0h99v20H0z"/>
+            </g>
+            <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
+              <text x="30.5" y="15" fill="#010101" fill-opacity=".3">Tests</text>
+              <text x="30.5" y="14">Tests</text>
+              <text x="80" y="15" fill="#010101" fill-opacity=".3">$message</text>
+              <text x="80" y="14">$message</text>
+            </g>
+          </svg>
+          EOF
 
       - name: Проверить изменения бейджа
         if: github.ref == 'refs/heads/main'
