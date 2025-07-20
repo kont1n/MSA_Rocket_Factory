@@ -10,7 +10,7 @@ import (
 // TestData Добавление тестовых данных
 func TestData(repo *repository) {
 	log.Printf("Add Test Data for inventory service")
-	
+
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 

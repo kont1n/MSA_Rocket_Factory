@@ -1,7 +1,6 @@
 package payment_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -12,12 +11,10 @@ import (
 
 type ServiceSuite struct {
 	suite.Suite
-	ctx     context.Context
 	service service.PaymentService
 }
 
 func (s *ServiceSuite) SetupSuite() {
-	s.ctx = context.Background()
 	s.service = payment.NewService()
 }
 

@@ -100,5 +100,5 @@ formatters: # Форматтеры кода (проверка стиля)
       sections: # Порядок группировки импортов
         - Standard  # Стандартная библиотека
         - Default   # Сторонние зависимости
-        - Prefix(github.com/kont1n/MSA_Rocket_Factory/)  # Локальные импорты проекта
+        - Prefix(github.com/kont1n/MSA_Rocket_Factory)  # Локальные импорты проекта
       no-inline-comments: false  # Разрешить комментарии после импортов (true — запретит)

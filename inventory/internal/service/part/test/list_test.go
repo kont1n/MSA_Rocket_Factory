@@ -1,6 +1,7 @@
 package part_test
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,10 +38,10 @@ func (s *ServiceSuite) TestListSuccess() {
 	}
 
 	// Настраиваем мок
-	s.inventoryRepo.On("ListParts", s.ctx, filter).Return(&expectedParts, nil)
+	s.inventoryRepo.On("ListParts", context.Background(), filter).Return(&expectedParts, nil)
 
 	// Вызов метода
-	result, err := s.service.ListParts(s.ctx, filter)
+	result, err := s.service.ListParts(context.Background(), filter)
 
 	// Проверка результата
 	assert.NoError(s.T(), err)
@@ -61,10 +62,10 @@ func (s *ServiceSuite) TestListEmptyResult() {
 
 	expectedParts := []model.Part{}
 
-	s.inventoryRepo.On("ListParts", s.ctx, filter).Return(&expectedParts, nil)
+	s.inventoryRepo.On("ListParts", context.Background(), filter).Return(&expectedParts, nil)
 
 	// Вызов метода
-	result, err := s.service.ListParts(s.ctx, filter)
+	result, err := s.service.ListParts(context.Background(), filter)
 
 	// Проверка результата
 	assert.NoError(s.T(), err)
@@ -81,10 +82,10 @@ func (s *ServiceSuite) TestListRepoError() {
 
 	expectedError := assert.AnError
 
-	s.inventoryRepo.On("ListParts", s.ctx, filter).Return(nil, expectedError)
+	s.inventoryRepo.On("ListParts", context.Background(), filter).Return(nil, expectedError)
 
 	// Вызов метода
-	result, err := s.service.ListParts(s.ctx, filter)
+	result, err := s.service.ListParts(context.Background(), filter)
 
 	// Проверка результата
 	assert.Error(s.T(), err)
@@ -107,10 +108,10 @@ func (s *ServiceSuite) TestListWithNilFilter() {
 		},
 	}
 
-	s.inventoryRepo.On("ListParts", s.ctx, (*model.Filter)(nil)).Return(&expectedParts, nil)
+	s.inventoryRepo.On("ListParts", context.Background(), (*model.Filter)(nil)).Return(&expectedParts, nil)
 
 	// Вызов метода
-	result, err := s.service.ListParts(s.ctx, nil)
+	result, err := s.service.ListParts(context.Background(), nil)
 
 	// Проверка результата
 	assert.NoError(s.T(), err)

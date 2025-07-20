@@ -1,6 +1,8 @@
 package order_test
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
@@ -43,7 +45,7 @@ func (s *ServiceSuite) TestPayOrder_Success() {
 		Return(paidOrder, nil)
 
 	// Вызов метода
-	result, err := s.service.PayOrder(s.ctx, order)
+	result, err := s.service.PayOrder(context.Background(), order)
 
 	// Проверка результата
 	s.NoError(err)
@@ -72,7 +74,7 @@ func (s *ServiceSuite) TestPayOrder_OrderNotFound() {
 		Return(nil, status.Error(codes.NotFound, "order not found"))
 
 	// Вызов метода
-	result, err := s.service.PayOrder(s.ctx, order)
+	result, err := s.service.PayOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)
@@ -112,7 +114,7 @@ func (s *ServiceSuite) TestPayOrder_PaymentError() {
 		Return(nil, status.Error(codes.FailedPrecondition, "payment failed"))
 
 	// Вызов метода
-	result, err := s.service.PayOrder(s.ctx, order)
+	result, err := s.service.PayOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)
@@ -166,7 +168,7 @@ func (s *ServiceSuite) TestPayOrder_UpdateError() {
 		Return(nil, status.Error(codes.Internal, "repository error"))
 
 	// Вызов метода
-	result, err := s.service.PayOrder(s.ctx, order)
+	result, err := s.service.PayOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)

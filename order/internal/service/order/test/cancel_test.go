@@ -1,6 +1,8 @@
 package order_test
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
@@ -38,7 +40,7 @@ func (s *ServiceSuite) TestCancelOrder_Success() {
 		Return(expectedOrder, nil)
 
 	// Вызов метода
-	result, err := s.service.CancelOrder(s.ctx, order)
+	result, err := s.service.CancelOrder(context.Background(), order)
 
 	// Проверка результата
 	s.NoError(err)
@@ -65,7 +67,7 @@ func (s *ServiceSuite) TestCancelOrder_OrderNotFound() {
 		Return(nil, status.Error(codes.NotFound, "order not found"))
 
 	// Вызов метода
-	result, err := s.service.CancelOrder(s.ctx, order)
+	result, err := s.service.CancelOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)
@@ -103,7 +105,7 @@ func (s *ServiceSuite) TestCancelOrder_AlreadyPaid() {
 		Return(existingOrder, nil)
 
 	// Вызов метода
-	result, err := s.service.CancelOrder(s.ctx, order)
+	result, err := s.service.CancelOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)
@@ -141,7 +143,7 @@ func (s *ServiceSuite) TestCancelOrder_AlreadyCancelled() {
 		Return(existingOrder, nil)
 
 	// Вызов метода
-	result, err := s.service.CancelOrder(s.ctx, order)
+	result, err := s.service.CancelOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)
@@ -181,7 +183,7 @@ func (s *ServiceSuite) TestCancelOrder_UpdateError() {
 		Return(nil, status.Error(codes.Internal, "database error"))
 
 	// Вызов метода
-	result, err := s.service.CancelOrder(s.ctx, order)
+	result, err := s.service.CancelOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)

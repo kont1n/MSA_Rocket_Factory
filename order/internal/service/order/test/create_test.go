@@ -1,6 +1,8 @@
 package order_test
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
@@ -39,7 +41,7 @@ func (s *ServiceSuite) TestCreateOrder_Success() {
 		Return(expectedOrder, nil)
 
 	// Вызов метода
-	result, err := s.service.CreateOrder(s.ctx, order)
+	result, err := s.service.CreateOrder(context.Background(), order)
 
 	// Проверка результата
 	s.NoError(err)
@@ -59,7 +61,7 @@ func (s *ServiceSuite) TestCreateOrder_EmptyParts() {
 	}
 
 	// Вызов метода
-	result, err := s.service.CreateOrder(s.ctx, order)
+	result, err := s.service.CreateOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)
@@ -88,7 +90,7 @@ func (s *ServiceSuite) TestCreateOrder_PartsNotFound() {
 		Return(&parts, nil)
 
 	// Вызов метода
-	result, err := s.service.CreateOrder(s.ctx, order)
+	result, err := s.service.CreateOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)
@@ -111,7 +113,7 @@ func (s *ServiceSuite) TestCreateOrder_InventoryError() {
 		Return(nil, status.Error(codes.Internal, "inventory service error"))
 
 	// Вызов метода
-	result, err := s.service.CreateOrder(s.ctx, order)
+	result, err := s.service.CreateOrder(context.Background(), order)
 
 	// Проверка результата
 	s.Error(err)

@@ -1,6 +1,8 @@
 package order_test
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
@@ -28,7 +30,7 @@ func (s *ServiceSuite) TestGetOrder_Success() {
 		Return(expectedOrder, nil)
 
 	// Вызов метода
-	result, err := s.service.GetOrder(s.ctx, orderUUID)
+	result, err := s.service.GetOrder(context.Background(), orderUUID)
 
 	// Проверка результата
 	s.NoError(err)
@@ -50,7 +52,7 @@ func (s *ServiceSuite) TestGetOrder_NotFound() {
 		Return(nil, status.Error(codes.NotFound, "order not found"))
 
 	// Вызов метода
-	result, err := s.service.GetOrder(s.ctx, orderUUID)
+	result, err := s.service.GetOrder(context.Background(), orderUUID)
 
 	// Проверка результата
 	s.Error(err)
@@ -70,7 +72,7 @@ func (s *ServiceSuite) TestGetOrder_RepositoryError() {
 		Return(nil, status.Error(codes.Internal, "database error"))
 
 	// Вызов метода
-	result, err := s.service.GetOrder(s.ctx, orderUUID)
+	result, err := s.service.GetOrder(context.Background(), orderUUID)
 
 	// Проверка результата
 	s.Error(err)

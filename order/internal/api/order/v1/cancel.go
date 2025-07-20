@@ -2,8 +2,9 @@ package v1
 
 import (
 	"context"
-	"github.com/samber/lo"
 	"log/slog"
+
+	"github.com/samber/lo"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"

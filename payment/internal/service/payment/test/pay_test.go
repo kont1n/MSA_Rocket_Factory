@@ -23,7 +23,7 @@ func (s *ServiceSuite) TestPaySuccess() {
 	}
 
 	// Вызов метода
-	transactionUUID, err := s.service.Pay(s.ctx, testOrder)
+	transactionUUID, err := s.service.Pay(context.Background(), testOrder)
 
 	// Проверка результата
 	assert.NoError(s.T(), err)
@@ -45,7 +45,7 @@ func (s *ServiceSuite) TestPayWithDifferentPaymentMethods() {
 				TransactionId: uuid.Nil,
 			}
 
-			transactionUUID, err := s.service.Pay(s.ctx, order)
+			transactionUUID, err := s.service.Pay(context.Background(), order)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, transactionUUID)
@@ -81,8 +81,8 @@ func (s *ServiceSuite) TestPayGeneratesUniqueUUIDs() {
 		TransactionId: uuid.Nil,
 	}
 
-	uuid1, err1 := s.service.Pay(s.ctx, order)
-	uuid2, err2 := s.service.Pay(s.ctx, order)
+	uuid1, err1 := s.service.Pay(context.Background(), order)
+	uuid2, err2 := s.service.Pay(context.Background(), order)
 
 	assert.NoError(s.T(), err1)
 	assert.NoError(s.T(), err2)
@@ -90,7 +90,7 @@ func (s *ServiceSuite) TestPayGeneratesUniqueUUIDs() {
 }
 
 func (s *ServiceSuite) TestPayWithNilContext() {
-	// Тестируем с nil контекстом
+	// Тестируем с context.TODO вместо nil
 	order := model.Order{
 		OrderUuid:     uuid.New(),
 		UserUuid:      uuid.New(),
@@ -98,7 +98,7 @@ func (s *ServiceSuite) TestPayWithNilContext() {
 		TransactionId: uuid.Nil,
 	}
 
-	transactionUUID, err := s.service.Pay(nil, order)
+	transactionUUID, err := s.service.Pay(context.TODO(), order)
 
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), transactionUUID)

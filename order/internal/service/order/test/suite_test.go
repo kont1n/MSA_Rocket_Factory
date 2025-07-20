@@ -1,7 +1,6 @@
 package order_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -14,7 +13,6 @@ import (
 
 type ServiceSuite struct {
 	suite.Suite
-	ctx             context.Context
 	service         service.OrderService
 	orderRepository *repoMocks.OrderRepository
 	inventoryClient *clientMocks.InventoryClient
@@ -22,7 +20,6 @@ type ServiceSuite struct {
 }
 
 func (s *ServiceSuite) SetupSuite() {
-	s.ctx = context.Background()
 	s.orderRepository = repoMocks.NewOrderRepository(s.T())
 	s.inventoryClient = clientMocks.NewInventoryClient(s.T())
 	s.paymentClient = clientMocks.NewPaymentClient(s.T())

@@ -1,6 +1,7 @@
 package part_test
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,10 +23,10 @@ func (s *ServiceSuite) TestGetSuccess() {
 		UpdatedAt:     time.Now(),
 	}
 
-	s.inventoryRepo.On("GetPart", s.ctx, partUUID).Return(expectedPart, nil)
+	s.inventoryRepo.On("GetPart", context.Background(), partUUID).Return(expectedPart, nil)
 
 	// Вызов метода
-	result, err := s.service.GetPart(s.ctx, partUUID)
+	result, err := s.service.GetPart(context.Background(), partUUID)
 
 	// Проверка результата
 	assert.NoError(s.T(), err)
@@ -41,10 +42,10 @@ func (s *ServiceSuite) TestGetRepoError() {
 	partUUID := uuid.New()
 	expectedError := model.ErrPartNotFound
 
-	s.inventoryRepo.On("GetPart", s.ctx, partUUID).Return(nil, expectedError)
+	s.inventoryRepo.On("GetPart", context.Background(), partUUID).Return(nil, expectedError)
 
 	// 	Вызов метода
-	result, err := s.service.GetPart(s.ctx, partUUID)
+	result, err := s.service.GetPart(context.Background(), partUUID)
 
 	// Проверка результата
 	assert.Error(s.T(), err)
