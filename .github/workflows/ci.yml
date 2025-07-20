@@ -38,14 +38,14 @@ jobs:
 
   test:
     uses: ./.github/workflows/test-reusable.yml
-    needs: lint
+    needs: [lint, extract-vars]
     with:
       modules: ${{ needs.extract-vars.outputs.modules }}
       go-version: ${{ needs.extract-vars.outputs.go-version }}
 
   coverage:
     uses: ./.github/workflows/coverage.yml
-    needs: test
+    needs: [test, extract-vars]
     with:
       modules: ${{ needs.extract-vars.outputs.modules }}
       go-version: ${{ needs.extract-vars.outputs.go-version }}
