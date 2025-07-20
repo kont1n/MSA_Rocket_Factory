@@ -495,19 +495,34 @@ tasks:
         rm -rf {{.COVERAGE_DIR}}
         mkdir -p {{.COVERAGE_DIR}}
         
-        # Находим все пакеты, для которых нужно измерить покрытие (исключаем mocks)
-        TARGET_PACKAGES=$(go list ./order/internal/... | grep -v "/mocks" | grep -E '/(api|service)' | tr '\n' ',')
+        # Проверяем наличие модулей
+        if [ ! -f "order/go.mod" ]; then
+          echo "❌ Модуль order не найден"
+          exit 1
+        fi
+        
+        # Переходим в директорию order для корректной работы go test
+        cd order
+        
+        # Находим все пакеты для покрытия (исключаем mocks и test)
+        TARGET_PACKAGES=$(go list ./internal/... | grep -v "/mocks" | grep -v "/test" | tr '\n' ',')
         
         if [ -z "$TARGET_PACKAGES" ]; then
           echo "⚠️ Не найдено пакетов для тестирования"
           exit 1
         fi
         
-        echo "🧪 Запуск тестов со сбором покрытия для всех модулей..."
-        go test -v -coverprofile={{.COVERAGE_DIR}}/coverage.out -coverpkg=$TARGET_PACKAGES ./...
+        echo "📦 Пакеты для покрытия: $TARGET_PACKAGES"
+        
+        # Запускаем тесты с покрытием
+        echo "🧪 Запуск тестов со сбором покрытия..."
+        go test -v -coverprofile=../coverage/coverage.out -coverpkg=$TARGET_PACKAGES ./internal/...
+        
+        # Возвращаемся в корневую директорию
+        cd ..
         
         echo "🧾 Общее покрытие:"
-        go tool cover -func={{.COVERAGE_DIR}}/coverage.out | tail -n1
+        go tool cover -func=coverage/coverage.out | tail -n1
 
   coverage:html:
     desc: "Генерирует HTML-отчёт покрытия и открывает его в браузере"
