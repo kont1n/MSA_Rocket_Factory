@@ -1,14 +1,19 @@
-name: "tests"
+name: Test Coverage
 
 on:
-  push:
-    branches: [ "main" ]
-
-env:
-  GO_VERSION: 1.22
+  workflow_call:
+    inputs:
+      modules:
+        required: true
+        type: string
+      go-version:
+        required: true
+        type: string
+      golangci-lint-version:
+        required: true
+        type: string
 
 jobs:
-
   test:
     name: test
     runs-on: ubuntu-latest
@@ -25,7 +30,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: ${{ inputs.go-version }}
 
       - name: Verify dependencies
         run: go mod verify
