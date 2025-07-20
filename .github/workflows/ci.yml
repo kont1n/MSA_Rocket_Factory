@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   extract-vars:
     name: Extract Variables from Taskfile
@@ -38,20 +41,10 @@ jobs:
       modules: ${{ needs.extract-vars.outputs.modules }}
       go-version: ${{ needs.extract-vars.outputs.go-version }}
 
-  coverageAlternative:
+  coverage:
     uses: ./.github/workflows/coverage.yml
     needs: test
     with:
       modules: ${{ needs.extract-vars.outputs.modules }}
       go-version: ${{ needs.extract-vars.outputs.go-version }}
-
-  coverage:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/test-coverage-reusable.yml
-    needs: test
-    with:
-      modules: ${{ needs.extract-vars.outputs.modules }}
-      go-version: ${{ needs.extract-vars.outputs.go-version }}
-      gist-id: "bf33a2bda0693f1162c4323702033d27"
-    secrets:
-      GIST_SECRET: ${{ secrets.GIST_SECRET }}
+      golangci-lint-version: ${{ needs.extract-vars.outputs.golangci-lint-version }}
