@@ -116,8 +116,9 @@ jobs:
             cover.out
           retention-days: 30
 
-      # badge
+      # badge - обновляем только для main ветки
       - name: Update coverage Badge
+        if: github.ref == 'refs/heads/main'
         uses: tj-actions/coverage-badge-go@v2
         with:
           text: Coverage_Report
@@ -127,13 +128,14 @@ jobs:
         continue-on-error: true
 
       - name: Verify Changed files
+        if: github.ref == 'refs/heads/main'
         uses: tj-actions/verify-changed-files@v12
         id: verify-changed-files
         with:
           files: README.md
 
       - name: Commit changes
-        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        if: github.ref == 'refs/heads/main' && steps.verify-changed-files.outputs.files_changed == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -141,7 +143,7 @@ jobs:
           git commit -m "chore: Updated coverage badge."
 
       - name: Push changes
-        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        if: github.ref == 'refs/heads/main' && steps.verify-changed-files.outputs.files_changed == 'true'
         run: |
           git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
           git push origin HEAD:${{ github.ref_name }}
@@ -155,6 +157,9 @@ jobs:
       contents: write
       pages: write
       id-token: write
+
+    # Деплоим только для main ветки или при pull request в main
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request' && github.base_ref == 'main'
 
     environment:
       name: github-pages
@@ -180,3 +185,20 @@ jobs:
           echo "   1. Go to repository Settings > Pages"
           echo "   2. Select 'GitHub Actions' as source"
           echo "   3. Re-run this workflow"
+
+  # Отдельный job для веток, которые не могут деплоить на Pages
+  coverage-info:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    # Запускаем только для веток, которые не main
+    if: github.ref != 'refs/heads/main' && github.event_name != 'pull_request'
+    
+    steps:
+      - name: Coverage report info
+        run: |
+          echo "📊 Coverage report generated successfully"
+          echo "📋 Report is available as an artifact: coverage-report"
+          echo "🌐 To view the report on GitHub Pages, merge to main branch"
+          echo "📁 You can download the artifact to view the report locally"

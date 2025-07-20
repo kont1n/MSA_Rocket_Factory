@@ -40,6 +40,11 @@ jobs:
       - name: 🐾 Show go.work (debug)
         run: cat go.work || echo "❗ go.work not found"
 
+      - name: 🔄 Install dependencies
+        run: |
+          # Используем go work для установки зависимостей всех модулей
+          go work sync
+
       - name: 📌 Install Task
         uses: arduino/setup-task@v2.0.0
 
