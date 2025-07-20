@@ -163,6 +163,7 @@ jobs:
 
     environment:
       name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Deploy coverage report to GitHub Pages
@@ -181,10 +182,11 @@ jobs:
         run: |
           echo "⚠️ GitHub Pages deployment failed"
           echo "📋 Coverage report is available as an artifact: coverage-report"
-          echo "🔧 To enable GitHub Pages:"
-          echo "   1. Go to repository Settings > Pages"
-          echo "   2. Select 'GitHub Actions' as source"
-          echo "   3. Re-run this workflow"
+          echo "🔧 Possible solutions:"
+          echo "   1. Check repository Settings > Pages > Source (should be 'GitHub Actions')"
+          echo "   2. Verify environment protection rules allow this branch"
+          echo "   3. Ensure repository has Pages enabled"
+          echo "   4. Download artifacts to view coverage locally"
 
   # Отдельный job для веток, которые не могут деплоить на Pages
   coverage-info:
@@ -196,9 +198,48 @@ jobs:
     if: github.ref != 'refs/heads/main' && github.event_name != 'pull_request'
     
     steps:
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report
+
+      - name: Create simple HTML report
+        run: |
+          if [ -f coverage-report/cover.out ]; then
+            echo "<!DOCTYPE html>" > coverage-report/simple-report.html
+            echo "<html><head><title>Coverage Report</title>" >> coverage-report/simple-report.html
+            echo "<style>body{font-family:Arial,sans-serif;margin:40px;} .coverage{background:#f5f5f5;padding:20px;border-radius:5px;}</style>" >> coverage-report/simple-report.html
+            echo "</head><body>" >> coverage-report/simple-report.html
+            echo "<h1>📊 Test Coverage Report</h1>" >> coverage-report/simple-report.html
+            echo "<div class='coverage'>" >> coverage-report/simple-report.html
+            echo "<h2>Coverage Summary:</h2>" >> coverage-report/simple-report.html
+            echo "<pre>" >> coverage-report/simple-report.html
+            cat coverage-report/cover.out >> coverage-report/simple-report.html
+            echo "</pre>" >> coverage-report/simple-report.html
+            echo "</div>" >> coverage-report/simple-report.html
+            echo "<p><strong>Branch:</strong> ${{ github.ref_name }}</p>" >> coverage-report/simple-report.html
+            echo "<p><strong>Commit:</strong> ${{ github.sha }}</p>" >> coverage-report/simple-report.html
+            echo "</body></html>" >> coverage-report/simple-report.html
+          fi
+
+      - name: Upload simple report
+        uses: actions/upload-artifact@v4
+        with:
+          name: simple-coverage-report
+          path: coverage-report/simple-report.html
+          retention-days: 30
+
       - name: Coverage report info
         run: |
           echo "📊 Coverage report generated successfully"
           echo "📋 Report is available as an artifact: coverage-report"
           echo "🌐 To view the report on GitHub Pages, merge to main branch"
           echo "📁 You can download the artifact to view the report locally"
+          echo ""
+          echo "📈 Coverage summary:"
+          if [ -f coverage-report/cover.out ]; then
+            cat coverage-report/cover.out | tail -1
+          else
+            echo "Coverage summary not available"
+          fi
