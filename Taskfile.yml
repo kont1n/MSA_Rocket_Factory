@@ -496,7 +496,7 @@ tasks:
         mkdir -p {{.COVERAGE_DIR}}
         
         # Находим все пакеты, для которых нужно измерить покрытие (исключаем mocks)
-        TARGET_PACKAGES=$(go list ./internal/... | grep -v "/mocks" | grep -E '/(api|service)/' | tr '\n' ',')
+        TARGET_PACKAGES=$(go list ./order/internal/... | grep -v "/mocks" | grep -E '/(api|service)' | tr '\n' ',')
         
         if [ -z "$TARGET_PACKAGES" ]; then
           echo "⚠️ Не найдено пакетов для тестирования"

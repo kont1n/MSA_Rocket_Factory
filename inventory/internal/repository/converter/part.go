@@ -7,11 +7,10 @@ import (
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/model"
 )
 
-func RepoToModel(repoPart *repoModel.RepositoryPart) (part *model.Part) {
-	uuid, err := uuid.Parse(repoPart.OrderUuid)
+func RepoToModel(repoPart *repoModel.RepositoryPart) (part *model.Part, err error) {
+	id, err := uuid.Parse(repoPart.OrderUuid)
 	if err != nil {
-		// В случае ошибки парсинга UUID, возвращаем пустой UUID
-		uuid = [16]byte{}
+		return nil, model.ErrConvertFromRepo
 	}
 
 	manufacturer := model.Manufacturer{
@@ -38,7 +37,7 @@ func RepoToModel(repoPart *repoModel.RepositoryPart) (part *model.Part) {
 	}
 
 	return &model.Part{
-		OrderUuid:     uuid,
+		OrderUuid:     id,
 		Name:          repoPart.Name,
 		Description:   repoPart.Description,
 		Price:         repoPart.Price,
@@ -50,5 +49,5 @@ func RepoToModel(repoPart *repoModel.RepositoryPart) (part *model.Part) {
 		Metadata:      metadata,
 		CreatedAt:     repoPart.CreatedAt,
 		UpdatedAt:     repoPart.UpdatedAt,
-	}
+	}, nil
 }

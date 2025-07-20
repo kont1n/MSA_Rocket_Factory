@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
@@ -11,6 +12,7 @@ import (
 func (a *api) GetOrderByUUID(ctx context.Context, params orderV1.GetOrderByUUIDParams) (orderV1.GetOrderByUUIDRes, error) {
 	order, err := a.orderService.GetOrder(ctx, params.OrderUUID)
 	if err != nil {
+		slog.Error("Get order error", "order", params.OrderUUID, "error", err)
 		return &orderV1.NotFoundError{
 			Code:    http.StatusNotFound,
 			Message: fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),

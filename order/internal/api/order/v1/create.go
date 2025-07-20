@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ func (a *api) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) 
 
 	createOrder, err := a.orderService.CreateOrder(ctx, &orderDraft)
 	if err != nil {
+		slog.Error("Create order error", "order:", req, "error:", err)
 		return &orderV1.InternalServerError{
 			Code:    http.StatusInternalServerError,
 			Message: "Внутренняя ошибка сервиса - не удалось получить детали заказа",

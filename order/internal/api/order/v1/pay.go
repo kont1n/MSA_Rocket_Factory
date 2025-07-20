@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
@@ -16,6 +17,7 @@ func (a *api) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params
 
 	order, err := a.orderService.PayOrder(ctx, &orderDraft)
 	if err != nil {
+		slog.Error("Pay order error", "order", params.OrderUUID, "error", err)
 		return &orderV1.InternalServerError{
 			Code:    http.StatusInternalServerError,
 			Message: "Внутренняя ошибка сервиса - не удалось оплатить заказ",

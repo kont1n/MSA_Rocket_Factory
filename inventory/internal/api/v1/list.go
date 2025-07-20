@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -15,6 +16,7 @@ func (a *api) ListParts(ctx context.Context, req *inventoryV1.ListPartsRequest) 
 
 	parts, err := a.inventoryService.ListParts(ctx, filter)
 	if err != nil {
+		slog.Error("Failed to get list part", "filter:", filter, "error:", err)
 		return nil, status.Errorf(codes.Internal, "failed to list parts")
 	}
 

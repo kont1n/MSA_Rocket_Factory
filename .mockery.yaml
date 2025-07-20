@@ -30,3 +30,7 @@ packages:
   github.com/kont1n/MSA_Rocket_Factory/payment/internal/repository:
     config:
       include-regex: ".*Repository"
+
+  github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc:
+    config:
+      include-regex: ".*Client"

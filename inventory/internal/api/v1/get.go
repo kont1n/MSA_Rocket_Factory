@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -12,13 +13,14 @@ import (
 )
 
 func (a *api) GetPart(ctx context.Context, req *inventoryV1.GetPartRequest) (*inventoryV1.GetPartResponse, error) {
-	uuid, err := uuid.Parse(req.PartUuid)
+	id, err := uuid.Parse(req.PartUuid)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid part uuid")
 	}
 
-	part, err := a.inventoryService.GetPart(ctx, uuid)
+	part, err := a.inventoryService.GetPart(ctx, id)
 	if err != nil {
+		slog.Error("Failed to get part", "id:", id, "error:", err)
 		return nil, status.Errorf(codes.Internal, "failed to get part")
 	}
 	if part == nil {

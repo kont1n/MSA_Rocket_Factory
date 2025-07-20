@@ -3,9 +3,6 @@ package order
 import (
 	"context"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
 
@@ -13,22 +10,22 @@ func (s service) CancelOrder(ctx context.Context, order *model.Order) (*model.Or
 	// Получаем заказ по UUID
 	order, err := s.orderRepository.GetOrder(ctx, order.OrderUUID)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "order not found")
+		return nil, err
 	}
 
 	// Проверяем статус заказа
 	if order.Status == model.StatusPaid {
-		return nil, status.Error(codes.FailedPrecondition, "order status is paid")
+		return nil, model.ErrPaid
 	}
 	if order.Status == model.StatusCancelled {
-		return nil, status.Error(codes.FailedPrecondition, "order status is cancelled")
+		return nil, model.ErrCancelled
 	}
 
 	order.Status = model.StatusCancelled
 	// Сохраняем отмену заказа в хранилище
 	order, err = s.orderRepository.UpdateOrder(ctx, order)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to update order")
+		return nil, err
 	}
 
 	return order, nil

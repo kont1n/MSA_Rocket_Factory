@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,6 +19,7 @@ func (a *api) PayOrder(ctx context.Context, req *paymentV1.PayOrderRequest) (*pa
 
 	transaction, err := a.paymentService.Pay(ctx, order)
 	if err != nil {
+		slog.Info("Payment fail", "transaction:", transaction, "err:", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

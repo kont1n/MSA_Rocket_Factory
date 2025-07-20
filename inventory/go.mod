@@ -4,6 +4,7 @@ go 1.24.4
 
 require (
 	github.com/kont1n/MSA_Rocket_Factory/shared v0.0.0-00010101000000-000000000000
+	github.com/samber/lo v1.51.0
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6

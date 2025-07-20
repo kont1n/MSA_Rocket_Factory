@@ -1,4 +1,4 @@
-package tests
+package order_test
 
 import (
 	"github.com/google/uuid"

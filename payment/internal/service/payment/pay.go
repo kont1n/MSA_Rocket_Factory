@@ -2,7 +2,7 @@ package payment
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -10,8 +10,8 @@ import (
 )
 
 func (s *service) Pay(ctx context.Context, order model.Order) (uuid.UUID, error) {
-	transaction_uuid := uuid.New()
-	log.Printf("Оплата прошла успешно, transaction_uuid: %s\n", transaction_uuid)
+	transactionUuid := uuid.New()
+	slog.Info("Payment success", "transaction_uuid:", transactionUuid)
 
-	return transaction_uuid, nil
+	return transactionUuid, nil
 }

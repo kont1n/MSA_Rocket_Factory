@@ -1,4 +1,4 @@
-package tests
+package order_test
 
 import (
 	"context"
@@ -6,25 +6,26 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	clientMocks "github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc/mocks"
+	repoMocks "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/mocks"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/service"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/service/order"
-	"github.com/kont1n/MSA_Rocket_Factory/order/internal/service/order/mocks"
 )
 
 type ServiceSuite struct {
 	suite.Suite
 	ctx             context.Context
 	service         service.OrderService
-	orderRepository *mocks.MockOrderRepository
-	inventoryClient *mocks.MockInventoryClient
-	paymentClient   *mocks.MockPaymentClient
+	orderRepository *repoMocks.OrderRepository
+	inventoryClient *clientMocks.InventoryClient
+	paymentClient   *clientMocks.PaymentClient
 }
 
 func (s *ServiceSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.orderRepository = mocks.NewMockOrderRepository(s.T())
-	s.inventoryClient = mocks.NewMockInventoryClient(s.T())
-	s.paymentClient = mocks.NewMockPaymentClient(s.T())
+	s.orderRepository = repoMocks.NewOrderRepository(s.T())
+	s.inventoryClient = clientMocks.NewInventoryClient(s.T())
+	s.paymentClient = clientMocks.NewPaymentClient(s.T())
 
 	s.service = order.NewService(
 		s.orderRepository,

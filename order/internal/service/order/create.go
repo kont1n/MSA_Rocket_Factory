@@ -4,16 +4,13 @@ import (
 	"context"
 	"github.com/google/uuid"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
 
 func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
 	// Проверяем что детали указаны и заполняем фильтр
 	if len(order.PartUUIDs) == 0 {
-		return nil, status.Error(codes.FailedPrecondition, "parts not specified")
+		return nil, model.ErrPartsSpecified
 	}
 	uuidFilter := model.Filter{
 		PartUUIDs: order.PartUUIDs,
@@ -25,7 +22,7 @@ func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Or
 		return nil, err
 	}
 	if len(*parts) != len(order.PartUUIDs) {
-		return nil, status.Error(codes.NotFound, "parts not found")
+		return nil, model.ErrPartsListNotFound
 	}
 
 	// Считаем общую стоимость заказа
