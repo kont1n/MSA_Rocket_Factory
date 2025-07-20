@@ -158,8 +158,8 @@ jobs:
       pages: write
       id-token: write
 
-    # Деплоим для всех веток, но с разными условиями
-    if: github.event_name != 'pull_request'
+    # Деплоим только для main ветки
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
 
     environment:
       name: github-pages
@@ -188,14 +188,14 @@ jobs:
           echo "   3. Ensure repository has Pages enabled"
           echo "   4. Download artifacts to view coverage locally"
 
-  # Отдельный job для pull request, которые не могут деплоить на Pages
+  # Для всех остальных веток и pull request только артефакт
   coverage-info:
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 5
     
-    # Запускаем только для pull request
-    if: github.event_name == 'pull_request'
+    # Запускаем только для pull request или не-main веток
+    if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'
     
     steps:
       - name: Download coverage artifacts
