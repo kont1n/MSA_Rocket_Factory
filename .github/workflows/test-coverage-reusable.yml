@@ -1,0 +1,71 @@
+name: Test Coverage Reusable
+
+on:
+  workflow_call:
+    inputs:
+      modules:
+        required: true
+        type: string
+      go-version:
+        required: true
+        type: string
+      gist-id:
+        required: true
+        type: string
+    secrets:
+      GIST_SECRET:
+        required: true
+
+jobs:
+  coverage:
+    name: Run tests and update badge
+    runs-on: ubuntu-latest
+
+    env:
+      COVERAGE_DIR: coverage
+      COVERAGE_FILE: total.out
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: 🧰 Set up Go
+        uses: actions/setup-go@v5.4.0
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: 📌 Install Task
+        uses: arduino/setup-task@v2.0.0
+
+      - name: 🧪 Run tests with coverage
+        env:
+          MODULES: ${{ inputs.modules }}
+        run: task test-coverage
+
+      - name: 📊 Extract coverage percent
+        run: |
+          # Выводим последнюю строку с total и заменяем табы на пробелы
+          COVERAGE_OUTPUT=$(go tool cover -func=${COVERAGE_DIR}/${COVERAGE_FILE} | tail -1)
+          echo "Raw coverage output: $COVERAGE_OUTPUT"
+
+          # Преобразуем вывод, заменяем табы на пробелы и лишние пробелы схлопываем
+          CLEAN_OUTPUT=$(echo "$COVERAGE_OUTPUT" | tr -s '\t ' ' ')
+          echo "Cleaned output: $CLEAN_OUTPUT"
+
+          # Извлекаем последний элемент строки - это будет процент
+          TOTAL=$(echo "$CLEAN_OUTPUT" | awk '{print $NF}')
+          echo "💯 Total coverage: $TOTAL"
+
+          # Сохраняем в переменные окружения
+          echo "TOTAL_COVERAGE=$TOTAL" >> $GITHUB_ENV
+          echo "GIST_ID=${{ inputs.gist-id }}" >> $GITHUB_ENV
+
+      - name: 🏷️ Update Gist Badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ env.GIST_ID }}
+          filename: coverage.json
+          label: Coverage
+          message: ${{ env.TOTAL_COVERAGE }}
+          color: green
