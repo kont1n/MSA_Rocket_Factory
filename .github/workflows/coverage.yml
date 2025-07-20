@@ -21,14 +21,15 @@ jobs:
 
     permissions:
       contents: write
+      pages: write
 
     steps:
       # tests
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.4.0
         with:
           go-version: ${{ inputs.go-version }}
 
@@ -36,7 +37,7 @@ jobs:
         run: go mod verify
 
       - name: Restore cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.0
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-v1-go-${{ hashFiles('**/go.sum') }}
@@ -66,7 +67,6 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Upload Artifact for Pages
-        id: deployment
         uses: actions/upload-pages-artifact@v3
         with:
           path: .github_pages/
@@ -112,7 +112,6 @@ jobs:
 
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Deploy coverage report to GitHub Pages
