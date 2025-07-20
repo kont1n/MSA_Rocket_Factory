@@ -56,12 +56,11 @@ jobs:
 
       - name: 🏷️ Generate lint status badge
         if: github.ref == 'refs/heads/main'
-        uses: tj-actions/gh-badge@v2
+        uses: leonsteinhaeuser/status-badge@v1
         with:
-          label: "Lint"
           status: ${{ job.status }}
-          color: ${{ job.status == 'success' && 'brightgreen' || 'red' }}
-          path: lint-badge.svg
+          label: "Lint"
+          output: lint-badge.svg
           style: flat
 
       - name: Проверить изменения бейджа линта

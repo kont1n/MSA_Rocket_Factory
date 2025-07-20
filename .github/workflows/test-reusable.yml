@@ -49,12 +49,11 @@ jobs:
 
       - name: 🏷️ Generate test status badge
         if: github.ref == 'refs/heads/main'
-        uses: tj-actions/gh-badge@v2
+        uses: leonsteinhaeuser/status-badge@v1
         with:
-          label: "Tests"
           status: ${{ job.status }}
-          color: ${{ job.status == 'success' && 'brightgreen' || 'red' }}
-          path: test-badge.svg
+          label: "Tests"
+          output: test-badge.svg
           style: flat
 
       - name: Проверить изменения бейджа
