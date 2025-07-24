@@ -8,7 +8,7 @@ import (
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/model"
 )
 
-func (s *ConverterSuite) TestModelToRepo_Success() {
+func (s *ConverterSuite) TestToRepoOrder_Success() {
 	// Подготовка
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
@@ -27,7 +27,7 @@ func (s *ConverterSuite) TestModelToRepo_Success() {
 	}
 
 	// Выполнение
-	result := ModelToRepo(order)
+	result := ToRepoOrder(order)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -42,7 +42,7 @@ func (s *ConverterSuite) TestModelToRepo_Success() {
 	assert.Equal(s.T(), string(model.StatusPaid), result.Status)
 }
 
-func (s *ConverterSuite) TestModelToRepo_EmptyParts() {
+func (s *ConverterSuite) TestToRepoOrder_EmptyParts() {
 	// Подготовка
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
@@ -59,7 +59,7 @@ func (s *ConverterSuite) TestModelToRepo_EmptyParts() {
 	}
 
 	// Выполнение
-	result := ModelToRepo(order)
+	result := ToRepoOrder(order)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -72,7 +72,7 @@ func (s *ConverterSuite) TestModelToRepo_EmptyParts() {
 	assert.Equal(s.T(), string(model.StatusPendingPayment), result.Status)
 }
 
-func (s *ConverterSuite) TestRepoToModel_Success() {
+func (s *ConverterSuite) TestToModelOrder_Success() {
 	// Подготовка
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
@@ -91,7 +91,7 @@ func (s *ConverterSuite) TestRepoToModel_Success() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoOrder)
+	result, err := ToModelOrder(repoOrder)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -107,7 +107,7 @@ func (s *ConverterSuite) TestRepoToModel_Success() {
 	assert.Equal(s.T(), model.StatusPaid, result.Status)
 }
 
-func (s *ConverterSuite) TestRepoToModel_InvalidOrderUUID() {
+func (s *ConverterSuite) TestToModelOrder_InvalidOrderUUID() {
 	// Подготовка
 	userUUID := uuid.New()
 	transactionUUID := uuid.New()
@@ -124,7 +124,7 @@ func (s *ConverterSuite) TestRepoToModel_InvalidOrderUUID() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoOrder)
+	result, err := ToModelOrder(repoOrder)
 
 	// Проверка
 	assert.Error(s.T(), err)
@@ -132,7 +132,7 @@ func (s *ConverterSuite) TestRepoToModel_InvalidOrderUUID() {
 	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
 }
 
-func (s *ConverterSuite) TestRepoToModel_InvalidUserUUID() {
+func (s *ConverterSuite) TestToModelOrder_InvalidUserUUID() {
 	// Подготовка
 	orderUUID := uuid.New()
 	transactionUUID := uuid.New()
@@ -149,7 +149,7 @@ func (s *ConverterSuite) TestRepoToModel_InvalidUserUUID() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoOrder)
+	result, err := ToModelOrder(repoOrder)
 
 	// Проверка
 	assert.Error(s.T(), err)
@@ -157,7 +157,7 @@ func (s *ConverterSuite) TestRepoToModel_InvalidUserUUID() {
 	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
 }
 
-func (s *ConverterSuite) TestRepoToModel_InvalidTransactionUUID() {
+func (s *ConverterSuite) TestToModelOrder_InvalidTransactionUUID() {
 	// Подготовка
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
@@ -174,7 +174,7 @@ func (s *ConverterSuite) TestRepoToModel_InvalidTransactionUUID() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoOrder)
+	result, err := ToModelOrder(repoOrder)
 
 	// Проверка
 	assert.Error(s.T(), err)
@@ -182,7 +182,7 @@ func (s *ConverterSuite) TestRepoToModel_InvalidTransactionUUID() {
 	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
 }
 
-func (s *ConverterSuite) TestRepoToModel_InvalidPartUUID() {
+func (s *ConverterSuite) TestToModelOrder_InvalidPartUUID() {
 	// Подготовка
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
@@ -199,7 +199,7 @@ func (s *ConverterSuite) TestRepoToModel_InvalidPartUUID() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoOrder)
+	result, err := ToModelOrder(repoOrder)
 
 	// Проверка
 	assert.Error(s.T(), err)
@@ -207,7 +207,7 @@ func (s *ConverterSuite) TestRepoToModel_InvalidPartUUID() {
 	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
 }
 
-func (s *ConverterSuite) TestRepoToModel_EmptyParts() {
+func (s *ConverterSuite) TestToModelOrder_EmptyParts() {
 	// Подготовка
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
@@ -224,7 +224,7 @@ func (s *ConverterSuite) TestRepoToModel_EmptyParts() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoOrder)
+	result, err := ToModelOrder(repoOrder)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -238,7 +238,7 @@ func (s *ConverterSuite) TestRepoToModel_EmptyParts() {
 	assert.Equal(s.T(), model.StatusPendingPayment, result.Status)
 }
 
-func (s *ConverterSuite) TestRepoToModel_AllStatuses() {
+func (s *ConverterSuite) TestToModelOrder_AllStatuses() {
 	// Подготовка
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
@@ -267,7 +267,7 @@ func (s *ConverterSuite) TestRepoToModel_AllStatuses() {
 		}
 
 		// Выполнение
-		result, err := RepoToModel(repoOrder)
+		result, err := ToModelOrder(repoOrder)
 
 		// Проверка
 		if tc.shouldPass {

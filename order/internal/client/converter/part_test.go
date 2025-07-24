@@ -7,7 +7,7 @@ import (
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
-func (s *ConverterSuite) TestPartToModel_Success() {
+func (s *ConverterSuite) TestToModelPart_Success() {
 	// Подготовка
 	partUUID := uuid.New()
 	protoPart := &inventoryV1.Part{
@@ -18,7 +18,7 @@ func (s *ConverterSuite) TestPartToModel_Success() {
 	}
 
 	// Выполнение
-	result, err := PartToModel(protoPart)
+	result, err := ToModelPart(protoPart)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -39,14 +39,14 @@ func (s *ConverterSuite) TestPartToModel_InvalidUUID() {
 	}
 
 	// Выполнение
-	result, err := PartToModel(protoPart)
+	result, err := ToModelPart(protoPart)
 
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
 }
 
-func (s *ConverterSuite) TestPartToModel_EmptyUUID() {
+func (s *ConverterSuite) TestToModelPart_EmptyUUID() {
 	// Подготовка
 	protoPart := &inventoryV1.Part{
 		PartUuid:    "",
@@ -56,14 +56,14 @@ func (s *ConverterSuite) TestPartToModel_EmptyUUID() {
 	}
 
 	// Выполнение
-	result, err := PartToModel(protoPart)
+	result, err := ToModelPart(protoPart)
 
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
 }
 
-func (s *ConverterSuite) TestPartToModel_ZeroValues() {
+func (s *ConverterSuite) TestToModelPart_ZeroValues() {
 	// Подготовка
 	partUUID := uuid.New()
 	protoPart := &inventoryV1.Part{
@@ -74,7 +74,7 @@ func (s *ConverterSuite) TestPartToModel_ZeroValues() {
 	}
 
 	// Выполнение
-	result, err := PartToModel(protoPart)
+	result, err := ToModelPart(protoPart)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -85,7 +85,7 @@ func (s *ConverterSuite) TestPartToModel_ZeroValues() {
 	assert.Equal(s.T(), float64(0), result.Price)
 }
 
-func (s *ConverterSuite) TestPartListToModel_Success() {
+func (s *ConverterSuite) TestToModelPartsList_Success() {
 	// Подготовка
 	partUUID1 := uuid.New()
 	partUUID2 := uuid.New()
@@ -105,7 +105,7 @@ func (s *ConverterSuite) TestPartListToModel_Success() {
 	}
 
 	// Выполнение
-	result, err := PartListToModel(protoParts)
+	result, err := ToModelPartsList(protoParts)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -125,12 +125,12 @@ func (s *ConverterSuite) TestPartListToModel_Success() {
 	assert.Equal(s.T(), 800.50, (*result)[1].Price)
 }
 
-func (s *ConverterSuite) TestPartListToModel_EmptyList() {
+func (s *ConverterSuite) TestToModelPartsList_EmptyList() {
 	// Подготовка
 	protoParts := []*inventoryV1.Part{}
 
 	// Выполнение
-	result, err := PartListToModel(protoParts)
+	result, err := ToModelPartsList(protoParts)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -138,7 +138,7 @@ func (s *ConverterSuite) TestPartListToModel_EmptyList() {
 	assert.Len(s.T(), *result, 0)
 }
 
-func (s *ConverterSuite) TestPartListToModel_WithInvalidUUID() {
+func (s *ConverterSuite) TestToModelPartsList_WithInvalidUUID() {
 	// Подготовка
 	partUUID := uuid.New()
 	protoParts := []*inventoryV1.Part{
@@ -157,7 +157,7 @@ func (s *ConverterSuite) TestPartListToModel_WithInvalidUUID() {
 	}
 
 	// Выполнение
-	result, err := PartListToModel(protoParts)
+	result, err := ToModelPartsList(protoParts)
 
 	// Проверка
 	assert.Error(s.T(), err)

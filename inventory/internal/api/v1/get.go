@@ -27,6 +27,6 @@ func (a *api) GetPart(ctx context.Context, req *inventoryV1.GetPartRequest) (*in
 		return nil, status.Errorf(codes.NotFound, "part not found")
 	}
 
-	protoPart := converter.ModelToProto(part)
+	protoPart := converter.ToProtoPart(part)
 	return &inventoryV1.GetPartResponse{Part: protoPart}, nil
 }

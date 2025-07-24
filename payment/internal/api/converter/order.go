@@ -7,7 +7,7 @@ import (
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
-func PayOrderRqToModel(req *paymentV1.PayOrderRequest) (model.Order, error) {
+func ToModelOrder(req *paymentV1.PayOrderRequest) (model.Order, error) {
 	orderUuid, err := uuid.Parse(req.GetOrderUuid())
 	if err != nil {
 		return model.Order{}, err

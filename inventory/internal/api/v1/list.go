@@ -12,7 +12,7 @@ import (
 )
 
 func (a *api) ListParts(ctx context.Context, req *inventoryV1.ListPartsRequest) (*inventoryV1.ListPartsResponse, error) {
-	filter := converter.ProtoToModel(req)
+	filter := converter.ToModelPart(req)
 
 	parts, err := a.inventoryService.ListParts(ctx, filter)
 	if err != nil {
@@ -22,7 +22,7 @@ func (a *api) ListParts(ctx context.Context, req *inventoryV1.ListPartsRequest) 
 
 	protoParts := make([]*inventoryV1.Part, 0, len(*parts))
 	for _, part := range *parts {
-		protoPart := converter.ModelToProto(&part)
+		protoPart := converter.ToProtoPart(&part)
 		protoParts = append(protoParts, protoPart)
 	}
 

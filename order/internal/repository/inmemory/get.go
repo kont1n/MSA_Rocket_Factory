@@ -19,7 +19,7 @@ func (r *repository) GetOrder(ctx context.Context, id uuid.UUID) (*model.Order, 
 		return nil, model.ErrOrderNotFound
 	}
 
-	order, err := converter.RepoToModel(lo.ToPtr(repoOrder))
+	order, err := converter.ToModelOrder(lo.ToPtr(repoOrder))
 	if err != nil {
 		return nil, err
 	}

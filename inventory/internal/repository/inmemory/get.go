@@ -20,7 +20,7 @@ func (r *repository) GetPart(ctx context.Context, uuid uuid.UUID) (*model.Part, 
 		return nil, model.ErrPartNotFound
 	}
 
-	part, err := repoConverter.RepoToModel(repoPart)
+	part, err := repoConverter.ToModelPart(repoPart)
 	if err != nil {
 		return nil, err
 	}

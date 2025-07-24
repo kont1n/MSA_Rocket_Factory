@@ -7,7 +7,7 @@ import (
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/model"
 )
 
-func ModelToRepo(order *model.Order) *repoModel.Order {
+func ToRepoOrder(order *model.Order) *repoModel.Order {
 	parts := make([]string, 0, len(order.PartUUIDs))
 	for _, partUUID := range order.PartUUIDs {
 		parts = append(parts, partUUID.String())
@@ -25,7 +25,7 @@ func ModelToRepo(order *model.Order) *repoModel.Order {
 	return repoOrder
 }
 
-func RepoToModel(repoOrder *repoModel.Order) (*model.Order, error) {
+func ToModelOrder(repoOrder *repoModel.Order) (*model.Order, error) {
 	orderId, err := uuid.Parse(repoOrder.OrderUUID)
 	if err != nil {
 		return nil, model.ErrConvertFromRepo

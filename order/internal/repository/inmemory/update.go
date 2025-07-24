@@ -8,7 +8,7 @@ import (
 )
 
 func (r *repository) UpdateOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
-	repoOrder := converter.ModelToRepo(order)
+	repoOrder := converter.ToRepoOrder(order)
 
 	r.mu.Lock()
 	r.data[order.OrderUUID.String()] = *repoOrder

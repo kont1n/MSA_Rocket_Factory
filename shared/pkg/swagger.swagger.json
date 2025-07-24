@@ -49,14 +49,14 @@
     "v1Category": {
       "type": "string",
       "enum": [
-        "CATEGORY_PART_TYPE_UNSPECIFIED",
+        "CATEGORY_UNSPECIFIED",
         "CATEGORY_ENGINE",
         "CATEGORY_FUEL",
         "CATEGORY_PORTHOLE",
         "CATEGORY_WING"
       ],
-      "default": "CATEGORY_PART_TYPE_UNSPECIFIED",
-      "description": "- CATEGORY_PART_TYPE_UNSPECIFIED: 0 - Неизвестная категория\n - CATEGORY_ENGINE: 1 - Двигатель\n - CATEGORY_FUEL: 2 - Топливо\n - CATEGORY_PORTHOLE: 3 - Иллюминатор\n - CATEGORY_WING: 4 - Крыло",
+      "default": "CATEGORY_UNSPECIFIED",
+      "description": "- CATEGORY_UNSPECIFIED: 0 - Неизвестная категория\n - CATEGORY_ENGINE: 1 - Двигатель\n - CATEGORY_FUEL: 2 - Топливо\n - CATEGORY_PORTHOLE: 3 - Иллюминатор\n - CATEGORY_WING: 4 - Крыло",
       "title": "Category категория детали"
     },
     "v1Dimensions": {

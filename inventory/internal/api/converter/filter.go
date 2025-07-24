@@ -7,7 +7,7 @@ import (
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
-func ProtoToModel(req *inventoryV1.ListPartsRequest) *model.Filter {
+func ToModelPart(req *inventoryV1.ListPartsRequest) *model.Filter {
 	if req.Filter != nil {
 		uuids := make([]uuid.UUID, 0, len(req.Filter.PartUuid))
 		for _, uuidStr := range req.Filter.PartUuid {

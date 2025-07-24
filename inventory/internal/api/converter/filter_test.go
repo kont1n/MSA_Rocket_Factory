@@ -8,7 +8,7 @@ import (
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
-func (s *ConverterSuite) TestProtoToModel_CompleteFilter() {
+func (s *ConverterSuite) TestToModelPart_CompleteFilter() {
 	// Подготовка
 	partUUID1 := uuid.New()
 	partUUID2 := uuid.New()
@@ -39,7 +39,7 @@ func (s *ConverterSuite) TestProtoToModel_CompleteFilter() {
 	}
 
 	// Выполнение
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -64,7 +64,7 @@ func (s *ConverterSuite) TestProtoToModel_CompleteFilter() {
 	assert.Contains(s.T(), result.Tags, "fuel")
 }
 
-func (s *ConverterSuite) TestProtoToModel_AllCategories() {
+func (s *ConverterSuite) TestToModelPart_AllCategories() {
 	req := &inventoryV1.ListPartsRequest{
 		Filter: &inventoryV1.PartsFilter{
 			Category: []inventoryV1.Category{
@@ -76,7 +76,7 @@ func (s *ConverterSuite) TestProtoToModel_AllCategories() {
 		},
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	assert.Len(s.T(), result.Categories, 4)
 	assert.Contains(s.T(), result.Categories, model.ENGINE)
@@ -85,7 +85,7 @@ func (s *ConverterSuite) TestProtoToModel_AllCategories() {
 	assert.Contains(s.T(), result.Categories, model.WING)
 }
 
-func (s *ConverterSuite) TestProtoToModel_InvalidUUID() {
+func (s *ConverterSuite) TestToModelPart_InvalidUUID() {
 	req := &inventoryV1.ListPartsRequest{
 		Filter: &inventoryV1.PartsFilter{
 			PartUuid: []string{
@@ -95,18 +95,18 @@ func (s *ConverterSuite) TestProtoToModel_InvalidUUID() {
 		},
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	// Должен содержать только валидный UUID
 	assert.Len(s.T(), result.Uuids, 1)
 }
 
-func (s *ConverterSuite) TestProtoToModel_EmptyFilter() {
+func (s *ConverterSuite) TestToModelPart_EmptyFilter() {
 	req := &inventoryV1.ListPartsRequest{
 		Filter: &inventoryV1.PartsFilter{},
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	assert.NotNil(s.T(), result)
 	assert.Empty(s.T(), result.Uuids)
@@ -116,17 +116,17 @@ func (s *ConverterSuite) TestProtoToModel_EmptyFilter() {
 	assert.Empty(s.T(), result.Tags)
 }
 
-func (s *ConverterSuite) TestProtoToModel_NilFilter() {
+func (s *ConverterSuite) TestToModelPart_NilFilter() {
 	req := &inventoryV1.ListPartsRequest{
 		Filter: nil,
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	assert.Nil(s.T(), result)
 }
 
-func (s *ConverterSuite) TestProtoToModel_OnlyUUIDs() {
+func (s *ConverterSuite) TestToModelPart_OnlyUUIDs() {
 	partUUID := uuid.New()
 	req := &inventoryV1.ListPartsRequest{
 		Filter: &inventoryV1.PartsFilter{
@@ -134,7 +134,7 @@ func (s *ConverterSuite) TestProtoToModel_OnlyUUIDs() {
 		},
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	assert.NotNil(s.T(), result)
 	assert.Len(s.T(), result.Uuids, 1)
@@ -145,14 +145,14 @@ func (s *ConverterSuite) TestProtoToModel_OnlyUUIDs() {
 	assert.Empty(s.T(), result.Tags)
 }
 
-func (s *ConverterSuite) TestProtoToModel_OnlyNames() {
+func (s *ConverterSuite) TestToModelPart_OnlyNames() {
 	req := &inventoryV1.ListPartsRequest{
 		Filter: &inventoryV1.PartsFilter{
 			PartName: []string{"Engine", "Fuel"},
 		},
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	assert.NotNil(s.T(), result)
 	assert.Empty(s.T(), result.Uuids)
@@ -164,7 +164,7 @@ func (s *ConverterSuite) TestProtoToModel_OnlyNames() {
 	assert.Empty(s.T(), result.Tags)
 }
 
-func (s *ConverterSuite) TestProtoToModel_OnlyCategories() {
+func (s *ConverterSuite) TestToModelPart_OnlyCategories() {
 	req := &inventoryV1.ListPartsRequest{
 		Filter: &inventoryV1.PartsFilter{
 			Category: []inventoryV1.Category{
@@ -173,7 +173,7 @@ func (s *ConverterSuite) TestProtoToModel_OnlyCategories() {
 		},
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	assert.NotNil(s.T(), result)
 	assert.Empty(s.T(), result.Uuids)
@@ -191,7 +191,7 @@ func (s *ConverterSuite) TestProtoToModel_OnlyManufacturerCountries() {
 		},
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	assert.NotNil(s.T(), result)
 	assert.Empty(s.T(), result.Uuids)
@@ -210,7 +210,7 @@ func (s *ConverterSuite) TestProtoToModel_OnlyTags() {
 		},
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	assert.NotNil(s.T(), result)
 	assert.Empty(s.T(), result.Uuids)
@@ -235,7 +235,7 @@ func (s *ConverterSuite) TestProtoToModel_MixedInvalidUUIDs() {
 		},
 	}
 
-	result := ProtoToModel(req)
+	result := ToModelPart(req)
 
 	// Должен содержать только валидный UUID
 	assert.Len(s.T(), result.Uuids, 1)

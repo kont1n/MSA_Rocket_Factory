@@ -102,7 +102,7 @@ message Part {
 // Category категория детали
 enum Category {
   // 0 - Неизвестная категория
-  CATEGORY_PART_TYPE_UNSPECIFIED = 0;
+  CATEGORY_UNSPECIFIED = 0;
 
   // 1 - Двигатель
   CATEGORY_ENGINE = 1;
