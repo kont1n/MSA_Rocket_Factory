@@ -64,7 +64,6 @@ jobs:
 
       - name: 🔍 Run Lint
         id: lint_step
-        continue-on-error: true
         env:
           MODULES: ${{ inputs.modules }}
           GOLANGCI_LINT_VERSION: ${{ inputs.golangci-lint-version }}
@@ -72,7 +71,13 @@ jobs:
           echo "🔍 Запуск golangci-lint..."
           mkdir -p .github_pages/lint
           
-          if task lint > lint_output.txt 2>&1; then
+          # Запускаем линт и сохраняем результат
+          set +e  # Отключаем автоматический выход при ошибке
+          task lint > lint_output.txt 2>&1
+          lint_exit_code=$?
+          set -e  # Включаем обратно
+          
+          if [ $lint_exit_code -eq 0 ]; then
             echo "✅ Линт прошел успешно"
             echo "LINT_STATUS=success" >> $GITHUB_OUTPUT
             lint_result="success"
@@ -207,14 +212,19 @@ jobs:
 
       - name: 🧪 Run Tests
         id: test_step
-        continue-on-error: true
         env:
           MODULES: ${{ inputs.modules }}
         run: |
           echo "🧪 Запуск unit тестов..."
           mkdir -p .github_pages/tests
           
-          if task test > test_output.txt 2>&1; then
+          # Запускаем тесты и сохраняем результат
+          set +e  # Отключаем автоматический выход при ошибке
+          task test > test_output.txt 2>&1
+          test_exit_code=$?
+          set -e  # Включаем обратно
+          
+          if [ $test_exit_code -eq 0 ]; then
             echo "✅ Тесты прошли успешно"
             echo "TEST_STATUS=success" >> $GITHUB_OUTPUT
             test_result="success"
@@ -361,76 +371,116 @@ jobs:
 
       - name: 📊 Run Coverage
         run: |
-          echo "📊 Генерация отчета покрытия..."
+          echo "📊 Генерация отчета покрытия бизнес-логики..."
           mkdir -p .github_pages
           echo "mode: atomic" > coverage.out
           
-          # Логика coverage аналогично существующему workflow
-          all_packages=()
-          modules_found=()
+          # Найдем все модули и соберем покрытие как в test-coverage
+          modules_with_tests=()
+          coverage_files=()
+          echo "🔍 Поиск модулей с internal пакетами..."
           
-          while IFS= read -r modfile; do
-            dir=$(dirname "$modfile")
-            cd "$dir"
-            
-            module_packages=$(go list ./... 2>/dev/null || echo "")
-            if [ -n "$module_packages" ]; then
-              modules_found+=("$dir")
-              while IFS= read -r pkg; do
-                if [[ "$pkg" != *"/mocks"* ]] && [[ "$pkg" != *"/mocks/"* ]]; then
-                  all_packages+=("$pkg")
-                fi
-              done <<< "$module_packages"
-            fi
-            
-            cd - > /dev/null  
-          done < <(find . -name "go.mod" -type f)
-          
-          if [ ${#all_packages[@]} -gt 0 ]; then
-            coverpkg_list=$(IFS=','; echo "${all_packages[*]}")
-            
-            for module_dir in "${modules_found[@]}"; do
-              cd "$module_dir"
+          for mod in ${{ inputs.modules }}; do
+            if [ -d "$mod" ] && [ -f "$mod/go.mod" ]; then
+              echo "📦 Обрабатываем модуль $mod"
+              cd "$mod"
               
-              if find . -name "*_test.go" -type f | grep -q .; then
-                if go test -v ./... -coverprofile=tmp_coverage.out -covermode=atomic -coverpkg="$coverpkg_list" 2>&1; then
-                  if [ -f tmp_coverage.out ]; then
-                    coverage_lines=$(tail -n +2 tmp_coverage.out | wc -l)
-                    
-                    if [ "$coverage_lines" -gt 0 ]; then
-                      tail -n +2 tmp_coverage.out | while IFS= read -r line; do
-                        file_path=$(echo "$line" | cut -d' ' -f1)
-                        
-                        if [[ "$file_path" == *"/mocks/"* ]] || [[ "$file_path" == *"cmd/main.go"* ]]; then
-                          continue
-                        fi
-                        
-                        echo "$line"
-                      done >> ../../coverage.out
-                    fi
-                    
-                    rm tmp_coverage.out
-                  fi
-                fi
+              # Проверяем наличие internal пакетов
+              if ! go list ./internal/... 2>/dev/null | grep -q .; then
+                echo "⚠️ В модуле $mod нет пакетов internal"
+                cd ..
+                continue
               fi
               
-              cd - > /dev/null
+              # Находим все пакеты для покрытия (исключаем mocks и test)
+              TARGET_PACKAGES=$(go list ./internal/... 2>/dev/null | grep -v "/mocks" | grep -v "/test" | tr '\n' ',')
+              
+              if [ -n "$TARGET_PACKAGES" ]; then
+                echo "📦 Пакеты для покрытия в $mod: $TARGET_PACKAGES"
+                modules_with_tests+=("$mod")
+                
+                # Убираем последнюю запятую из TARGET_PACKAGES
+                TARGET_PACKAGES=${TARGET_PACKAGES%,}
+                
+                # Запускаем тесты с покрытием для модуля
+                COVERAGE_FILE="coverage_${mod}.out"
+                
+                echo "🔍 Запускаем: go test -v -coverprofile=$COVERAGE_FILE -coverpkg=$TARGET_PACKAGES ./internal/..."
+                
+                # Запускаем тесты с покрытием на internal пакеты
+                if go test -v -coverprofile="$COVERAGE_FILE" -coverpkg="$TARGET_PACKAGES" ./internal/... 2>/dev/null; then
+                  if [ -f "$COVERAGE_FILE" ] && [ -s "$COVERAGE_FILE" ]; then
+                    coverage_files+=("$COVERAGE_FILE")
+                    echo "✅ Покрытие для $mod сохранено в $COVERAGE_FILE"
+                    
+                    # Показываем покрытие для модуля
+                    go tool cover -func="$COVERAGE_FILE" | tail -1
+                  else
+                    echo "⚠️ Нет данных покрытия в модуле $mod"
+                    [ -f "$COVERAGE_FILE" ] && rm -f "$COVERAGE_FILE"
+                  fi
+                else
+                  echo "❌ Тесты провалились в модуле $mod, но продолжаем..."
+                  [ -f "$COVERAGE_FILE" ] && rm -f "$COVERAGE_FILE"
+                fi
+              else
+                echo "⚠️ Не найдено пакетов для тестирования в $mod"
+              fi
+              
+              cd ..
+            else
+              echo "⚠️ Модуль $mod не найден или не содержит go.mod"
+            fi
+          done
+          
+          echo "📈 Обработано модулей с тестами: ${#modules_with_tests[@]}"
+          echo "📋 Модули: ${modules_with_tests[*]}"
+          echo "📁 Файлы покрытия: ${coverage_files[*]}"
+          
+          # Объединяем все файлы покрытия
+          if [ ${#coverage_files[@]} -gt 0 ]; then
+            echo "🔗 Объединяем файлы покрытия..."
+            
+            # Создаем временный файл для объединения
+            TEMP_COVERAGE=$(mktemp)
+            
+            for file in "${coverage_files[@]}"; do
+              echo "🔗 Добавляем файл: $file"
+              if [ -f "$file" ] && [ -s "$file" ]; then
+                # Пропускаем первую строку (mode: atomic) для всех файлов кроме первого
+                if [ -s "$TEMP_COVERAGE" ]; then
+                  tail -n +2 "$file" >> "$TEMP_COVERAGE"
+                else
+                  cat "$file" >> "$TEMP_COVERAGE"
+                fi
+              fi
             done
             
-            # Удаляем дубликаты
-            if [ -f coverage.out ]; then
-              coverage_lines_final=$(($(wc -l < coverage.out) - 1))
-              
-              if [ "$coverage_lines_final" -gt 1 ]; then
-                (head -1 coverage.out; tail -n +2 coverage.out | sort -u) > coverage_clean.out
-                mv coverage_clean.out coverage.out
-              fi
+            # Перемещаем временный файл в итоговый
+            mv "$TEMP_COVERAGE" coverage.out
+            
+            # Удаляем дубликаты, сохраняя заголовок
+            if [ -s coverage.out ]; then
+              echo "🧹 Удаление дубликатов..."
+              (head -1 coverage.out; tail -n +2 coverage.out | sort -u) > coverage_clean.out
+              mv coverage_clean.out coverage.out
             fi
             
             # Генерируем отчеты
             if [ -s coverage.out ] && [ $(wc -l < coverage.out) -gt 1 ]; then
-              if go tool cover -func=coverage.out > cover.out 2>&1; then              
+              echo "📊 Генерация функционального отчета..."
+              if go tool cover -func=coverage.out > cover.out 2>&1; then
+                echo "✅ Функциональный отчет создан"
+                
+                # Показываем итоговое покрытие
+                echo "📈 Итоговое покрытие бизнес-логики:"
+                tail -1 cover.out
+                
+                # Генерируем HTML отчет
+                echo "🌐 Генерация HTML отчета..."
                 if gocov convert coverage.out | gocov-html > .github_pages/index.html 2>&1; then
+                  echo "✅ HTML отчет создан"
+                  
                   # Добавляем навигацию к HTML отчету покрытия
                   sed -i '/<\/head>/i\
                   <style>\
@@ -469,17 +519,36 @@ jobs:
                     <a href="./reports.html" class="nav-link">📋 All Reports</a>\
                   </div>' .github_pages/index.html
                 else
-                  echo "<html><body><h1>Failed to generate coverage report</h1></body></html>" > .github_pages/index.html
+                  echo "❌ Ошибка создания HTML отчета"
+                  echo "<html><body><h1>Failed to generate coverage report</h1><p>Check logs for details</p></body></html>" > .github_pages/index.html
                 fi
               else
+                echo "❌ Ошибка создания функционального отчета"
+                cat cover.out
                 echo "total:                  (statements)   0.0%" > cover.out
-                echo "<html><body><h1>Failed to generate coverage report</h1></body></html>" > .github_pages/index.html
+                echo "<html><body><h1>Failed to generate coverage report</h1><p>Error generating function report</p></body></html>" > .github_pages/index.html
               fi
             else
+              echo "⚠️ Нет данных покрытия"
               echo "total:                  (statements)   0.0%" > cover.out
-              echo "<html><body><h1>No coverage data available</h1></body></html>" > .github_pages/index.html
+              echo "<html><body><h1>No coverage data available</h1><p>No tests found or no coverage generated</p></body></html>" > .github_pages/index.html
             fi
+            
+            # Очистка временных файлов
+            for file in "${coverage_files[@]}"; do
+              [ -f "$file" ] && rm -f "$file"
+            done
+          else
+            echo "❌ Не удалось собрать покрытие ни для одного модуля"
+            echo "total:                  (statements)   0.0%" > cover.out
+            echo "<html><body><h1>No coverage files</h1><p>No coverage files were generated</p></body></html>" > .github_pages/index.html
           fi
+          
+          # Показываем отладочную информацию
+          echo "🔍 Финальная отладочная информация:"
+          echo "coverage.out размер: $(ls -la coverage.out 2>/dev/null || echo 'не найден')"
+          echo "cover.out содержимое:"
+          cat cover.out 2>/dev/null || echo "cover.out не найден"
 
       - name: 🔗 Create main reports index
         run: |
@@ -667,8 +736,28 @@ jobs:
             test_output.txt
           retention-days: 30
 
+      # Проверяем итоговый статус CI
+      - name: 🔍 Check CI Status
+        run: |
+          echo "📊 Проверка итогового статуса CI..."
+          
+          LINT_STATUS="${{ steps.lint_step.outputs.LINT_STATUS }}"
+          TEST_STATUS="${{ steps.test_step.outputs.TEST_STATUS }}"
+          
+          echo "🔍 Статус линтинга: $LINT_STATUS"
+          echo "🧪 Статус тестов: $TEST_STATUS" 
+          
+          # Определяем общий статус
+          if [[ "$LINT_STATUS" == "failure" ]] || [[ "$TEST_STATUS" == "failure" ]]; then
+            echo "❌ CI провален из-за ошибок в линтинге или тестах"
+            echo "📊 Отчеты всё равно будут созданы и опубликованы"
+            exit 1
+          else
+            echo "✅ Все проверки CI прошли успешно"
+          fi
+
   deploy:
-    needs: combined-reports
+    needs: combined-reports  
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -677,8 +766,8 @@ jobs:
       pages: write
       id-token: write
 
-    # Деплоим только для main ветки
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Деплоим только для main ветки, даже если CI провален (отчеты всё равно нужны)
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
 
     environment:
       name: github-pages

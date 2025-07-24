@@ -3,10 +3,12 @@
 ![Coverage](https://img.shields.io/badge/Coverage-0.0%25-red)
 [![CI](https://github.com/kont1n/MSA_Rocket_Factory/actions/workflows/ci.yml/badge.svg)](https://github.com/kont1n/MSA_Rocket_Factory/actions/workflows/ci.yml)
 
-📊 **Отчеты о качестве кода:** [GitHub Pages Reports](https://kont1n.github.io/MSA_Rocket_Factory/)
-- 📊 [Coverage Report](https://kont1n.github.io/MSA_Rocket_Factory/) - отчет о покрытии кода тестами
+📊 **Отчеты о качестве кода:** 
+- 📊 [Coverage Report](https://kont1n.github.io/MSA_Rocket_Factory/) - покрытие бизнес-логики тестами (internal пакеты)
 - 🧪 [Test Report](https://kont1n.github.io/MSA_Rocket_Factory/tests/) - результаты unit тестов
 - 🔍 [Lint Report](https://kont1n.github.io/MSA_Rocket_Factory/lint/) - результаты статического анализа кода
+
+> **Примечание:** Покрытие кода рассчитывается только для бизнес-логики (пакеты `internal/`), исключая `mocks`, `test` пакеты и `main.go` файлы.
 
 ## Описание
 https://olezhek28.courses/microservices
