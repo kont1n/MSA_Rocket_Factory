@@ -1,0 +1,36 @@
+boilerplate-file: ".mockery_boilerplate_text.txt"
+dir: "{{.InterfaceDir}}/mocks"
+filename: "mock_{{.InterfaceNameSnake}}.go"
+outpkg: "mocks"
+mockname: "{{.InterfaceName}}"
+resolve-type-alias: False
+issue-845-fix: True
+
+packages:
+  github.com/kont1n/MSA_Rocket_Factory/inventory/internal/service:
+    config:
+      include-regex: ".*Service"
+
+  github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository:
+    config:
+      include-regex: ".*Repository"
+
+  github.com/kont1n/MSA_Rocket_Factory/order/internal/service:
+    config:
+      include-regex: ".*Service"
+
+  github.com/kont1n/MSA_Rocket_Factory/order/internal/repository:
+    config:
+      include-regex: ".*Repository"
+
+  github.com/kont1n/MSA_Rocket_Factory/payment/internal/service:
+    config:
+      include-regex: ".*Service"
+
+  github.com/kont1n/MSA_Rocket_Factory/payment/internal/repository:
+    config:
+      include-regex: ".*Repository"
+
+  github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc:
+    config:
+      include-regex: ".*Client"

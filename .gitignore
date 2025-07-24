@@ -25,8 +25,11 @@ go.work.sum
 .env
 .idea
 .vscode
-.cursor
+.cursor/
 
 # folder for downloaded files
 bin/
+bundles/
 node_modules/
+coverage/
+docs/

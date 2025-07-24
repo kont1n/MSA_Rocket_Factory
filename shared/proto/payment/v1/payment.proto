@@ -5,11 +5,18 @@ package payment.v1;
 
 option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1;payment_v1";
 
+import "google/api/annotations.proto";
+
 // PaymentService предоставляет API для оплаты заказов
 service PaymentService {
 
   // PayOrder оплачивает заказ
-  rpc PayOrder(PayOrderRequest) returns (PayOrderResponse);
+  rpc PayOrder(PayOrderRequest) returns (PayOrderResponse) {
+    option (google.api.http) = {
+      post: "/v1/payment/pay"
+      body: "*"
+    };
+  }
 }
 
 // PayOrderRequest запрашивает оплату заказа
