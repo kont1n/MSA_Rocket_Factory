@@ -1,4 +1,5 @@
 # MSA_Rocket_Factory
+![Coverage](https://img.shields.io/badge/Coverage-0.0%25-red)
 ![Lint](./lint-badge.svg)
 ![Tests](./test-badge.svg)
 [![Coverage_Report](https://img.shields.io/badge/Coverage_Report-0.0%25-red)](https://kont1n.github.io/MSA_Rocket_Factory)
