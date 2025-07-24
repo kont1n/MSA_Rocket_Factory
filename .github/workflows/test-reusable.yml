@@ -45,63 +45,187 @@ jobs:
         uses: arduino/setup-task@v2.0.0
 
       - name: 🧪 Run unit tests via Taskfile
+        id: test_step
+        continue-on-error: true
         env:
           MODULES: ${{ inputs.modules }}
-        run: task test
-
-      - name: 🏷️ Generate test status badge
-        if: github.ref == 'refs/heads/main'
         run: |
-          # Генерируем SVG бейдж для статуса тестов
-          if [ "${{ job.status }}" = "success" ]; then
-            color="4c1"
-            message="passing"
+          # Создаем директорию для отчетов
+          mkdir -p .github_pages/tests
+          
+          # Запускаем тесты и сохраняем результат
+          echo "🧪 Запуск unit тестов..."
+          if task test > test_output.txt 2>&1; then
+            echo "✅ Тесты прошли успешно"
+            echo "TEST_STATUS=success" >> $GITHUB_OUTPUT
+            test_result="success"
           else
-            color="e05d44"
-            message="failing"
+            echo "❌ Обнаружены ошибки в тестах"
+            echo "TEST_STATUS=failure" >> $GITHUB_OUTPUT
+            test_result="failure"
           fi
           
-          # Создаем SVG бейдж
-          cat > test-badge.svg << EOF
-          <svg xmlns="http://www.w3.org/2000/svg" width="99" height="20">
-            <linearGradient id="b" x2="0" y2="100%">
-              <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-              <stop offset="1" stop-opacity=".1"/>
-            </linearGradient>
-            <mask id="a">
-              <rect width="99" height="20" rx="3" fill="#fff"/>
-            </mask>
-            <g mask="url(#a)">
-              <path fill="#555" d="M0 0h61v20H0z"/>
-              <path fill="#$color" d="M61 0h38v20H61z"/>
-              <path fill="url(#b)" d="M0 0h99v20H0z"/>
-            </g>
-            <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
-              <text x="30.5" y="15" fill="#010101" fill-opacity=".3">Tests</text>
-              <text x="30.5" y="14">Tests</text>
-              <text x="80" y="15" fill="#010101" fill-opacity=".3">$message</text>
-              <text x="80" y="14">$message</text>
-            </g>
-          </svg>
+          # Создаем HTML отчет
+          cat > .github_pages/tests/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>🧪 Test Report</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                      line-height: 1.6;
+                      color: #24292f;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      background: #ffffff;
+                  }
+                  .header {
+                      text-align: center;
+                      padding: 20px 0;
+                      border-bottom: 2px solid #e1e4e8;
+                      margin-bottom: 30px;
+                  }
+                  .status-success {
+                      background: #dcfce7;
+                      color: #15803d;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bbf7d0;
+                  }
+                  .status-failure {
+                      background: #fef2f2;
+                      color: #dc2626;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #fecaca;
+                  }
+                  .report-content {
+                      background: #f6f8fa;
+                      padding: 20px;
+                      border-radius: 8px;
+                      border: 1px solid #d1d9e0;
+                      font-family: 'SF Mono', Consolas, monospace;
+                      white-space: pre-wrap;
+                      font-size: 14px;
+                      overflow-x: auto;
+                  }
+                  .info {
+                      background: #f0f9ff;
+                      color: #0369a1;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bae6fd;
+                      margin: 20px 0;
+                  }
+                  .navigation {
+                      text-align: center;
+                      margin: 30px 0;
+                  }
+                  .nav-link {
+                      display: inline-block;
+                      margin: 0 10px;
+                      padding: 8px 16px;
+                      background: #f6f8fa;
+                      color: #24292f;
+                      text-decoration: none;
+                      border-radius: 6px;
+                      border: 1px solid #d1d9e0;
+                  }
+                  .nav-link:hover {
+                      background: #e1e4e8;
+                  }
+                  .test-summary {
+                      background: #f8fafc;
+                      padding: 15px;
+                      border-radius: 8px;
+                      border: 1px solid #e2e8f0;
+                      margin: 20px 0;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>🧪 Test Report</h1>
           EOF
+          
+          # Добавляем статус в HTML
+          if [ "$test_result" = "success" ]; then
+              echo '        <div class="status-success">✅ Все тесты прошли успешно</div>' >> .github_pages/tests/index.html
+          else
+              echo '        <div class="status-failure">❌ Обнаружены ошибки в тестах</div>' >> .github_pages/tests/index.html
+          fi
+          
+          # Завершаем header и добавляем навигацию
+          cat >> .github_pages/tests/index.html << 'EOF'
+              </div>
+              
+              <div class="navigation">
+                  <a href="../" class="nav-link">📊 Coverage Report</a>
+                  <a href="./" class="nav-link">🧪 Test Report</a>
+                  <a href="../lint/" class="nav-link">🔍 Lint Report</a>
+              </div>
+              
+              <div class="info">
+                  <strong>Отчет сгенерирован:</strong> 
+          EOF
+          
+          echo "$(date)" >> .github_pages/tests/index.html
+          echo '<br><strong>Commit:</strong> ${{ github.sha }}' >> .github_pages/tests/index.html
+          echo '<br><strong>Branch:</strong> ${{ github.ref_name }}' >> .github_pages/tests/index.html
+          
+          # Извлекаем краткую статистику тестов из вывода
+          test_summary=""
+          if [ -f test_output.txt ]; then
+            # Ищем строки с результатами тестов
+            passed_count=$(grep -o "PASS.*" test_output.txt | wc -l | tr -d ' ')
+            failed_count=$(grep -o "FAIL.*" test_output.txt | wc -l | tr -d ' ')
+            
+            if [ "$passed_count" -gt 0 ] || [ "$failed_count" -gt 0 ]; then
+              test_summary="<br><strong>Пройдено:</strong> $passed_count <strong>Провалено:</strong> $failed_count"
+            fi
+          fi
+          
+          cat >> .github_pages/tests/index.html << EOF
+              $test_summary
+              </div>
+              
+              <h2>📋 Результаты тестирования:</h2>
+              <div class="report-content">
+          EOF
+          
+          # Добавляем результат тестов в HTML, экранируя HTML символы
+          if [ -f test_output.txt ]; then
+              sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' test_output.txt >> .github_pages/tests/index.html
+          else
+              echo "Результаты тестирования недоступны" >> .github_pages/tests/index.html
+          fi
+          
+          cat >> .github_pages/tests/index.html << 'EOF'
+              </div>
+          </body>
+          </html>
+          EOF
+          
+          echo "📊 HTML отчет создан: .github_pages/tests/index.html"
 
-      - name: Проверить изменения бейджа
-        if: github.ref == 'refs/heads/main'
-        uses: tj-actions/verify-changed-files@v12
-        id: verify-test-badge-changed
+      - name: 📤 Upload test report artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: test-badge.svg
+          name: test-report
+          path: |
+            .github_pages/tests/
+            test_output.txt
+          retention-days: 30
 
-      - name: Коммит изменений бейджа
-        if: github.ref == 'refs/heads/main' && steps.verify-test-badge-changed.outputs.files_changed == 'true'
+      - name: 📋 Show test summary
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add test-badge.svg
-          git commit -m "chore: update test status badge"
-
-      - name: Пуш изменений бейджа
-        if: github.ref == 'refs/heads/main' && steps.verify-test-badge-changed.outputs.files_changed == 'true'
-        run: |
-          git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
-          git push origin HEAD:${{ github.ref_name }}
+          echo "🧪 Test Summary:"
+          echo "Status: ${{ steps.test_step.outputs.TEST_STATUS }}"
+          if [ -f test_output.txt ]; then
+            echo "📄 Output preview (last 15 lines):"
+            tail -15 test_output.txt
+          fi

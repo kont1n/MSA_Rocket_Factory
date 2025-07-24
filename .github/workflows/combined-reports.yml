@@ -1,0 +1,703 @@
+name: Combined Reports
+
+on:
+  workflow_call:
+    inputs:
+      modules:
+        required: true
+        type: string
+      go-version:
+        required: true
+        type: string
+      golangci-lint-version:
+        required: true
+        type: string
+
+jobs:
+  combined-reports:
+    name: Generate combined reports
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: 🛠️ Set up Go
+        uses: actions/setup-go@v5.4.0
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: 🗄️ Cache Go modules
+        uses: actions/cache@v4.2.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-v1-go-${{ hashFiles('**/go.sum', 'go.work.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-v1-go-
+
+      - name: 🔄 Install dependencies
+        run: |
+          go work sync
+          find . -name "go.mod" -type f | while read -r modfile; do
+            dir=$(dirname "$modfile")
+            echo "Processing module in: $dir"
+            cd "$dir"
+            go mod tidy
+            cd - > /dev/null
+          done
+
+      - name: 📌 Install Task
+        uses: arduino/setup-task@v2.0.0
+
+      - name: 📌 Install gocov-html
+        run: |
+          go install github.com/axw/gocov/gocov@v1
+          go install github.com/matm/gocov-html/cmd/gocov-html@v1
+
+      - name: 🔍 Run Lint
+        id: lint_step
+        continue-on-error: true
+        env:
+          MODULES: ${{ inputs.modules }}
+          GOLANGCI_LINT_VERSION: ${{ inputs.golangci-lint-version }}
+        run: |
+          echo "🔍 Запуск golangci-lint..."
+          mkdir -p .github_pages/lint
+          
+          if task lint > lint_output.txt 2>&1; then
+            echo "✅ Линт прошел успешно"
+            echo "LINT_STATUS=success" >> $GITHUB_OUTPUT
+            lint_result="success"
+          else
+            echo "❌ Найдены ошибки линтинга"
+            echo "LINT_STATUS=failure" >> $GITHUB_OUTPUT 
+            lint_result="failure"
+          fi
+          
+          # Создаем HTML отчет линтинга
+          cat > .github_pages/lint/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>🔍 Lint Report</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                      line-height: 1.6;
+                      color: #24292f;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      background: #ffffff;
+                  }
+                  .header {
+                      text-align: center;
+                      padding: 20px 0;
+                      border-bottom: 2px solid #e1e4e8;
+                      margin-bottom: 30px;
+                  }
+                  .status-success {
+                      background: #dcfce7;
+                      color: #15803d;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bbf7d0;
+                  }
+                  .status-failure {
+                      background: #fef2f2;
+                      color: #dc2626;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #fecaca;
+                  }
+                  .report-content {
+                      background: #f6f8fa;
+                      padding: 20px;
+                      border-radius: 8px;
+                      border: 1px solid #d1d9e0;
+                      font-family: 'SF Mono', Consolas, monospace;
+                      white-space: pre-wrap;
+                      font-size: 14px;
+                      overflow-x: auto;
+                  }
+                  .info {
+                      background: #f0f9ff;
+                      color: #0369a1;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bae6fd;
+                      margin: 20px 0;
+                  }
+                  .navigation {
+                      text-align: center;
+                      margin: 30px 0;
+                  }
+                  .nav-link {
+                      display: inline-block;
+                      margin: 0 10px;
+                      padding: 8px 16px;
+                      background: #f6f8fa;
+                      color: #24292f;
+                      text-decoration: none;
+                      border-radius: 6px;
+                      border: 1px solid #d1d9e0;
+                  }
+                  .nav-link:hover {
+                      background: #e1e4e8;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>🔍 Lint Report</h1>
+          EOF
+          
+          if [ "$lint_result" = "success" ]; then
+              echo '        <div class="status-success">✅ Линтинг прошел успешно - ошибок не найдено</div>' >> .github_pages/lint/index.html
+          else
+              echo '        <div class="status-failure">❌ Обнаружены ошибки линтинга</div>' >> .github_pages/lint/index.html
+          fi
+          
+          cat >> .github_pages/lint/index.html << 'EOF'
+              </div>
+              
+              <div class="navigation">
+                  <a href="../" class="nav-link">📊 Coverage Report</a>
+                  <a href="../tests/" class="nav-link">🧪 Test Report</a>
+                  <a href="./" class="nav-link">🔍 Lint Report</a>
+                  <a href="../reports.html" class="nav-link">📋 All Reports</a>
+              </div>
+              
+              <div class="info">
+                  <strong>Отчет сгенерирован:</strong> 
+          EOF
+          
+          echo "$(date)" >> .github_pages/lint/index.html
+          echo '<br><strong>Commit:</strong> ${{ github.sha }}' >> .github_pages/lint/index.html
+          echo '<br><strong>Branch:</strong> ${{ github.ref_name }}' >> .github_pages/lint/index.html
+          
+          cat >> .github_pages/lint/index.html << 'EOF'
+              </div>
+              
+              <h2>📋 Результаты линтинга:</h2>
+              <div class="report-content">
+          EOF
+          
+          if [ -f lint_output.txt ]; then
+              sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' lint_output.txt >> .github_pages/lint/index.html
+          else
+              echo "Результаты линтинга недоступны" >> .github_pages/lint/index.html
+          fi
+          
+          cat >> .github_pages/lint/index.html << 'EOF'
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: 🧪 Run Tests
+        id: test_step
+        continue-on-error: true
+        env:
+          MODULES: ${{ inputs.modules }}
+        run: |
+          echo "🧪 Запуск unit тестов..."
+          mkdir -p .github_pages/tests
+          
+          if task test > test_output.txt 2>&1; then
+            echo "✅ Тесты прошли успешно"
+            echo "TEST_STATUS=success" >> $GITHUB_OUTPUT
+            test_result="success"
+          else
+            echo "❌ Обнаружены ошибки в тестах"
+            echo "TEST_STATUS=failure" >> $GITHUB_OUTPUT
+            test_result="failure"
+          fi
+          
+          # Создаем HTML отчет тестов
+          cat > .github_pages/tests/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>🧪 Test Report</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                      line-height: 1.6;
+                      color: #24292f;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      background: #ffffff;
+                  }
+                  .header {
+                      text-align: center;
+                      padding: 20px 0;
+                      border-bottom: 2px solid #e1e4e8;
+                      margin-bottom: 30px;
+                  }
+                  .status-success {
+                      background: #dcfce7;
+                      color: #15803d;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bbf7d0;
+                  }
+                  .status-failure {
+                      background: #fef2f2;
+                      color: #dc2626;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #fecaca;
+                  }
+                  .report-content {
+                      background: #f6f8fa;
+                      padding: 20px;
+                      border-radius: 8px;
+                      border: 1px solid #d1d9e0;
+                      font-family: 'SF Mono', Consolas, monospace;
+                      white-space: pre-wrap;
+                      font-size: 14px;
+                      overflow-x: auto;
+                  }
+                  .info {
+                      background: #f0f9ff;
+                      color: #0369a1;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bae6fd;
+                      margin: 20px 0;
+                  }
+                  .navigation {
+                      text-align: center;
+                      margin: 30px 0;
+                  }
+                  .nav-link {
+                      display: inline-block;
+                      margin: 0 10px;
+                      padding: 8px 16px;
+                      background: #f6f8fa;
+                      color: #24292f;
+                      text-decoration: none;
+                      border-radius: 6px;
+                      border: 1px solid #d1d9e0;
+                  }
+                  .nav-link:hover {
+                      background: #e1e4e8;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>🧪 Test Report</h1>
+          EOF
+          
+          if [ "$test_result" = "success" ]; then
+              echo '        <div class="status-success">✅ Все тесты прошли успешно</div>' >> .github_pages/tests/index.html
+          else
+              echo '        <div class="status-failure">❌ Обнаружены ошибки в тестах</div>' >> .github_pages/tests/index.html
+          fi
+          
+          cat >> .github_pages/tests/index.html << 'EOF'
+              </div>
+              
+              <div class="navigation">
+                  <a href="../" class="nav-link">📊 Coverage Report</a>
+                  <a href="./" class="nav-link">🧪 Test Report</a>
+                  <a href="../lint/" class="nav-link">🔍 Lint Report</a>
+                  <a href="../reports.html" class="nav-link">📋 All Reports</a>
+              </div>
+              
+              <div class="info">
+                  <strong>Отчет сгенерирован:</strong> 
+          EOF
+          
+          echo "$(date)" >> .github_pages/tests/index.html
+          echo '<br><strong>Commit:</strong> ${{ github.sha }}' >> .github_pages/tests/index.html
+          echo '<br><strong>Branch:</strong> ${{ github.ref_name }}' >> .github_pages/tests/index.html
+          
+          # Извлекаем краткую статистику тестов из вывода
+          test_summary=""
+          if [ -f test_output.txt ]; then
+            passed_count=$(grep -o "PASS.*" test_output.txt | wc -l | tr -d ' ')
+            failed_count=$(grep -o "FAIL.*" test_output.txt | wc -l | tr -d ' ')
+            
+            if [ "$passed_count" -gt 0 ] || [ "$failed_count" -gt 0 ]; then
+              test_summary="<br><strong>Пройдено:</strong> $passed_count <strong>Провалено:</strong> $failed_count"
+            fi
+          fi
+          
+          cat >> .github_pages/tests/index.html << EOF
+              $test_summary
+              </div>
+              
+              <h2>📋 Результаты тестирования:</h2>
+              <div class="report-content">
+          EOF
+          
+          if [ -f test_output.txt ]; then
+              sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' test_output.txt >> .github_pages/tests/index.html
+          else
+              echo "Результаты тестирования недоступны" >> .github_pages/tests/index.html
+          fi
+          
+          cat >> .github_pages/tests/index.html << 'EOF'
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: 📊 Run Coverage
+        run: |
+          echo "📊 Генерация отчета покрытия..."
+          mkdir -p .github_pages
+          echo "mode: atomic" > coverage.out
+          
+          # Логика coverage аналогично существующему workflow
+          all_packages=()
+          modules_found=()
+          
+          while IFS= read -r modfile; do
+            dir=$(dirname "$modfile")
+            cd "$dir"
+            
+            module_packages=$(go list ./... 2>/dev/null || echo "")
+            if [ -n "$module_packages" ]; then
+              modules_found+=("$dir")
+              while IFS= read -r pkg; do
+                if [[ "$pkg" != *"/mocks"* ]] && [[ "$pkg" != *"/mocks/"* ]]; then
+                  all_packages+=("$pkg")
+                fi
+              done <<< "$module_packages"
+            fi
+            
+            cd - > /dev/null  
+          done < <(find . -name "go.mod" -type f)
+          
+          if [ ${#all_packages[@]} -gt 0 ]; then
+            coverpkg_list=$(IFS=','; echo "${all_packages[*]}")
+            
+            for module_dir in "${modules_found[@]}"; do
+              cd "$module_dir"
+              
+              if find . -name "*_test.go" -type f | grep -q .; then
+                if go test -v ./... -coverprofile=tmp_coverage.out -covermode=atomic -coverpkg="$coverpkg_list" 2>&1; then
+                  if [ -f tmp_coverage.out ]; then
+                    coverage_lines=$(tail -n +2 tmp_coverage.out | wc -l)
+                    
+                    if [ "$coverage_lines" -gt 0 ]; then
+                      tail -n +2 tmp_coverage.out | while IFS= read -r line; do
+                        file_path=$(echo "$line" | cut -d' ' -f1)
+                        
+                        if [[ "$file_path" == *"/mocks/"* ]] || [[ "$file_path" == *"cmd/main.go"* ]]; then
+                          continue
+                        fi
+                        
+                        echo "$line"
+                      done >> ../../coverage.out
+                    fi
+                    
+                    rm tmp_coverage.out
+                  fi
+                fi
+              fi
+              
+              cd - > /dev/null
+            done
+            
+            # Удаляем дубликаты
+            if [ -f coverage.out ]; then
+              coverage_lines_final=$(($(wc -l < coverage.out) - 1))
+              
+              if [ "$coverage_lines_final" -gt 1 ]; then
+                (head -1 coverage.out; tail -n +2 coverage.out | sort -u) > coverage_clean.out
+                mv coverage_clean.out coverage.out
+              fi
+            fi
+            
+            # Генерируем отчеты
+            if [ -s coverage.out ] && [ $(wc -l < coverage.out) -gt 1 ]; then
+              if go tool cover -func=coverage.out > cover.out 2>&1; then              
+                if gocov convert coverage.out | gocov-html > .github_pages/index.html 2>&1; then
+                  # Добавляем навигацию к HTML отчету покрытия
+                  sed -i '/<\/head>/i\
+                  <style>\
+                  .navigation {\
+                    position: fixed;\
+                    top: 10px;\
+                    right: 10px;\
+                    background: white;\
+                    padding: 10px;\
+                    border: 1px solid #ccc;\
+                    border-radius: 5px;\
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.2);\
+                    z-index: 1000;\
+                  }\
+                  .nav-link {\
+                    display: inline-block;\
+                    margin: 0 5px;\
+                    padding: 5px 10px;\
+                    background: #f6f8fa;\
+                    color: #24292f;\
+                    text-decoration: none;\
+                    border-radius: 3px;\
+                    border: 1px solid #d1d9e0;\
+                    font-size: 12px;\
+                  }\
+                  .nav-link:hover {\
+                    background: #e1e4e8;\
+                  }\
+                  </style>' .github_pages/index.html
+                  
+                  sed -i '/<body>/a\
+                  <div class="navigation">\
+                    <a href="./" class="nav-link">📊 Coverage</a>\
+                    <a href="./tests/" class="nav-link">🧪 Tests</a>\
+                    <a href="./lint/" class="nav-link">🔍 Lint</a>\
+                    <a href="./reports.html" class="nav-link">📋 All Reports</a>\
+                  </div>' .github_pages/index.html
+                else
+                  echo "<html><body><h1>Failed to generate coverage report</h1></body></html>" > .github_pages/index.html
+                fi
+              else
+                echo "total:                  (statements)   0.0%" > cover.out
+                echo "<html><body><h1>Failed to generate coverage report</h1></body></html>" > .github_pages/index.html
+              fi
+            else
+              echo "total:                  (statements)   0.0%" > cover.out
+              echo "<html><body><h1>No coverage data available</h1></body></html>" > .github_pages/index.html
+            fi
+          fi
+
+      - name: 🔗 Create main reports index
+        run: |
+          # Создаем главную страницу с навигацией между отчетами
+          cat > .github_pages/reports.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>📊 Reports Dashboard</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                      line-height: 1.6;
+                      color: #24292f;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      background: #ffffff;
+                  }
+                  .header {
+                      text-align: center;
+                      padding: 20px 0;
+                      border-bottom: 2px solid #e1e4e8;
+                      margin-bottom: 30px;
+                  }
+                  .reports-grid {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                      gap: 20px;
+                      margin: 30px 0;
+                  }
+                  .report-card {
+                      background: #f6f8fa;
+                      border: 1px solid #d1d9e0;
+                      border-radius: 8px;
+                      padding: 20px;
+                      text-align: center;
+                      transition: box-shadow 0.2s;
+                  }
+                  .report-card:hover {
+                      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                  }
+                  .report-link {
+                      display: block;
+                      color: #0969da;
+                      text-decoration: none;
+                      font-weight: 600;
+                      font-size: 18px;
+                      margin: 10px 0;
+                  }
+                  .report-link:hover {
+                      text-decoration: underline;
+                  }
+                  .report-desc {
+                      color: #656d76;
+                      font-size: 14px;
+                  }
+                  .info {
+                      background: #f0f9ff;
+                      color: #0369a1;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bae6fd;
+                      margin: 20px 0;
+                      text-align: center;
+                  }
+                  .status-overview {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                      gap: 15px;
+                      margin: 20px 0;
+                  }
+                  .status-item {
+                      padding: 10px;
+                      border-radius: 6px;
+                      text-align: center;
+                      font-weight: 600;
+                  }
+                  .status-success { background: #dcfce7; color: #15803d; }
+                  .status-failure { background: #fef2f2; color: #dc2626; }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>📊 MSA Rocket Factory - Reports Dashboard</h1>
+              </div>
+              
+              <div class="info">
+                  <strong>Последнее обновление:</strong> $(date)<br>
+                  <strong>Commit:</strong> ${{ github.sha }}<br>
+                  <strong>Branch:</strong> ${{ github.ref_name }}
+              </div>
+              
+              <div class="status-overview">
+                  <div class="status-item $([[ "${{ steps.lint_step.outputs.LINT_STATUS }}" == "success" ]] && echo "status-success" || echo "status-failure")">
+                      🔍 Lint: ${{ steps.lint_step.outputs.LINT_STATUS }}
+                  </div>
+                  <div class="status-item $([[ "${{ steps.test_step.outputs.TEST_STATUS }}" == "success" ]] && echo "status-success" || echo "status-failure")">
+                      🧪 Tests: ${{ steps.test_step.outputs.TEST_STATUS }}
+                  </div>
+                  <div class="status-item status-success">
+                      📊 Coverage: Generated
+                  </div>
+              </div>
+              
+              <div class="reports-grid">
+                  <div class="report-card">
+                      <h2>📊</h2>
+                      <a href="./" class="report-link">Coverage Report</a>
+                      <p class="report-desc">Отчет о покрытии кода тестами с детальной информацией по файлам и функциям</p>
+                  </div>
+                  
+                  <div class="report-card">
+                      <h2>🧪</h2>
+                      <a href="./tests/" class="report-link">Test Report</a>
+                      <p class="report-desc">Результаты выполнения unit тестов по всем модулям проекта</p>
+                  </div>
+                  
+                  <div class="report-card">
+                      <h2>🔍</h2> 
+                      <a href="./lint/" class="report-link">Lint Report</a>
+                      <p class="report-desc">Результаты статического анализа кода с помощью golangci-lint</p>
+                  </div>
+              </div>
+              
+              <div style="text-align: center; margin-top: 40px; color: #656d76;">
+                  <p>🚀 Generated by MSA Rocket Factory CI/CD Pipeline</p>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      # Update coverage badge
+      - name: Update coverage Badge
+        if: github.ref == 'refs/heads/main'
+        uses: tj-actions/coverage-badge-go@v2
+        with:
+          filename: cover.out
+          green: 80
+          yellow: 40
+          target: README.md
+
+      - name: Verify Changed files
+        if: github.ref == 'refs/heads/main'
+        uses: tj-actions/verify-changed-files@v12
+        id: verify-changed-files
+        with:
+          files: README.md
+
+      - name: Commit changes
+        if: github.ref == 'refs/heads/main' && steps.verify-changed-files.outputs.files_changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "chore: Updated coverage badge."
+
+      - name: Push changes
+        if: github.ref == 'refs/heads/main' && steps.verify-changed-files.outputs.files_changed == 'true'
+        run: |
+          git push origin HEAD:${{ github.ref_name }}
+
+      # Pages setup and deployment
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Artifact for Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .github_pages/
+
+      - name: Upload Combined Report as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-reports
+          path: |
+            .github_pages/
+            coverage.out
+            cover.out
+            lint_output.txt
+            test_output.txt
+          retention-days: 30
+
+  deploy:
+    needs: combined-reports
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    # Деплоим только для main ветки
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy reports to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Check deployment status
+        if: steps.deployment.outcome == 'success'
+        run: |
+          echo "✅ Combined reports successfully deployed to GitHub Pages"
+          echo "📊 Reports available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+
+      - name: Deployment failed notice
+        if: steps.deployment.outcome == 'failure'
+        run: |
+          echo "⚠️ GitHub Pages deployment failed"
+          echo "📋 Reports are available as an artifact: combined-reports" 

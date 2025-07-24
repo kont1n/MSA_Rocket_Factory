@@ -218,6 +218,43 @@ jobs:
               # Генерируем HTML отчет
               if gocov convert coverage.out | gocov-html > .github_pages/index.html 2>&1; then
                 echo "✅ HTML coverage report generated"
+                
+                # Добавляем навигацию к HTML отчету покрытия
+                sed -i '/<\/head>/i\
+                <style>\
+                .navigation {\
+                  position: fixed;\
+                  top: 10px;\
+                  right: 10px;\
+                  background: white;\
+                  padding: 10px;\
+                  border: 1px solid #ccc;\
+                  border-radius: 5px;\
+                  box-shadow: 0 2px 5px rgba(0,0,0,0.2);\
+                  z-index: 1000;\
+                }\
+                .nav-link {\
+                  display: inline-block;\
+                  margin: 0 5px;\
+                  padding: 5px 10px;\
+                  background: #f6f8fa;\
+                  color: #24292f;\
+                  text-decoration: none;\
+                  border-radius: 3px;\
+                  border: 1px solid #d1d9e0;\
+                  font-size: 12px;\
+                }\
+                .nav-link:hover {\
+                  background: #e1e4e8;\
+                }\
+                </style>' .github_pages/index.html
+                
+                sed -i '/<body>/a\
+                <div class="navigation">\
+                  <a href="./" class="nav-link">📊 Coverage</a>\
+                  <a href="./reports.html" class="nav-link">📋 All Reports</a>\
+                </div>' .github_pages/index.html
+                
               else
                 echo "❌ Failed to generate HTML report"
                 echo "<html><body><h1>Failed to generate coverage report</h1></body></html>" > .github_pages/index.html
@@ -237,6 +274,117 @@ jobs:
           # Показываем содержимое cover.out для отладки
           echo "🔍 Content of cover.out:"
           cat cover.out || echo "cover.out not found"
+
+      - name: 🔗 Create main reports index
+        run: |
+          echo "🔗 Создание индекса отчетов..."
+          
+          # Создаем главную страницу с навигацией между отчетами
+          cat > .github_pages/reports.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>📊 Reports Dashboard</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                      line-height: 1.6;
+                      color: #24292f;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      background: #ffffff;
+                  }
+                  .header {
+                      text-align: center;
+                      padding: 20px 0;
+                      border-bottom: 2px solid #e1e4e8;
+                      margin-bottom: 30px;
+                  }
+                  .reports-grid {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                      gap: 20px;
+                      margin: 30px 0;
+                  }
+                  .report-card {
+                      background: #f6f8fa;
+                      border: 1px solid #d1d9e0;
+                      border-radius: 8px;
+                      padding: 20px;
+                      text-align: center;
+                      transition: box-shadow 0.2s;
+                  }
+                  .report-card:hover {
+                      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                  }
+                  .report-link {
+                      display: block;
+                      color: #0969da;
+                      text-decoration: none;
+                      font-weight: 600;
+                      font-size: 18px;
+                      margin: 10px 0;
+                  }
+                  .report-link:hover {
+                      text-decoration: underline;
+                  }
+                  .report-desc {
+                      color: #656d76;
+                      font-size: 14px;
+                  }
+                  .info {
+                      background: #f0f9ff;
+                      color: #0369a1;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bae6fd;
+                      margin: 20px 0;
+                      text-align: center;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>📊 MSA Rocket Factory - Reports Dashboard</h1>
+              </div>
+              
+              <div class="info">
+                  <strong>Последнее обновление:</strong> $(date)<br>
+                  <strong>Commit:</strong> ${{ github.sha }}<br>
+                  <strong>Branch:</strong> ${{ github.ref_name }}
+              </div>
+              
+              <div class="reports-grid">
+                  <div class="report-card">
+                      <h2>📊</h2>
+                      <a href="./" class="report-link">Coverage Report</a>
+                      <p class="report-desc">Отчет о покрытии кода тестами с детальной информацией по файлам и функциям</p>
+                  </div>
+                  
+                  <div class="report-card">
+                      <h2>🧪</h2>
+                      <a href="./tests/" class="report-link">Test Report</a>
+                      <p class="report-desc">Результаты выполнения unit тестов по всем модулям проекта</p>
+                  </div>
+                  
+                  <div class="report-card">
+                      <h2>🔍</h2> 
+                      <a href="./lint/" class="report-link">Lint Report</a>
+                      <p class="report-desc">Результаты статического анализа кода с помощью golangci-lint</p>
+                  </div>
+              </div>
+              
+              <div style="text-align: center; margin-top: 40px; color: #656d76;">
+                  <p>🚀 Generated by MSA Rocket Factory CI/CD Pipeline</p>
+              </div>
+          </body>
+          </html>
+          EOF
+          
+          echo "✅ Главная страница отчетов создана"
 
       # pages
       - name: Setup Pages

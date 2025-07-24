@@ -51,64 +51,168 @@ jobs:
         uses: arduino/setup-task@v2.0.0
 
       - name: ✅ Run golangci-lint via Taskfile
+        id: lint_step
+        continue-on-error: true
         env:
           MODULES: ${{ inputs.modules }}
           GOLANGCI_LINT_VERSION: ${{ inputs.golangci-lint-version }}
-        run: task lint
-
-      - name: 🏷️ Generate lint status badge
-        if: github.ref == 'refs/heads/main'
         run: |
-          # Генерируем SVG бейдж для статуса линта
-          if [ "${{ job.status }}" = "success" ]; then
-            color="4c1"
-            message="passing"
+          # Создаем директорию для отчетов
+          mkdir -p .github_pages/lint
+          
+          # Запускаем линтер и сохраняем результат
+          echo "🔍 Запуск golangci-lint..."
+          if task lint > lint_output.txt 2>&1; then
+            echo "✅ Линт прошел успешно"
+            echo "LINT_STATUS=success" >> $GITHUB_OUTPUT
+            lint_result="success"
           else
-            color="e05d44"
-            message="failing"
+            echo "❌ Найдены ошибки линтинга"
+            echo "LINT_STATUS=failure" >> $GITHUB_OUTPUT 
+            lint_result="failure"
           fi
           
-          # Создаем SVG бейдж
-          cat > lint-badge.svg << EOF
-          <svg xmlns="http://www.w3.org/2000/svg" width="99" height="20">
-            <linearGradient id="b" x2="0" y2="100%">
-              <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-              <stop offset="1" stop-opacity=".1"/>
-            </linearGradient>
-            <mask id="a">
-              <rect width="99" height="20" rx="3" fill="#fff"/>
-            </mask>
-            <g mask="url(#a)">
-              <path fill="#555" d="M0 0h61v20H0z"/>
-              <path fill="#$color" d="M61 0h38v20H61z"/>
-              <path fill="url(#b)" d="M0 0h99v20H0z"/>
-            </g>
-            <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
-              <text x="30.5" y="15" fill="#010101" fill-opacity=".3">Lint</text>
-              <text x="30.5" y="14">Lint</text>
-              <text x="80" y="15" fill="#010101" fill-opacity=".3">$message</text>
-              <text x="80" y="14">$message</text>
-            </g>
-          </svg>
+          # Создаем HTML отчет
+          cat > .github_pages/lint/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>🔍 Lint Report</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                      line-height: 1.6;
+                      color: #24292f;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      background: #ffffff;
+                  }
+                  .header {
+                      text-align: center;
+                      padding: 20px 0;
+                      border-bottom: 2px solid #e1e4e8;
+                      margin-bottom: 30px;
+                  }
+                  .status-success {
+                      background: #dcfce7;
+                      color: #15803d;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bbf7d0;
+                  }
+                  .status-failure {
+                      background: #fef2f2;
+                      color: #dc2626;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #fecaca;
+                  }
+                  .report-content {
+                      background: #f6f8fa;
+                      padding: 20px;
+                      border-radius: 8px;
+                      border: 1px solid #d1d9e0;
+                      font-family: 'SF Mono', Consolas, monospace;
+                      white-space: pre-wrap;
+                      font-size: 14px;
+                      overflow-x: auto;
+                  }
+                  .info {
+                      background: #f0f9ff;
+                      color: #0369a1;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bae6fd;
+                      margin: 20px 0;
+                  }
+                  .navigation {
+                      text-align: center;
+                      margin: 30px 0;
+                  }
+                  .nav-link {
+                      display: inline-block;
+                      margin: 0 10px;
+                      padding: 8px 16px;
+                      background: #f6f8fa;
+                      color: #24292f;
+                      text-decoration: none;
+                      border-radius: 6px;
+                      border: 1px solid #d1d9e0;
+                  }
+                  .nav-link:hover {
+                      background: #e1e4e8;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>🔍 Lint Report</h1>
           EOF
+          
+          # Добавляем статус в HTML
+          if [ "$lint_result" = "success" ]; then
+              echo '        <div class="status-success">✅ Линтинг прошел успешно - ошибок не найдено</div>' >> .github_pages/lint/index.html
+          else
+              echo '        <div class="status-failure">❌ Обнаружены ошибки линтинга</div>' >> .github_pages/lint/index.html
+          fi
+          
+          # Завершаем header и добавляем навигацию
+          cat >> .github_pages/lint/index.html << 'EOF'
+              </div>
+              
+              <div class="navigation">
+                  <a href="../" class="nav-link">📊 Coverage Report</a>
+                  <a href="../tests/" class="nav-link">🧪 Test Report</a>
+                  <a href="./" class="nav-link">🔍 Lint Report</a>
+              </div>
+              
+              <div class="info">
+                  <strong>Отчет сгенерирован:</strong> 
+          EOF
+          
+          echo "$(date)" >> .github_pages/lint/index.html
+          echo '<br><strong>Commit:</strong> ${{ github.sha }}' >> .github_pages/lint/index.html
+          echo '<br><strong>Branch:</strong> ${{ github.ref_name }}' >> .github_pages/lint/index.html
+          
+          cat >> .github_pages/lint/index.html << 'EOF'
+              </div>
+              
+              <h2>📋 Результаты линтинга:</h2>
+              <div class="report-content">
+          EOF
+          
+          # Добавляем результат линтинга в HTML, экранируя HTML символы
+          if [ -f lint_output.txt ]; then
+              sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' lint_output.txt >> .github_pages/lint/index.html
+          else
+              echo "Результаты линтинга недоступны" >> .github_pages/lint/index.html
+          fi
+          
+          cat >> .github_pages/lint/index.html << 'EOF'
+              </div>
+          </body>
+          </html>
+          EOF
+          
+          echo "📊 HTML отчет создан: .github_pages/lint/index.html"
 
-      - name: Проверить изменения бейджа линта
-        if: github.ref == 'refs/heads/main'
-        uses: tj-actions/verify-changed-files@v12
-        id: verify-lint-badge-changed
+      - name: 📤 Upload lint report artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: lint-badge.svg
+          name: lint-report
+          path: |
+            .github_pages/lint/
+            lint_output.txt
+          retention-days: 30
 
-      - name: Коммит изменений бейджа линта
-        if: github.ref == 'refs/heads/main' && steps.verify-lint-badge-changed.outputs.files_changed == 'true'
+      - name: 📋 Show lint summary  
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add lint-badge.svg
-          git commit -m "chore: update lint status badge"
-
-      - name: Пуш изменений бейджа линта
-        if: github.ref == 'refs/heads/main' && steps.verify-lint-badge-changed.outputs.files_changed == 'true'
-        run: |
-          git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
-          git push origin HEAD:${{ github.ref_name }}
+          echo "🔍 Lint Summary:"
+          echo "Status: ${{ steps.lint_step.outputs.LINT_STATUS }}"
+          if [ -f lint_output.txt ]; then
+            echo "📄 Output preview (last 10 lines):"
+            tail -10 lint_output.txt
+          fi
