@@ -1,2 +1,2 @@
-// Code generated for kont1n service
-// © kont1n 2025.
+// Code generated for service
+// © 2025.

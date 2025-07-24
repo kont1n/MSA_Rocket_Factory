@@ -15,11 +15,11 @@ type repository struct {
 }
 
 func NewRepository() *repository {
-	repo := &repository{	
+	repo := &repository{
 		data: make(map[string]*repoModel.RepositoryPart),
 	}
 
-	TestData(repo)
+	repo.addTestData()
 
 	return repo
 }

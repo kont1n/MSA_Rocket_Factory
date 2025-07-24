@@ -7,7 +7,7 @@ import (
 
 type api struct {
 	inventoryV1.UnimplementedInventoryServiceServer
-	
+
 	inventoryService service.InventoryService
 }
 

@@ -2,19 +2,34 @@ package v1
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"log/slog"
 	"net/http"
 
+	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 )
 
 func (a *api) GetOrderByUUID(ctx context.Context, params orderV1.GetOrderByUUIDParams) (orderV1.GetOrderByUUIDRes, error) {
 	order, err := a.orderService.GetOrder(ctx, params.OrderUUID)
 	if err != nil {
-		return &orderV1.NotFoundError{
-			Code:    http.StatusNotFound,
-			Message: fmt.Sprint("Не удалось найти заказ с таким UUID: ", params.OrderUUID),
-		}, nil
+		slog.Error("Get order error", "order", params.OrderUUID, "error", err)
+
+		if errors.Is(err, model.ErrOrderNotFound) {
+			return &orderV1.NotFoundError{
+				Code:    http.StatusNotFound,
+				Message: "order not found",
+			}, nil
+		}
+
+		if errors.Is(err, model.ErrConvertFromRepo) {
+			return &orderV1.InternalServerError{
+				Code:    http.StatusInternalServerError,
+				Message: "cannot convert order from repository",
+			}, nil
+		}
+
+		return nil, err
 	}
 
 	return &orderV1.OrderDto{

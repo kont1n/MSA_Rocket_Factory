@@ -2,10 +2,9 @@ package order
 
 import (
 	"context"
-	"github.com/google/uuid"
+	"fmt"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/google/uuid"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
@@ -13,7 +12,7 @@ import (
 func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
 	// Проверяем что детали указаны и заполняем фильтр
 	if len(order.PartUUIDs) == 0 {
-		return nil, status.Error(codes.FailedPrecondition, "parts not specified")
+		return nil, model.ErrPartsSpecified
 	}
 	uuidFilter := model.Filter{
 		PartUUIDs: order.PartUUIDs,
@@ -22,10 +21,10 @@ func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Or
 	// Выполняем запрос к API инвентаря для получения деталей заказа
 	parts, err := s.inventoryClient.ListParts(ctx, &uuidFilter)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: failed to get list parts from inventory client: %w", err)
 	}
 	if len(*parts) != len(order.PartUUIDs) {
-		return nil, status.Error(codes.NotFound, "parts not found")
+		return nil, model.ErrPartsListNotFound
 	}
 
 	// Считаем общую стоимость заказа
@@ -41,7 +40,7 @@ func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Or
 	// Сохраняем заказ в хранилище
 	order, err = s.orderRepository.CreateOrder(ctx, order)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: failed to create order in repository: %w", err)
 	}
 	return order, nil
 }

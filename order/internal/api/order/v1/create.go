@@ -2,6 +2,8 @@ package v1
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -18,10 +20,37 @@ func (a *api) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) 
 
 	createOrder, err := a.orderService.CreateOrder(ctx, &orderDraft)
 	if err != nil {
-		return &orderV1.InternalServerError{
-			Code:    http.StatusInternalServerError,
-			Message: "Внутренняя ошибка сервиса - не удалось получить детали заказа",
-		}, nil
+		slog.Error("Create order error", "order:", req, "error:", err)
+
+		if errors.Is(err, model.ErrPartsSpecified) {
+			return &orderV1.BadRequestError{
+				Code:    http.StatusBadRequest,
+				Message: "parts not specified",
+			}, nil
+		}
+
+		if errors.Is(err, model.ErrPartsListNotFound) {
+			return &orderV1.NotFoundError{
+				Code:    http.StatusNotFound,
+				Message: "parts not found",
+			}, nil
+		}
+
+		if errors.Is(err, model.ErrConvertFromClient) {
+			return &orderV1.InternalServerError{
+				Code:    http.StatusInternalServerError,
+				Message: "can't parse part",
+			}, nil
+		}
+
+		if errors.Is(err, model.ErrInventoryClient) {
+			return &orderV1.InternalServerError{
+				Code:    http.StatusFailedDependency,
+				Message: "inventory client error",
+			}, nil
+		}
+
+		return nil, err
 	}
 
 	return &orderV1.CreateOrderResponse{

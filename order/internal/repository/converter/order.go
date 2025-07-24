@@ -2,11 +2,12 @@ package converter
 
 import (
 	"github.com/google/uuid"
+
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/model"
 )
 
-func ModelToRepo(order *model.Order) *repoModel.Order {
+func ToRepoOrder(order *model.Order) *repoModel.Order {
 	parts := make([]string, 0, len(order.PartUUIDs))
 	for _, partUUID := range order.PartUUIDs {
 		parts = append(parts, partUUID.String())
@@ -24,27 +25,27 @@ func ModelToRepo(order *model.Order) *repoModel.Order {
 	return repoOrder
 }
 
-func RepoToModel(repoOrder *repoModel.Order) (*model.Order, error) {
+func ToModelOrder(repoOrder *repoModel.Order) (*model.Order, error) {
 	orderId, err := uuid.Parse(repoOrder.OrderUUID)
 	if err != nil {
-		return nil, err
+		return nil, model.ErrConvertFromRepo
 	}
 
 	userId, err := uuid.Parse(repoOrder.UserUUID)
 	if err != nil {
-		return nil, err
+		return nil, model.ErrConvertFromRepo
 	}
 
 	transactionId, err := uuid.Parse(repoOrder.TransactionUUID)
 	if err != nil {
-		return nil, err
+		return nil, model.ErrConvertFromRepo
 	}
 
 	parts := make([]uuid.UUID, 0, len(repoOrder.PartUUIDs))
 	for _, partUUID := range repoOrder.PartUUIDs {
 		partId, err := uuid.Parse(partUUID)
 		if err != nil {
-			return nil, err
+			return nil, model.ErrConvertFromRepo
 		}
 		parts = append(parts, partId)
 	}

@@ -3,8 +3,9 @@ package inmemory
 import (
 	"context"
 
-	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
+	"github.com/samber/lo"
 
+	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 	repoConverter "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/converter"
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/model"
 )
@@ -23,8 +24,11 @@ func (r *repository) ListParts(ctx context.Context, filter *model.Filter) (*[]mo
 
 	parts := make([]model.Part, 0, len(partsFiltered))
 	for _, repoPart := range partsFiltered {
-		part := *repoConverter.RepoToModel(repoPart)
-		parts = append(parts, part)
+		part, err := repoConverter.ToModelPart(repoPart)
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts, lo.FromPtr(part))
 	}
 
 	return &parts, nil

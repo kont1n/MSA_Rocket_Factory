@@ -7,7 +7,7 @@ import (
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
-func ModelToProto(part *model.Part) *inventoryV1.Part {
+func ToProtoPart(part *model.Part) *inventoryV1.Part {
 	// Конвертируем Category из model.Category в inventoryV1.Category
 	var protoCategory inventoryV1.Category
 	switch part.Category {
@@ -20,7 +20,7 @@ func ModelToProto(part *model.Part) *inventoryV1.Part {
 	case model.WING:
 		protoCategory = inventoryV1.Category_CATEGORY_WING
 	default:
-		protoCategory = inventoryV1.Category_CATEGORY_PART_TYPE_UNSPECIFIED
+		protoCategory = inventoryV1.Category_CATEGORY_UNSPECIFIED
 	}
 
 	// Конвертируем Dimensions
@@ -42,13 +42,14 @@ func ModelToProto(part *model.Part) *inventoryV1.Part {
 	metadata := make(map[string]*inventoryV1.Value)
 	for key, value := range part.Metadata {
 		protoValue := &inventoryV1.Value{}
-		if value.StringValue != "" {
+		switch {
+		case value.StringValue != "":
 			protoValue.Kind = &inventoryV1.Value_StringValue{StringValue: value.StringValue}
-		} else if value.Int64Value != 0 {
+		case value.Int64Value != 0:
 			protoValue.Kind = &inventoryV1.Value_Int64Value{Int64Value: value.Int64Value}
-		} else if value.Float64Value != 0 {
+		case value.Float64Value != 0:
 			protoValue.Kind = &inventoryV1.Value_DoubleValue{DoubleValue: value.Float64Value}
-		} else if value.BoolValue {
+		case value.BoolValue:
 			protoValue.Kind = &inventoryV1.Value_BoolValue{BoolValue: value.BoolValue}
 		}
 		metadata[key] = protoValue
