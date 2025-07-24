@@ -61,10 +61,10 @@ jobs:
         run: |
           # Генерируем SVG бейдж для статуса линта
           if [ "${{ job.status }}" = "success" ]; then
-            color="brightgreen"
+            color="4c1"
             message="passing"
           else
-            color="red"
+            color="e05d44"
             message="failing"
           fi
           

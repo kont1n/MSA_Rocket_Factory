@@ -69,144 +69,127 @@ jobs:
       - name: Run tests
         run: |
           mkdir -p .github_pages
+          echo "mode: atomic" > coverage.out
           
-          # Проверяем, есть ли go.work файл (мультимодульный проект)
-          if [ -f "go.work" ]; then
-            echo "🏗️ Detected multi-module workspace with go.work"
-            
-            # Пробуем запустить тесты через workspace
-            echo "📊 Trying workspace-level coverage..."
-            if go test ./... -coverprofile=workspace_coverage.out -covermode=atomic 2>&1; then
-              echo "✅ Workspace tests successful"
-              mv workspace_coverage.out coverage.out
-            else
-              echo "❌ Workspace tests failed, falling back to per-module approach"
-              echo "mode: atomic" > coverage.out
-            fi
-          else
-            echo "📁 Standard single/multi-module project"
-            echo "mode: atomic" > coverage.out
-          fi
+          # Собираем все пакеты из всех модулей для правильного покрытия
+          echo "🔍 Collecting all packages from all modules..."
+          all_packages=()
+          modules_found=()
           
-          # Счетчик для отслеживания модулей с тестами
-          modules_with_tests=0
-          total_modules=0
-          
-          # Проверяем, нужно ли обрабатывать модули индивидуально
-          coverage_lines_existing=$(($(wc -l < coverage.out) - 1))
-          
-          if [ "$coverage_lines_existing" -gt 0 ]; then
-            echo "✅ Already have coverage data from workspace, skipping per-module collection"
-          else
-            echo "📁 Collecting coverage from individual modules..."
-            
-            # Запускаем тесты во всех модулях и объединяем результаты
-            while IFS= read -r modfile; do
+          while IFS= read -r modfile; do
             dir=$(dirname "$modfile")
-            echo "🔍 Processing module: $dir"
-            total_modules=$((total_modules + 1))
+            echo "📦 Processing module in: $dir"
             cd "$dir"
             
-            # Проверяем наличие тестовых файлов
-            if find . -name "*_test.go" -type f | grep -q .; then
-              echo "📝 Found test files in $dir"
-              
-              # Запускаем тесты исключая mock файлы и cmd/main.go
-              if go test ./... -coverprofile=tmp_coverage.out -covermode=atomic -coverpkg=./... 2>&1; then
-                echo "✅ Tests passed in $dir"
-                
-                if [ -f tmp_coverage.out ]; then
-                  # Подсчитываем строки покрытия (исключая заголовок)
-                  coverage_lines=$(tail -n +2 tmp_coverage.out | wc -l)
-                  echo "📊 Coverage lines found: $coverage_lines"
-                  
-                  if [ "$coverage_lines" -gt 0 ]; then
-                    modules_with_tests=$((modules_with_tests + 1))
-                    
-                    # Простая обработка: добавляем префикс директории только если нужно
-                    tail -n +2 tmp_coverage.out | while IFS= read -r line; do
-                      # Извлекаем путь к файлу (первое поле)
-                      file_path=$(echo "$line" | cut -d' ' -f1)
-                      
-                      # Пропускаем mock файлы и main.go
-                      if [[ "$file_path" == *"/mocks/"* ]] || [[ "$file_path" == *"cmd/main.go"* ]]; then
-                        continue
-                      fi
-                      
-                      # Если путь относительный, добавляем префикс директории
-                      if [[ "$file_path" != /* ]] && [[ "$file_path" != github.com/* ]]; then
-                        # Убираем ./ если есть и добавляем префикс
-                        clean_path=$(echo "$file_path" | sed 's|^\./||')
-                        if [ "$dir" != "." ]; then
-                          file_path="$dir/$clean_path"
-                        else
-                          file_path="$clean_path"
-                        fi
-                        
-                        # Заменяем путь в строке
-                        echo "$line" | sed "s|^[^ ]*|$file_path|"
-                      else
-                        echo "$line"
-                      fi
-                    done >> ../../coverage.out
-                    
-                    echo "✅ Added coverage data from $dir"
-                  else
-                    echo "⚠️ No coverage data in $dir"
-                  fi
-                  
-                  rm tmp_coverage.out
-                else
-                  echo "❌ No coverage file generated in $dir"
+            # Получаем список всех пакетов в модуле
+            module_packages=$(go list ./... 2>/dev/null || echo "")
+            if [ -n "$module_packages" ]; then
+              modules_found+=("$dir")
+              while IFS= read -r pkg; do
+                # Исключаем mock пакеты 
+                if [[ "$pkg" != *"/mocks"* ]] && [[ "$pkg" != *"/mocks/"* ]]; then
+                  all_packages+=("$pkg")
                 fi
-              else
-                echo "❌ Tests failed in $dir, but continuing..."
-              fi
+              done <<< "$module_packages"
+              echo "✅ Added $(echo "$module_packages" | wc -l) packages from $dir"
             else
-              echo "ℹ️ No test files found in $dir"
+              echo "⚠️ No packages found in $dir"
             fi
             
-            cd - > /dev/null
+            cd - > /dev/null  
           done < <(find . -name "go.mod" -type f)
           
-          echo "📈 Processed $total_modules modules, $modules_with_tests with tests"
+          echo "📊 Total packages found: ${#all_packages[@]}"
+          echo "📁 Modules with packages: ${modules_found[*]}"
+          
+          # Показываем найденные пакеты для отладки
+          if [ ${#all_packages[@]} -gt 0 ]; then
+            echo "🔍 All packages to cover:"
+            printf '%s\n' "${all_packages[@]}" | head -10
+            if [ ${#all_packages[@]} -gt 10 ]; then
+              echo "... and $((${#all_packages[@]} - 10)) more"
+            fi
           fi
           
-          # Если все еще нет данных покрытия, попробуем альтернативный метод
-          coverage_lines_final=$(($(wc -l < coverage.out) - 1))
-          if [ "$coverage_lines_final" -eq 0 ]; then
-            echo "⚠️ No coverage data collected, trying alternative approach..."
+                    # Создаем строку с пакетами для -coverpkg параметра
+          if [ ${#all_packages[@]} -gt 0 ]; then
+            # Объединяем все пакеты через запятую для -coverpkg
+            coverpkg_list=$(IFS=','; echo "${all_packages[*]}")
+            echo "📋 Coverage package list: $coverpkg_list"
             
-            # Собираем все пакеты с тестами
-            test_packages=()
-            while IFS= read -r modfile; do
-              dir=$(dirname "$modfile")
-              cd "$dir"
+            # Запускаем тесты в каждом модуле с полным покрытием всех пакетов
+            modules_with_tests=0
+            total_modules=0
+            
+            for module_dir in "${modules_found[@]}"; do
+              echo "🔍 Running tests in module: $module_dir"
+              total_modules=$((total_modules + 1))
+              cd "$module_dir"
               
-              # Ищем все пакеты с тестами
+              # Проверяем наличие тестовых файлов
               if find . -name "*_test.go" -type f | grep -q .; then
-                # Получаем module path из go.mod
-                module_path=$(go list -m)
-                # Добавляем все подпакеты этого модуля
-                for pkg in $(go list ./...); do
-                  test_packages+=("$pkg")
-                done
+                echo "📝 Found test files in $module_dir"
+                
+                                 # Запускаем тесты с покрытием всех пакетов проекта
+                 echo "🧪 Running: go test ./... -coverprofile=tmp_coverage.out -covermode=atomic -coverpkg=\"$coverpkg_list\""
+                 if go test -v ./... -coverprofile=tmp_coverage.out -covermode=atomic -coverpkg="$coverpkg_list" 2>&1; then
+                  echo "✅ Tests passed in $module_dir"
+                  
+                  if [ -f tmp_coverage.out ]; then
+                    # Подсчитываем строки покрытия (исключая заголовок)
+                    coverage_lines=$(tail -n +2 tmp_coverage.out | wc -l)
+                    echo "📊 Coverage lines found: $coverage_lines"
+                    
+                    if [ "$coverage_lines" -gt 0 ]; then
+                      modules_with_tests=$((modules_with_tests + 1))
+                      
+                      # Добавляем данные покрытия, исключая mock файлы и main.go
+                      tail -n +2 tmp_coverage.out | while IFS= read -r line; do
+                        file_path=$(echo "$line" | cut -d' ' -f1)
+                        
+                        # Пропускаем mock файлы и main.go  
+                        if [[ "$file_path" == *"/mocks/"* ]] || [[ "$file_path" == *"cmd/main.go"* ]]; then
+                          continue
+                        fi
+                        
+                        echo "$line"
+                      done >> ../../coverage.out
+                      
+                      echo "✅ Added coverage data from $module_dir"
+                    else
+                      echo "⚠️ No coverage data in $module_dir"
+                    fi
+                    
+                    rm tmp_coverage.out
+                  else
+                    echo "❌ No coverage file generated in $module_dir"
+                  fi
+                else
+                  echo "❌ Tests failed in $module_dir, but continuing..."
+                fi
+              else
+                echo "ℹ️ No test files found in $module_dir"
               fi
               
               cd - > /dev/null
-            done < <(find . -name "go.mod" -type f)
+            done
             
-            if [ ${#test_packages[@]} -gt 0 ]; then
-              echo "🔍 Found ${#test_packages[@]} packages with potential tests"
-              echo "📊 Running alternative coverage collection..."
-              
-              # Попробуем запустить тесты для всех найденных пакетов
-              if go test -coverprofile=alt_coverage.out -covermode=atomic "${test_packages[@]}" 2>&1; then
-                echo "✅ Alternative method successful"
-                mv alt_coverage.out coverage.out
-              else
-                echo "❌ Alternative method also failed"
-              fi
+            echo "📈 Processed $total_modules modules, $modules_with_tests with tests"
+          else
+            echo "❌ No packages found, cannot run coverage tests"
+          fi
+          
+          # Удаляем дубликаты в файле покрытия, сохраняя заголовок
+          if [ -f coverage.out ]; then
+            coverage_lines_final=$(($(wc -l < coverage.out) - 1))
+            echo "📊 Final coverage data lines: $coverage_lines_final"
+            
+            if [ "$coverage_lines_final" -gt 1 ]; then
+              # Сортируем и удаляем дубликаты, сохраняя заголовок
+              echo "🧹 Removing duplicates from coverage data..."
+              (head -1 coverage.out; tail -n +2 coverage.out | sort -u) > coverage_clean.out
+              mv coverage_clean.out coverage.out
+              echo "✅ Coverage data cleaned"
             fi
           fi
           
