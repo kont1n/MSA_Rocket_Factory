@@ -2,6 +2,7 @@ package part_test
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,6 +51,6 @@ func (s *ServiceSuite) TestGetRepoError() {
 	// Проверка результата
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
-	assert.Equal(s.T(), expectedError, err)
+	assert.True(s.T(), errors.Is(err, expectedError))
 	s.inventoryRepo.AssertExpectations(s.T())
 }

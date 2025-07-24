@@ -1,6 +1,8 @@
 package converter
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
@@ -129,7 +131,7 @@ func (s *ConverterSuite) TestToModelOrder_InvalidOrderUUID() {
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
-	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
+	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
 }
 
 func (s *ConverterSuite) TestToModelOrder_InvalidUserUUID() {
@@ -154,7 +156,7 @@ func (s *ConverterSuite) TestToModelOrder_InvalidUserUUID() {
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
-	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
+	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
 }
 
 func (s *ConverterSuite) TestToModelOrder_InvalidTransactionUUID() {
@@ -179,7 +181,7 @@ func (s *ConverterSuite) TestToModelOrder_InvalidTransactionUUID() {
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
-	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
+	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
 }
 
 func (s *ConverterSuite) TestToModelOrder_InvalidPartUUID() {
@@ -204,7 +206,7 @@ func (s *ConverterSuite) TestToModelOrder_InvalidPartUUID() {
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
-	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
+	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
 }
 
 func (s *ConverterSuite) TestToModelOrder_EmptyParts() {

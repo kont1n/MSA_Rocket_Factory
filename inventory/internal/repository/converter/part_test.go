@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -106,7 +107,7 @@ func (s *ConverterSuite) TestToModelPart_InvalidUUID() {
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
-	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
+	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
 }
 
 func (s *ConverterSuite) TestToModelPart_EmptyUUID() {
@@ -132,7 +133,7 @@ func (s *ConverterSuite) TestToModelPart_EmptyUUID() {
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
-	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
+	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
 }
 
 func (s *ConverterSuite) TestToModelPart_AllCategories() {
