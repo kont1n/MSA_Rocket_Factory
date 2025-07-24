@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
@@ -10,7 +11,7 @@ func (s service) CancelOrder(ctx context.Context, order *model.Order) (*model.Or
 	// Получаем заказ по UUID
 	order, err := s.orderRepository.GetOrder(ctx, order.OrderUUID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: failed to get order from repository: %w", err)
 	}
 
 	// Проверяем статус заказа
@@ -25,7 +26,7 @@ func (s service) CancelOrder(ctx context.Context, order *model.Order) (*model.Or
 	// Сохраняем отмену заказа в хранилище
 	order, err = s.orderRepository.UpdateOrder(ctx, order)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: failed to update order in repository: %w", err)
 	}
 
 	return order, nil

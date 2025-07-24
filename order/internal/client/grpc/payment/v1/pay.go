@@ -18,12 +18,12 @@ func (p paymentClient) CreatePayment(ctx context.Context, order *model.Order) (*
 		PaymentMethod: converter.ToProtoPaymentMethod(order.PaymentMethod),
 	})
 	if err != nil {
-		return nil, err
+		return nil, model.ErrPaymentClient
 	}
 
 	transaction, err := uuid.Parse(response.GetTransactionUuid())
 	if err != nil {
-		return nil, err
+		return nil, model.ErrConvertFromClient
 	}
 
 	// Обновляем заказ

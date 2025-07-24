@@ -22,7 +22,7 @@ func ToModelPartsList(parts []*inventoryV1.Part) (*[]model.Part, error) {
 func ToModelPart(part *inventoryV1.Part) (*model.Part, error) {
 	id, err := uuid.Parse(part.PartUuid)
 	if err != nil {
-		return nil, err
+		return nil, model.ErrConvertFromClient
 	}
 	return &model.Part{
 		PartUUID:    id,

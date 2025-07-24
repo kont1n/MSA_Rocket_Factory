@@ -13,7 +13,7 @@ func (c inventoryClient) ListParts(ctx context.Context, filter *model.Filter) (*
 		Filter: converter.ToProtoFilter(filter),
 	})
 	if err != nil {
-		return nil, err
+		return nil, model.ErrInventoryClient
 	}
 
 	modelParts, err := converter.ToModelPartsList(parts.Parts)
