@@ -13,6 +13,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -20,7 +22,7 @@ import (
 	orderV1API "github.com/kont1n/MSA_Rocket_Factory/order/internal/api/order/v1"
 	invClient "github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc/inventory/v1"
 	payClient "github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc/payment/v1"
-	oredrRepository "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/inmemory"
+	oredrRepository "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/postgres"
 	oredrService "github.com/kont1n/MSA_Rocket_Factory/order/internal/service/order"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
@@ -38,6 +40,24 @@ const (
 
 func main() {
 	log.Printf("Order service starting...")
+
+	ctx := context.Background()
+
+	// Загружаем переменные окружения
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Printf("failed to load .env file: %v\n", err)
+		return
+	}
+	dbURI := os.Getenv("DB_URI")
+
+	// Подключаемся к Postgres
+	pool, err := pgxpool.New(ctx, dbURI)
+	if err != nil {
+		log.Printf("failed to connect to database: %v\n", err)
+		return
+	}
+	defer pool.Close()
 
 	// Создаем gRPC соединение к API платежа
 	paymentConn, err := grpc.NewClient(
@@ -75,7 +95,7 @@ func main() {
 	paymentClient := payClient.NewClient(paymentGRPC)
 	inventoryClient := invClient.NewClient(inventoryGRPC)
 
-	repo := oredrRepository.NewRepository()
+	repo := oredrRepository.NewRepository(pool)
 	service := oredrService.NewService(repo, inventoryClient, paymentClient)
 	api := orderV1API.NewAPI(service)
 
@@ -116,10 +136,10 @@ func main() {
 	log.Println("🛑 Завершение работы сервера...")
 
 	// Создаем контекст с таймаутом для остановки сервера
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	ctxTimeout, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 
-	err = server.Shutdown(ctx)
+	err = server.Shutdown(ctxTimeout)
 	if err != nil {
 		log.Printf("❌ Ошибка при остановке сервера: %v\n", err)
 	}
