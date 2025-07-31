@@ -8,7 +8,7 @@ import (
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
-func (s *ConverterSuite) TestPartsFilterToProto_CompleteFilter() {
+func (s *ConverterSuite) TestToProtoFilter_CompleteFilter() {
 	// Подготовка
 	partUUID1 := uuid.New()
 	partUUID2 := uuid.New()
@@ -36,7 +36,7 @@ func (s *ConverterSuite) TestPartsFilterToProto_CompleteFilter() {
 	}
 
 	// Выполнение
-	result := PartsFilterToProto(filter)
+	result := ToProtoFilter(filter)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -61,7 +61,7 @@ func (s *ConverterSuite) TestPartsFilterToProto_CompleteFilter() {
 	assert.Contains(s.T(), result.Tags, "fuel")
 }
 
-func (s *ConverterSuite) TestPartsFilterToProto_AllCategories() {
+func (s *ConverterSuite) TestToProtoFilter_AllCategories() {
 	// Подготовка
 	filter := &model.Filter{
 		Categories: []model.Category{
@@ -73,7 +73,7 @@ func (s *ConverterSuite) TestPartsFilterToProto_AllCategories() {
 	}
 
 	// Выполнение
-	result := PartsFilterToProto(filter)
+	result := ToProtoFilter(filter)
 
 	// Проверка
 	assert.Len(s.T(), result.Category, 4)
@@ -83,12 +83,12 @@ func (s *ConverterSuite) TestPartsFilterToProto_AllCategories() {
 	assert.Contains(s.T(), result.Category, inventoryV1.Category_CATEGORY_WING)
 }
 
-func (s *ConverterSuite) TestPartsFilterToProto_EmptyFilter() {
+func (s *ConverterSuite) TestToProtoFilter_EmptyFilter() {
 	// Подготовка
 	filter := &model.Filter{}
 
 	// Выполнение
-	result := PartsFilterToProto(filter)
+	result := ToProtoFilter(filter)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -99,7 +99,7 @@ func (s *ConverterSuite) TestPartsFilterToProto_EmptyFilter() {
 	assert.Empty(s.T(), result.Tags)
 }
 
-func (s *ConverterSuite) TestPartsFilterToProto_OnlyUUIDs() {
+func (s *ConverterSuite) TestToProtoFilter_OnlyUUIDs() {
 	// Подготовка
 	partUUID := uuid.New()
 	filter := &model.Filter{
@@ -107,7 +107,7 @@ func (s *ConverterSuite) TestPartsFilterToProto_OnlyUUIDs() {
 	}
 
 	// Выполнение
-	result := PartsFilterToProto(filter)
+	result := ToProtoFilter(filter)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -119,14 +119,14 @@ func (s *ConverterSuite) TestPartsFilterToProto_OnlyUUIDs() {
 	assert.Empty(s.T(), result.Tags)
 }
 
-func (s *ConverterSuite) TestPartsFilterToProto_OnlyNames() {
+func (s *ConverterSuite) TestToProtoFilter_OnlyNames() {
 	// Подготовка
 	filter := &model.Filter{
 		PartNames: []string{"Engine", "Fuel"},
 	}
 
 	// Выполнение
-	result := PartsFilterToProto(filter)
+	result := ToProtoFilter(filter)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -139,14 +139,14 @@ func (s *ConverterSuite) TestPartsFilterToProto_OnlyNames() {
 	assert.Empty(s.T(), result.Tags)
 }
 
-func (s *ConverterSuite) TestPartsFilterToProto_OnlyCategories() {
+func (s *ConverterSuite) TestToProtoFilter_OnlyCategories() {
 	// Подготовка
 	filter := &model.Filter{
 		Categories: []model.Category{model.ENGINE},
 	}
 
 	// Выполнение
-	result := PartsFilterToProto(filter)
+	result := ToProtoFilter(filter)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -158,14 +158,14 @@ func (s *ConverterSuite) TestPartsFilterToProto_OnlyCategories() {
 	assert.Empty(s.T(), result.Tags)
 }
 
-func (s *ConverterSuite) TestPartsFilterToProto_OnlyManufacturerCountries() {
+func (s *ConverterSuite) TestToProtoFilter_OnlyManufacturerCountries() {
 	// Подготовка
 	filter := &model.Filter{
 		ManufacturerCountries: []string{"USA", "Germany"},
 	}
 
 	// Выполнение
-	result := PartsFilterToProto(filter)
+	result := ToProtoFilter(filter)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -178,14 +178,14 @@ func (s *ConverterSuite) TestPartsFilterToProto_OnlyManufacturerCountries() {
 	assert.Empty(s.T(), result.Tags)
 }
 
-func (s *ConverterSuite) TestPartsFilterToProto_OnlyTags() {
+func (s *ConverterSuite) TestToProtoFilter_OnlyTags() {
 	// Подготовка
 	filter := &model.Filter{
 		Tags: []string{"rocket", "space"},
 	}
 
 	// Выполнение
-	result := PartsFilterToProto(filter)
+	result := ToProtoFilter(filter)
 
 	// Проверка
 	assert.NotNil(s.T(), result)

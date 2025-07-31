@@ -15,15 +15,15 @@ func (p paymentClient) CreatePayment(ctx context.Context, order *model.Order) (*
 	response, err := p.generatedClient.PayOrder(ctx, &generaredPaymentV1.PayOrderRequest{
 		OrderUuid:     order.OrderUUID.String(),
 		UserUuid:      order.UserUUID.String(),
-		PaymentMethod: converter.PaymentToProto(order.PaymentMethod),
+		PaymentMethod: converter.ToProtoPaymentMethod(order.PaymentMethod),
 	})
 	if err != nil {
-		return nil, err
+		return nil, model.ErrPaymentClient
 	}
 
 	transaction, err := uuid.Parse(response.GetTransactionUuid())
 	if err != nil {
-		return nil, err
+		return nil, model.ErrConvertFromClient
 	}
 
 	// Обновляем заказ

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -9,6 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/api/converter"
+	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
@@ -21,12 +23,18 @@ func (a *api) GetPart(ctx context.Context, req *inventoryV1.GetPartRequest) (*in
 	part, err := a.inventoryService.GetPart(ctx, id)
 	if err != nil {
 		slog.Error("Failed to get part", "id:", id, "error:", err)
-		return nil, status.Errorf(codes.Internal, "failed to get part")
-	}
-	if part == nil {
-		return nil, status.Errorf(codes.NotFound, "part not found")
+
+		if errors.Is(err, model.ErrPartNotFound) {
+			return nil, status.Errorf(codes.NotFound, "part not found")
+		}
+
+		if errors.Is(err, model.ErrConvertFromRepo) {
+			return nil, status.Errorf(codes.Internal, "failed to get part")
+		}
+
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	protoPart := converter.ModelToProto(part)
+	protoPart := converter.ToProtoPart(part)
 	return &inventoryV1.GetPartResponse{Part: protoPart}, nil
 }

@@ -7,7 +7,7 @@ import (
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
-func ModelToProto(part *model.Part) *inventoryV1.Part {
+func ToProtoPart(part *model.Part) *inventoryV1.Part {
 	// Конвертируем Category из model.Category в inventoryV1.Category
 	var protoCategory inventoryV1.Category
 	switch part.Category {
@@ -20,7 +20,7 @@ func ModelToProto(part *model.Part) *inventoryV1.Part {
 	case model.WING:
 		protoCategory = inventoryV1.Category_CATEGORY_WING
 	default:
-		protoCategory = inventoryV1.Category_CATEGORY_PART_TYPE_UNSPECIFIED
+		protoCategory = inventoryV1.Category_CATEGORY_UNSPECIFIED
 	}
 
 	// Конвертируем Dimensions

@@ -7,7 +7,7 @@ import (
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/model"
 )
 
-func RepoToModel(repoPart *repoModel.RepositoryPart) (part *model.Part, err error) {
+func ToModelPart(repoPart *repoModel.RepositoryPart) (part *model.Part, err error) {
 	id, err := uuid.Parse(repoPart.OrderUuid)
 	if err != nil {
 		return nil, model.ErrConvertFromRepo

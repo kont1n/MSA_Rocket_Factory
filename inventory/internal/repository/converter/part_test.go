@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,7 +11,7 @@ import (
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/model"
 )
 
-func (s *ConverterSuite) TestRepoToModel_Success() {
+func (s *ConverterSuite) TestToModelPart_Success() {
 	// Подготовка
 	partUUID := uuid.New()
 	now := time.Now()
@@ -47,7 +48,7 @@ func (s *ConverterSuite) TestRepoToModel_Success() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoPart)
+	result, err := ToModelPart(repoPart)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -83,7 +84,7 @@ func (s *ConverterSuite) TestRepoToModel_Success() {
 	assert.Equal(s.T(), now, result.UpdatedAt)
 }
 
-func (s *ConverterSuite) TestRepoToModel_InvalidUUID() {
+func (s *ConverterSuite) TestToModelPart_InvalidUUID() {
 	// Подготовка
 	repoPart := &repoModel.RepositoryPart{
 		OrderUuid:     "invalid-uuid",
@@ -101,15 +102,15 @@ func (s *ConverterSuite) TestRepoToModel_InvalidUUID() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoPart)
+	result, err := ToModelPart(repoPart)
 
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
-	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
+	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
 }
 
-func (s *ConverterSuite) TestRepoToModel_EmptyUUID() {
+func (s *ConverterSuite) TestToModelPart_EmptyUUID() {
 	// Подготовка
 	repoPart := &repoModel.RepositoryPart{
 		OrderUuid:     "",
@@ -127,15 +128,15 @@ func (s *ConverterSuite) TestRepoToModel_EmptyUUID() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoPart)
+	result, err := ToModelPart(repoPart)
 
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
-	assert.Equal(s.T(), model.ErrConvertFromRepo, err)
+	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
 }
 
-func (s *ConverterSuite) TestRepoToModel_AllCategories() {
+func (s *ConverterSuite) TestToModelPart_AllCategories() {
 	// Подготовка
 	partUUID := uuid.New()
 	now := time.Now()
@@ -170,7 +171,7 @@ func (s *ConverterSuite) TestRepoToModel_AllCategories() {
 		}
 
 		// Выполнение
-		result, err := RepoToModel(repoPart)
+		result, err := ToModelPart(repoPart)
 
 		// Проверка
 		if tc.shouldPass {
@@ -184,7 +185,7 @@ func (s *ConverterSuite) TestRepoToModel_AllCategories() {
 	}
 }
 
-func (s *ConverterSuite) TestRepoToModel_AllMetadataTypes() {
+func (s *ConverterSuite) TestToModelPart_AllMetadataTypes() {
 	// Подготовка
 	partUUID := uuid.New()
 	now := time.Now()
@@ -218,7 +219,7 @@ func (s *ConverterSuite) TestRepoToModel_AllMetadataTypes() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoPart)
+	result, err := ToModelPart(repoPart)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -231,7 +232,7 @@ func (s *ConverterSuite) TestRepoToModel_AllMetadataTypes() {
 	assert.Equal(s.T(), true, result.Metadata["bool_val"].BoolValue)
 }
 
-func (s *ConverterSuite) TestRepoToModel_EmptyMetadata() {
+func (s *ConverterSuite) TestToModelPart_EmptyMetadata() {
 	// Подготовка
 	partUUID := uuid.New()
 	now := time.Now()
@@ -252,7 +253,7 @@ func (s *ConverterSuite) TestRepoToModel_EmptyMetadata() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoPart)
+	result, err := ToModelPart(repoPart)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -260,7 +261,7 @@ func (s *ConverterSuite) TestRepoToModel_EmptyMetadata() {
 	assert.Empty(s.T(), result.Metadata)
 }
 
-func (s *ConverterSuite) TestRepoToModel_ZeroValues() {
+func (s *ConverterSuite) TestToModelPart_ZeroValues() {
 	// Подготовка
 	partUUID := uuid.New()
 	now := time.Now()
@@ -290,7 +291,7 @@ func (s *ConverterSuite) TestRepoToModel_ZeroValues() {
 	}
 
 	// Выполнение
-	result, err := RepoToModel(repoPart)
+	result, err := ToModelPart(repoPart)
 
 	// Проверка
 	assert.NoError(s.T(), err)

@@ -12,7 +12,7 @@ import (
 )
 
 func (a *api) PayOrder(ctx context.Context, req *paymentV1.PayOrderRequest) (*paymentV1.PayOrderResponse, error) {
-	order, err := converter.PayOrderRqToModel(req)
+	order, err := converter.ToModelOrder(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

@@ -8,7 +8,7 @@ import (
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
-func (s *ConverterSuite) TestPayOrderRqToModel_Success() {
+func (s *ConverterSuite) TestToModelOrder_Success() {
 	// Подготовка
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
@@ -20,7 +20,7 @@ func (s *ConverterSuite) TestPayOrderRqToModel_Success() {
 	}
 
 	// Выполнение
-	result, err := PayOrderRqToModel(req)
+	result, err := ToModelOrder(req)
 
 	// Проверка
 	assert.NoError(s.T(), err)
@@ -29,7 +29,7 @@ func (s *ConverterSuite) TestPayOrderRqToModel_Success() {
 	assert.Equal(s.T(), "CARD", result.PaymentMethod)
 }
 
-func (s *ConverterSuite) TestPayOrderRqToModel_InvalidOrderUUID() {
+func (s *ConverterSuite) TestToModelOrder_InvalidOrderUUID() {
 	// Подготовка
 	userUUID := uuid.New()
 
@@ -40,14 +40,14 @@ func (s *ConverterSuite) TestPayOrderRqToModel_InvalidOrderUUID() {
 	}
 
 	// Выполнение
-	result, err := PayOrderRqToModel(req)
+	result, err := ToModelOrder(req)
 
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Equal(s.T(), model.Order{}, result)
 }
 
-func (s *ConverterSuite) TestPayOrderRqToModel_InvalidUserUUID() {
+func (s *ConverterSuite) TestToModelOrder_InvalidUserUUID() {
 	// Подготовка
 	orderUUID := uuid.New()
 
@@ -58,14 +58,14 @@ func (s *ConverterSuite) TestPayOrderRqToModel_InvalidUserUUID() {
 	}
 
 	// Выполнение
-	result, err := PayOrderRqToModel(req)
+	result, err := ToModelOrder(req)
 
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Equal(s.T(), model.Order{}, result)
 }
 
-func (s *ConverterSuite) TestPayOrderRqToModel_EmptyOrderUUID() {
+func (s *ConverterSuite) TestToModelOrder_EmptyOrderUUID() {
 	// Подготовка
 	userUUID := uuid.New()
 
@@ -76,14 +76,14 @@ func (s *ConverterSuite) TestPayOrderRqToModel_EmptyOrderUUID() {
 	}
 
 	// Выполнение
-	result, err := PayOrderRqToModel(req)
+	result, err := ToModelOrder(req)
 
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Equal(s.T(), model.Order{}, result)
 }
 
-func (s *ConverterSuite) TestPayOrderRqToModel_EmptyUserUUID() {
+func (s *ConverterSuite) TestToModelOrder_EmptyUserUUID() {
 	// Подготовка
 	orderUUID := uuid.New()
 
@@ -94,14 +94,14 @@ func (s *ConverterSuite) TestPayOrderRqToModel_EmptyUserUUID() {
 	}
 
 	// Выполнение
-	result, err := PayOrderRqToModel(req)
+	result, err := ToModelOrder(req)
 
 	// Проверка
 	assert.Error(s.T(), err)
 	assert.Equal(s.T(), model.Order{}, result)
 }
 
-func (s *ConverterSuite) TestPayOrderRqToModel_AllPaymentMethods() {
+func (s *ConverterSuite) TestToModelOrder_AllPaymentMethods() {
 	// Подготовка
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
@@ -125,7 +125,7 @@ func (s *ConverterSuite) TestPayOrderRqToModel_AllPaymentMethods() {
 		}
 
 		// Выполнение
-		result, err := PayOrderRqToModel(req)
+		result, err := ToModelOrder(req)
 
 		// Проверка
 		assert.NoError(s.T(), err)

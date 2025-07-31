@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -20,7 +21,7 @@ func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Or
 	// Выполняем запрос к API инвентаря для получения деталей заказа
 	parts, err := s.inventoryClient.ListParts(ctx, &uuidFilter)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: failed to get list parts from inventory client: %w", err)
 	}
 	if len(*parts) != len(order.PartUUIDs) {
 		return nil, model.ErrPartsListNotFound
@@ -39,7 +40,7 @@ func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Or
 	// Сохраняем заказ в хранилище
 	order, err = s.orderRepository.CreateOrder(ctx, order)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("service: failed to create order in repository: %w", err)
 	}
 	return order, nil
 }

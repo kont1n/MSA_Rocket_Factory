@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -18,10 +19,36 @@ func (a *api) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params
 	order, err := a.orderService.PayOrder(ctx, &orderDraft)
 	if err != nil {
 		slog.Error("Pay order error", "order", params.OrderUUID, "error", err)
-		return &orderV1.InternalServerError{
-			Code:    http.StatusInternalServerError,
-			Message: "Внутренняя ошибка сервиса - не удалось оплатить заказ",
-		}, nil
+
+		if errors.Is(err, model.ErrOrderNotFound) {
+			return &orderV1.NotFoundError{
+				Code:    http.StatusNotFound,
+				Message: "order not found",
+			}, nil
+		}
+
+		if errors.Is(err, model.ErrConvertFromRepo) {
+			return &orderV1.InternalServerError{
+				Code:    http.StatusInternalServerError,
+				Message: "cannot convert order from repository",
+			}, nil
+		}
+
+		if errors.Is(err, model.ErrConvertFromClient) {
+			return &orderV1.InternalServerError{
+				Code:    http.StatusInternalServerError,
+				Message: "can't parse transaction",
+			}, nil
+		}
+
+		if errors.Is(err, model.ErrPaymentClient) {
+			return &orderV1.InternalServerError{
+				Code:    http.StatusFailedDependency,
+				Message: "payment client error",
+			}, nil
+		}
+
+		return nil, err
 	}
 
 	return &orderV1.PayOrderResponse{

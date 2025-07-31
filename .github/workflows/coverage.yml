@@ -69,31 +69,291 @@ jobs:
       - name: Run tests
         run: |
           mkdir -p .github_pages
-          
-          # Создаем общий файл покрытия
           echo "mode: atomic" > coverage.out
           
-          # Запускаем тесты во всех модулях и объединяем результаты
-          while IFS= read -r modfile; do
-            dir=$(dirname "$modfile")
-            echo "Running tests in: $dir"
-            cd "$dir"
+          # Найдем все модули и соберем покрытие как в test-coverage
+          modules_with_tests=()
+          coverage_files=()
+          echo "🔍 Поиск модулей с internal пакетами..."
+          
+          for mod in ${{ inputs.modules }}; do
+            if [ -d "$mod" ] && [ -f "$mod/go.mod" ]; then
+              echo "📦 Обрабатываем модуль $mod"
+              cd "$mod"
+              
+              # Проверяем наличие internal пакетов
+              if ! go list ./internal/... 2>/dev/null | grep -q .; then
+                echo "⚠️ В модуле $mod нет пакетов internal"
+                cd ..
+                continue
+              fi
+              
+              # Находим все пакеты для покрытия (исключаем mocks и test)
+              TARGET_PACKAGES=$(go list ./internal/... 2>/dev/null | grep -v "/mocks" | grep -v "/test" | tr '\n' ',')
+              
+              if [ -n "$TARGET_PACKAGES" ]; then
+                echo "📦 Пакеты для покрытия в $mod: $TARGET_PACKAGES"
+                modules_with_tests+=("$mod")
+                
+                # Убираем последнюю запятую из TARGET_PACKAGES
+                TARGET_PACKAGES=${TARGET_PACKAGES%,}
+                
+                # Запускаем тесты с покрытием для модуля
+                COVERAGE_FILE="coverage_${mod}.out"
+                
+                echo "🔍 Запускаем: go test -v -coverprofile=$COVERAGE_FILE -coverpkg=$TARGET_PACKAGES ./internal/..."
+                
+                # Запускаем тесты с покрытием на internal пакеты
+                if go test -v -coverprofile="$COVERAGE_FILE" -coverpkg="$TARGET_PACKAGES" ./internal/... 2>/dev/null; then
+                  if [ -f "$COVERAGE_FILE" ] && [ -s "$COVERAGE_FILE" ]; then
+                    coverage_files+=("$COVERAGE_FILE")
+                    echo "✅ Покрытие для $mod сохранено в $COVERAGE_FILE"
+                    
+                    # Показываем покрытие для модуля
+                    go tool cover -func="$COVERAGE_FILE" | tail -1
+                  else
+                    echo "⚠️ Нет данных покрытия в модуле $mod"
+                    [ -f "$COVERAGE_FILE" ] && rm -f "$COVERAGE_FILE"
+                  fi
+                else
+                  echo "❌ Тесты провалились в модуле $mod, но продолжаем..."
+                  [ -f "$COVERAGE_FILE" ] && rm -f "$COVERAGE_FILE"
+                fi
+              else
+                echo "⚠️ Не найдено пакетов для тестирования в $mod"
+              fi
+              
+              cd ..
+            else
+              echo "⚠️ Модуль $mod не найден или не содержит go.mod"
+            fi
+          done
+          
+          echo "📈 Обработано модулей с тестами: ${#modules_with_tests[@]}"
+          echo "📋 Модули: ${modules_with_tests[*]}"
+          echo "📁 Файлы покрытия: ${coverage_files[*]}"
+          
+          # Объединяем все файлы покрытия
+          if [ ${#coverage_files[@]} -gt 0 ]; then
+            echo "🔗 Объединяем файлы покрытия..."
             
-            # Запускаем тесты и добавляем результаты в общий файл
-            go test ./... -coverprofile=tmp_coverage.out -covermode=atomic -coverpkg=./...
-            if [ -f tmp_coverage.out ]; then
-              # Пропускаем первую строку (mode: atomic) и добавляем остальное
-              # Используем относительные пути от корня проекта
-              awk 'NR>1' tmp_coverage.out >> ../../coverage.out
-              rm tmp_coverage.out
+            # Создаем временный файл для объединения
+            TEMP_COVERAGE=$(mktemp)
+            
+            for file in "${coverage_files[@]}"; do
+              echo "🔗 Добавляем файл: $file"
+              if [ -f "$file" ] && [ -s "$file" ]; then
+                # Пропускаем первую строку (mode: atomic) для всех файлов кроме первого
+                if [ -s "$TEMP_COVERAGE" ]; then
+                  tail -n +2 "$file" >> "$TEMP_COVERAGE"
+                else
+                  cat "$file" >> "$TEMP_COVERAGE"
+                fi
+              fi
+            done
+            
+            # Перемещаем временный файл в итоговый
+            mv "$TEMP_COVERAGE" coverage.out
+            
+            # Удаляем дубликаты, сохраняя заголовок
+            if [ -s coverage.out ]; then
+              echo "🧹 Удаление дубликатов..."
+              (head -1 coverage.out; tail -n +2 coverage.out | sort -u) > coverage_clean.out
+              mv coverage_clean.out coverage.out
             fi
             
-            cd - > /dev/null
-          done < <(find . -name "go.mod" -type f)
+            # Генерируем отчеты
+            if [ -s coverage.out ] && [ $(wc -l < coverage.out) -gt 1 ]; then
+              echo "📊 Генерация функционального отчета..."
+              if go tool cover -func=coverage.out > cover.out 2>&1; then
+                echo "✅ Функциональный отчет создан"
+                
+                # Показываем итоговое покрытие
+                echo "📈 Итоговое покрытие бизнес-логики:"
+                tail -1 cover.out
+                
+                # Генерируем HTML отчет
+                echo "🌐 Генерация HTML отчета..."
+                if gocov convert coverage.out | gocov-html > .github_pages/index.html 2>&1; then
+                  echo "✅ HTML отчет создан"
+                  
+                  # Добавляем навигацию к HTML отчету покрытия
+                  sed -i '/<\/head>/i\
+                  <style>\
+                  .navigation {\
+                    position: fixed;\
+                    top: 10px;\
+                    right: 10px;\
+                    background: white;\
+                    padding: 10px;\
+                    border: 1px solid #ccc;\
+                    border-radius: 5px;\
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.2);\
+                    z-index: 1000;\
+                  }\
+                  .nav-link {\
+                    display: inline-block;\
+                    margin: 0 5px;\
+                    padding: 5px 10px;\
+                    background: #f6f8fa;\
+                    color: #24292f;\
+                    text-decoration: none;\
+                    border-radius: 3px;\
+                    border: 1px solid #d1d9e0;\
+                    font-size: 12px;\
+                  }\
+                  .nav-link:hover {\
+                    background: #e1e4e8;\
+                  }\
+                  </style>' .github_pages/index.html
+                  
+                  sed -i '/<body>/a\
+                  <div class="navigation">\
+                    <a href="./" class="nav-link">📊 Coverage</a>\
+                    <a href="./reports.html" class="nav-link">📋 All Reports</a>\
+                  </div>' .github_pages/index.html
+                else
+                  echo "❌ Ошибка создания HTML отчета"
+                  echo "<html><body><h1>Failed to generate coverage report</h1><p>Check logs for details</p></body></html>" > .github_pages/index.html
+                fi
+              else
+                echo "❌ Ошибка создания функционального отчета"
+                cat cover.out
+                echo "total:                  (statements)   0.0%" > cover.out
+                echo "<html><body><h1>Failed to generate coverage report</h1><p>Error generating function report</p></body></html>" > .github_pages/index.html
+              fi
+            else
+              echo "⚠️ Нет данных покрытия"
+              echo "total:                  (statements)   0.0%" > cover.out
+              echo "<html><body><h1>No coverage data available</h1><p>No tests found or no coverage generated</p></body></html>" > .github_pages/index.html
+            fi
+            
+            # Очистка временных файлов
+            for file in "${coverage_files[@]}"; do
+              [ -f "$file" ] && rm -f "$file"
+            done
+          else
+            echo "❌ Не удалось собрать покрытие ни для одного модуля"
+            echo "total:                  (statements)   0.0%" > cover.out
+            echo "<html><body><h1>No coverage files</h1><p>No coverage files were generated</p></body></html>" > .github_pages/index.html
+          fi
           
-          # Генерируем отчеты
-          go tool cover -func=coverage.out -o=cover.out
-          gocov convert coverage.out | gocov-html > .github_pages/index.html
+          # Показываем отладочную информацию
+          echo "🔍 Финальная отладочная информация:"
+          echo "coverage.out размер: $(ls -la coverage.out 2>/dev/null || echo 'не найден')"
+          echo "cover.out содержимое:"
+          cat cover.out 2>/dev/null || echo "cover.out не найден"
+
+      - name: 🔗 Create main reports index
+        run: |
+          echo "🔗 Создание индекса отчетов..."
+          
+          # Создаем главную страницу с навигацией между отчетами
+          cat > .github_pages/reports.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>📊 Reports Dashboard</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                      line-height: 1.6;
+                      color: #24292f;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      background: #ffffff;
+                  }
+                  .header {
+                      text-align: center;
+                      padding: 20px 0;
+                      border-bottom: 2px solid #e1e4e8;
+                      margin-bottom: 30px;
+                  }
+                  .reports-grid {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                      gap: 20px;
+                      margin: 30px 0;
+                  }
+                  .report-card {
+                      background: #f6f8fa;
+                      border: 1px solid #d1d9e0;
+                      border-radius: 8px;
+                      padding: 20px;
+                      text-align: center;
+                      transition: box-shadow 0.2s;
+                  }
+                  .report-card:hover {
+                      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                  }
+                  .report-link {
+                      display: block;
+                      color: #0969da;
+                      text-decoration: none;
+                      font-weight: 600;
+                      font-size: 18px;
+                      margin: 10px 0;
+                  }
+                  .report-link:hover {
+                      text-decoration: underline;
+                  }
+                  .report-desc {
+                      color: #656d76;
+                      font-size: 14px;
+                  }
+                  .info {
+                      background: #f0f9ff;
+                      color: #0369a1;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bae6fd;
+                      margin: 20px 0;
+                      text-align: center;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>📊 MSA Rocket Factory - Reports Dashboard</h1>
+              </div>
+              
+              <div class="info">
+                  <strong>Последнее обновление:</strong> $(date)<br>
+                  <strong>Commit:</strong> ${{ github.sha }}<br>
+                  <strong>Branch:</strong> ${{ github.ref_name }}
+              </div>
+              
+              <div class="reports-grid">
+                  <div class="report-card">
+                      <h2>📊</h2>
+                      <a href="./" class="report-link">Coverage Report</a>
+                      <p class="report-desc">Отчет о покрытии кода тестами с детальной информацией по файлам и функциям</p>
+                  </div>
+                  
+                  <div class="report-card">
+                      <h2>🧪</h2>
+                      <a href="./tests/" class="report-link">Test Report</a>
+                      <p class="report-desc">Результаты выполнения unit тестов по всем модулям проекта</p>
+                  </div>
+                  
+                  <div class="report-card">
+                      <h2>🔍</h2> 
+                      <a href="./lint/" class="report-link">Lint Report</a>
+                      <p class="report-desc">Результаты статического анализа кода с помощью golangci-lint</p>
+                  </div>
+              </div>
+              
+              <div style="text-align: center; margin-top: 40px; color: #656d76;">
+                  <p>🚀 Generated by MSA Rocket Factory CI/CD Pipeline</p>
+              </div>
+          </body>
+          </html>
+          EOF
+          
+          echo "✅ Главная страница отчетов создана"
 
       # pages
       - name: Setup Pages
@@ -121,11 +381,10 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: tj-actions/coverage-badge-go@v2
         with:
-          text: Coverage_Report
-          target: README.md
           filename: cover.out
-          link: https://${{ github.repository_owner }}.github.io/${{ github.repository_name }}
-        continue-on-error: true
+          green: 80
+          yellow: 60
+          target: README.md
 
       - name: Verify Changed files
         if: github.ref == 'refs/heads/main'
@@ -133,6 +392,31 @@ jobs:
         id: verify-changed-files
         with:
           files: README.md
+
+      - name: Debug coverage info
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "📊 Coverage files info:"
+          echo "coverage.out:"
+          ls -la coverage.out || echo "coverage.out not found"
+          echo "cover.out:"
+          ls -la cover.out || echo "cover.out not found"
+          
+          echo ""
+          echo "📈 Raw coverage data (first 10 lines):"
+          head -10 coverage.out || echo "Cannot read coverage.out"
+          
+          echo ""
+          echo "📈 Function coverage summary:"
+          cat cover.out || echo "Cannot read cover.out"
+          
+          echo ""
+          echo "🔍 README badge section before update:"
+          grep -A 2 -B 2 "coverage" README.md || echo "No coverage badge found in README.md"
+          
+          echo ""
+          echo "🔍 README changes after badge update:"
+          git diff README.md || echo "No changes in README.md"
 
       - name: Commit changes
         if: github.ref == 'refs/heads/main' && steps.verify-changed-files.outputs.files_changed == 'true'
@@ -145,7 +429,6 @@ jobs:
       - name: Push changes
         if: github.ref == 'refs/heads/main' && steps.verify-changed-files.outputs.files_changed == 'true'
         run: |
-          git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
           git push origin HEAD:${{ github.ref_name }}
 
   coverage:

@@ -28,24 +28,9 @@ jobs:
           chmod +x .github/scripts/extract-versions.sh
           .github/scripts/extract-versions.sh
 
-  lint:
+  combined-reports:
     needs: extract-vars
-    uses: ./.github/workflows/lint-reusable.yml
-    with:
-      modules: ${{ needs.extract-vars.outputs.modules }}
-      go-version: ${{ needs.extract-vars.outputs.go-version }}
-      golangci-lint-version: ${{ needs.extract-vars.outputs.golangci-lint-version }}
-
-  test:
-    uses: ./.github/workflows/test-reusable.yml
-    needs: [lint, extract-vars]
-    with:
-      modules: ${{ needs.extract-vars.outputs.modules }}
-      go-version: ${{ needs.extract-vars.outputs.go-version }}
-
-  coverage:
-    uses: ./.github/workflows/coverage.yml
-    needs: [test, extract-vars]
+    uses: ./.github/workflows/combined-reports.yml
     with:
       modules: ${{ needs.extract-vars.outputs.modules }}
       go-version: ${{ needs.extract-vars.outputs.go-version }}

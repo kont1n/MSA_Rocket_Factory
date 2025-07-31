@@ -19,7 +19,7 @@ func NewRepository() *repository {
 		data: make(map[string]*repoModel.RepositoryPart),
 	}
 
-	TestData(repo)
+	repo.addTestData()
 
 	return repo
 }

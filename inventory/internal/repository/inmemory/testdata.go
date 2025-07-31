@@ -8,13 +8,13 @@ import (
 )
 
 // TestData Добавление тестовых данных
-func TestData(repo *repository) {
+func (r *repository) addTestData() {
 	log.Printf("Add Test Data for inventory service")
 
-	repo.mu.Lock()
-	defer repo.mu.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	repo.data = map[string]*repoModel.RepositoryPart{
+	r.data = map[string]*repoModel.RepositoryPart{
 		"d973e963-b7e6-4323-8f4e-4bfd5ab8e834": {
 			OrderUuid:     "d973e963-b7e6-4323-8f4e-4bfd5ab8e834",
 			Name:          "Detail 1",

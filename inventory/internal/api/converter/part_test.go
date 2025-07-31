@@ -10,7 +10,7 @@ import (
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
-func (s *ConverterSuite) TestModelToProto_EngineCategory() {
+func (s *ConverterSuite) TestToProtoPart_EngineCategory() {
 	// Подготовка
 	partUUID := uuid.New()
 	now := time.Now()
@@ -46,7 +46,7 @@ func (s *ConverterSuite) TestModelToProto_EngineCategory() {
 	}
 
 	// Выполнение
-	result := ModelToProto(part)
+	result := ToProtoPart(part)
 
 	// Проверка
 	assert.NotNil(s.T(), result)
@@ -81,7 +81,7 @@ func (s *ConverterSuite) TestModelToProto_EngineCategory() {
 	assert.NotNil(s.T(), result.UpdatedAt)
 }
 
-func (s *ConverterSuite) TestModelToProto_FuelCategory() {
+func (s *ConverterSuite) TestToProtoPart_FuelCategory() {
 	part := &model.Part{
 		OrderUuid:    uuid.New(),
 		Name:         "Rocket Fuel",
@@ -94,12 +94,12 @@ func (s *ConverterSuite) TestModelToProto_FuelCategory() {
 		UpdatedAt:    time.Now(),
 	}
 
-	result := ModelToProto(part)
+	result := ToProtoPart(part)
 
 	assert.Equal(s.T(), inventoryV1.Category_CATEGORY_FUEL, result.Category)
 }
 
-func (s *ConverterSuite) TestModelToProto_PortholeCategory() {
+func (s *ConverterSuite) TestToProtoPart_PortholeCategory() {
 	part := &model.Part{
 		OrderUuid:    uuid.New(),
 		Name:         "Space Porthole",
@@ -112,12 +112,12 @@ func (s *ConverterSuite) TestModelToProto_PortholeCategory() {
 		UpdatedAt:    time.Now(),
 	}
 
-	result := ModelToProto(part)
+	result := ToProtoPart(part)
 
 	assert.Equal(s.T(), inventoryV1.Category_CATEGORY_PORTHOLE, result.Category)
 }
 
-func (s *ConverterSuite) TestModelToProto_WingCategory() {
+func (s *ConverterSuite) TestToProtoPart_WingCategory() {
 	part := &model.Part{
 		OrderUuid:    uuid.New(),
 		Name:         "Rocket Wing",
@@ -130,12 +130,12 @@ func (s *ConverterSuite) TestModelToProto_WingCategory() {
 		UpdatedAt:    time.Now(),
 	}
 
-	result := ModelToProto(part)
+	result := ToProtoPart(part)
 
 	assert.Equal(s.T(), inventoryV1.Category_CATEGORY_WING, result.Category)
 }
 
-func (s *ConverterSuite) TestModelToProto_UnknownCategory() {
+func (s *ConverterSuite) TestToProtoPart_UnknownCategory() {
 	part := &model.Part{
 		OrderUuid:    uuid.New(),
 		Name:         "Unknown Part",
@@ -148,12 +148,12 @@ func (s *ConverterSuite) TestModelToProto_UnknownCategory() {
 		UpdatedAt:    time.Now(),
 	}
 
-	result := ModelToProto(part)
+	result := ToProtoPart(part)
 
-	assert.Equal(s.T(), inventoryV1.Category_CATEGORY_PART_TYPE_UNSPECIFIED, result.Category)
+	assert.Equal(s.T(), inventoryV1.Category_CATEGORY_UNSPECIFIED, result.Category)
 }
 
-func (s *ConverterSuite) TestModelToProto_AllMetadataTypes() {
+func (s *ConverterSuite) TestToProtoPart_AllMetadataTypes() {
 	part := &model.Part{
 		OrderUuid:    uuid.New(),
 		Name:         "Test Part",
@@ -179,7 +179,7 @@ func (s *ConverterSuite) TestModelToProto_AllMetadataTypes() {
 		UpdatedAt: time.Now(),
 	}
 
-	result := ModelToProto(part)
+	result := ToProtoPart(part)
 
 	// Проверка всех типов метаданных
 	assert.Equal(s.T(), "test string", result.Metadata["string_val"].GetStringValue())
@@ -188,7 +188,7 @@ func (s *ConverterSuite) TestModelToProto_AllMetadataTypes() {
 	assert.Equal(s.T(), true, result.Metadata["bool_val"].GetBoolValue())
 }
 
-func (s *ConverterSuite) TestModelToProto_EmptyMetadata() {
+func (s *ConverterSuite) TestToProtoPart_EmptyMetadata() {
 	part := &model.Part{
 		OrderUuid:    uuid.New(),
 		Name:         "Test Part",
@@ -201,12 +201,12 @@ func (s *ConverterSuite) TestModelToProto_EmptyMetadata() {
 		UpdatedAt:    time.Now(),
 	}
 
-	result := ModelToProto(part)
+	result := ToProtoPart(part)
 
 	assert.Empty(s.T(), result.Metadata)
 }
 
-func (s *ConverterSuite) TestModelToProto_ZeroValues() {
+func (s *ConverterSuite) TestToProtoPart_ZeroValues() {
 	part := &model.Part{
 		OrderUuid:     uuid.New(),
 		Name:          "",
@@ -231,14 +231,14 @@ func (s *ConverterSuite) TestModelToProto_ZeroValues() {
 		UpdatedAt: time.Time{},
 	}
 
-	result := ModelToProto(part)
+	result := ToProtoPart(part)
 
 	assert.NotNil(s.T(), result)
 	assert.Equal(s.T(), "", result.Name)
 	assert.Equal(s.T(), "", result.Description)
 	assert.Equal(s.T(), float64(0), result.Price)
 	assert.Equal(s.T(), int64(0), result.StockQuantity)
-	assert.Equal(s.T(), inventoryV1.Category_CATEGORY_PART_TYPE_UNSPECIFIED, result.Category)
+	assert.Equal(s.T(), inventoryV1.Category_CATEGORY_UNSPECIFIED, result.Category)
 	assert.Equal(s.T(), float64(0), result.Dimensions.Length)
 	assert.Equal(s.T(), "", result.Manufacturer.Name)
 	assert.Empty(s.T(), result.Tags)

@@ -3,11 +3,11 @@ package model
 type Category int
 
 const (
-	UNKNOWN  Category = iota // 0
-	ENGINE                   // 1
-	FUEL                     // 2
-	PORTHOLE                 // 3
-	WING                     // 4
+	UNKNOWN  Category = 0
+	ENGINE   Category = 1
+	FUEL     Category = 2
+	PORTHOLE Category = 3
+	WING     Category = 4
 )
 
 func (c Category) String() string {

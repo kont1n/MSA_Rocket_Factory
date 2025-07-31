@@ -24,7 +24,7 @@ func (r *repository) ListParts(ctx context.Context, filter *model.Filter) (*[]mo
 
 	parts := make([]model.Part, 0, len(partsFiltered))
 	for _, repoPart := range partsFiltered {
-		part, err := repoConverter.RepoToModel(repoPart)
+		part, err := repoConverter.ToModelPart(repoPart)
 		if err != nil {
 			return nil, err
 		}
