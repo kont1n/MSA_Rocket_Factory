@@ -25,6 +25,19 @@ func ToRepoOrder(order *model.Order) *repoModel.Order {
 	return repoOrder
 }
 
+func ToRepoOrderPostgres(order *model.Order) *repoModel.OrderPostgres {
+	repoOrder := &repoModel.OrderPostgres{
+		UserUUID:        order.UserUUID,
+		PartUUIDs:       order.PartUUIDs,
+		TotalPrice:      order.TotalPrice,
+		TransactionUUID: order.TransactionUUID,
+		PaymentMethod:   order.PaymentMethod,
+		Status:          string(order.Status),
+	}
+
+	return repoOrder
+}
+
 func ToModelOrder(repoOrder *repoModel.Order) (*model.Order, error) {
 	orderId, err := uuid.Parse(repoOrder.OrderUUID)
 	if err != nil {
@@ -54,8 +67,27 @@ func ToModelOrder(repoOrder *repoModel.Order) (*model.Order, error) {
 		OrderUUID:       orderId,
 		UserUUID:        userId,
 		PartUUIDs:       parts,
-		TotalPrice:      float64(repoOrder.TotalPrice),
+		TotalPrice:      repoOrder.TotalPrice,
 		TransactionUUID: transactionId,
+		PaymentMethod:   repoOrder.PaymentMethod,
+		Status:          model.OrderStatus(repoOrder.Status),
+	}
+
+	return order, nil
+}
+
+func ToModelOrderFromPostgres(repoOrder *repoModel.OrderPostgres) (*model.Order, error) {
+	parts := make([]uuid.UUID, 0, len(repoOrder.PartUUIDs))
+	for _, partUUID := range repoOrder.PartUUIDs {
+		parts = append(parts, partUUID)
+	}
+
+	order := &model.Order{
+		OrderUUID:       repoOrder.OrderUUID,
+		UserUUID:        repoOrder.UserUUID,
+		PartUUIDs:       parts,
+		TotalPrice:      repoOrder.TotalPrice,
+		TransactionUUID: repoOrder.TransactionUUID,
 		PaymentMethod:   repoOrder.PaymentMethod,
 		Status:          model.OrderStatus(repoOrder.Status),
 	}

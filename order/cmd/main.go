@@ -50,6 +50,7 @@ func main() {
 		return
 	}
 	dbURI := os.Getenv("DB_URI")
+	migrationsDir := os.Getenv("MIGRATIONS_DIR")
 
 	// Подключаемся к Postgres
 	pool, err := pgxpool.New(ctx, dbURI)
@@ -96,7 +97,7 @@ func main() {
 	inventoryClient := invClient.NewClient(inventoryGRPC)
 
 	// Регистрируем сервис
-	repo := oredrRepository.NewRepository(pool)
+	repo := oredrRepository.NewRepository(pool, migrationsDir)
 	service := oredrService.NewService(repo, inventoryClient, paymentClient)
 	api := orderV1API.NewAPI(service)
 

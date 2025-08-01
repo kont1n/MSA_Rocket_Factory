@@ -3,7 +3,6 @@ module github.com/kont1n/MSA_Rocket_Factory/inventory
 go 1.24.4
 
 require (
-	github.com/brianvoe/gofakeit/v7 v7.3.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kont1n/MSA_Rocket_Factory/shared v0.0.0-00010101000000-000000000000
 	github.com/samber/lo v1.51.0

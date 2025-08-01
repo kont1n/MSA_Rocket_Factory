@@ -9,6 +9,6 @@ import (
 )
 
 func (r *repository) GetPart(ctx context.Context, uuid uuid.UUID) (*model.Part, error) {
-	//TODO implement me
+	// TODO implement me
 	return nil, nil
 }

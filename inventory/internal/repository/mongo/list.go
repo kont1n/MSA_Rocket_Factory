@@ -7,6 +7,6 @@ import (
 )
 
 func (r *repository) ListParts(ctx context.Context, filter *model.Filter) (*[]model.Part, error) {
-	//TODO implement me
+	// TODO implement me
 	return nil, nil
 }
