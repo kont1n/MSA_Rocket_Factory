@@ -51,3 +51,43 @@ func ToModelPart(repoPart *repoModel.RepositoryPart) (part *model.Part, err erro
 		UpdatedAt:     repoPart.UpdatedAt,
 	}, nil
 }
+
+func ToRepositoryPart(part *model.Part) *repoModel.RepositoryPart {
+	manufacturer := repoModel.Manufacturer{
+		Name:    part.Manufacturer.Name,
+		Country: part.Manufacturer.Country,
+		Website: part.Manufacturer.Website,
+	}
+
+	dimension := repoModel.Dimensions{
+		Length: part.Dimensions.Length,
+		Width:  part.Dimensions.Width,
+		Height: part.Dimensions.Height,
+		Weight: part.Dimensions.Weight,
+	}
+
+	metadata := make(map[string]repoModel.Value)
+	for key, value := range part.Metadata {
+		metadata[key] = repoModel.Value{
+			StringValue:  value.StringValue,
+			Int64Value:   value.Int64Value,
+			Float64Value: value.Float64Value,
+			BoolValue:    value.BoolValue,
+		}
+	}
+
+	return &repoModel.RepositoryPart{
+		OrderUuid:     part.OrderUuid.String(),
+		Name:          part.Name,
+		Description:   part.Description,
+		Price:         part.Price,
+		StockQuantity: part.StockQuantity,
+		Category:      int(part.Category),
+		Dimensions:    dimension,
+		Manufacturer:  manufacturer,
+		Tags:          part.Tags,
+		Metadata:      metadata,
+		CreatedAt:     part.CreatedAt,
+		UpdatedAt:     part.UpdatedAt,
+	}
+}

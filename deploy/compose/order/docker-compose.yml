@@ -1,0 +1,35 @@
+services: # Раздел, описывающий контейнеры, которые требуются для работы Order-сервиса
+
+  postgres-order: # Контейнер с PostgreSQL, используемый для хранения данных заказов
+    image: postgres:17.0-alpine3.20
+
+    container_name: postgres-order
+
+    environment:
+      POSTGRES_DB: order-service
+      POSTGRES_USER: order-service-user
+      POSTGRES_PASSWORD: order-service-password
+
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
+
+    ports:
+      - "5432:5432"
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U order-service-user -d order-service" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    restart: unless-stopped
+
+    networks:
+      - microservices-net
+
+volumes:
+  postgres_order_data:
+
+networks:
+  microservices-net:
+    external: true
