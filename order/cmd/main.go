@@ -95,23 +95,24 @@ func main() {
 	paymentClient := payClient.NewClient(paymentGRPC)
 	inventoryClient := invClient.NewClient(inventoryGRPC)
 
+	// Регистрируем сервис
 	repo := oredrRepository.NewRepository(pool)
 	service := oredrService.NewService(repo, inventoryClient, paymentClient)
 	api := orderV1API.NewAPI(service)
 
+	// Запускаем OpenAPI сервер
 	orderServer, err := orderV1.NewServer(api)
 	if err != nil {
 		log.Printf("ошибка создания сервера OpenAPI: %v", err)
 		return
 	}
 
+	// Подключаем роутер
 	r := chi.NewRouter()
-
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
 	r.Use(customMiddleware.RequestLogger)
-
 	r.Mount("/", orderServer)
 
 	// Запускаем HTTP-сервер
