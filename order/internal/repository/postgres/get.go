@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -38,7 +39,7 @@ func (r *repository) GetOrder(ctx context.Context, id uuid.UUID) (*model.Order, 
 		&repoOrder.UpdatedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, model.ErrOrderNotFound
 		}
 		return nil, model.ErrFailedToGetOrder

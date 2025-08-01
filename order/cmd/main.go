@@ -44,9 +44,9 @@ func main() {
 	ctx := context.Background()
 
 	// Загружаем переменные окружения
-	err := godotenv.Load(".env")
+	err := godotenv.Load("../.env")
 	if err != nil {
-		log.Printf("failed to load .env file: %v\n", err)
+		log.Fatalf("failed to load .env file: %v\n", err)
 		return
 	}
 	dbURI := os.Getenv("DB_URI")
@@ -55,7 +55,7 @@ func main() {
 	// Подключаемся к Postgres
 	pool, err := pgxpool.New(ctx, dbURI)
 	if err != nil {
-		log.Printf("failed to connect to database: %v\n", err)
+		log.Fatalf("failed to connect to database: %v\n", err)
 		return
 	}
 	defer pool.Close()

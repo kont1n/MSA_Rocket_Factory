@@ -77,15 +77,10 @@ func ToModelOrder(repoOrder *repoModel.Order) (*model.Order, error) {
 }
 
 func ToModelOrderFromPostgres(repoOrder *repoModel.OrderPostgres) (*model.Order, error) {
-	parts := make([]uuid.UUID, 0, len(repoOrder.PartUUIDs))
-	for _, partUUID := range repoOrder.PartUUIDs {
-		parts = append(parts, partUUID)
-	}
-
 	order := &model.Order{
 		OrderUUID:       repoOrder.OrderUUID,
 		UserUUID:        repoOrder.UserUUID,
-		PartUUIDs:       parts,
+		PartUUIDs:       repoOrder.PartUUIDs,
 		TotalPrice:      repoOrder.TotalPrice,
 		TransactionUUID: repoOrder.TransactionUUID,
 		PaymentMethod:   repoOrder.PaymentMethod,
