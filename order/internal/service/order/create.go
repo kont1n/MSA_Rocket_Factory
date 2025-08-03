@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
 
@@ -32,9 +30,8 @@ func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Or
 	for _, part := range *parts {
 		totalPrice += part.Price
 	}
-	order.TotalPrice = totalPrice
+	order.TotalPrice = float32(totalPrice)
 
-	order.OrderUUID = uuid.New()
 	order.Status = model.StatusPendingPayment
 
 	// Сохраняем заказ в хранилище

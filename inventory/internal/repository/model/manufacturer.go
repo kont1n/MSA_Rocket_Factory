@@ -1,7 +1,7 @@
 package model
 
 type Manufacturer struct {
-	Name    string
-	Country string
-	Website string
+	Name    string `bson:"name"`
+	Country string `bson:"country"`
+	Website string `bson:"website"`
 }

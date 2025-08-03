@@ -48,13 +48,12 @@ func main() {
 		}
 	}()
 
-	// Создаем gRPC сервер
-	grpcServer := grpc.NewServer()
-
 	// Регистрируем сервис
 	service := paymentService.NewService()
 	api := paymentV1API.NewAPI(service)
 
+	// Создаем gRPC сервер
+	grpcServer := grpc.NewServer()
 	paymentV1.RegisterPaymentServiceServer(grpcServer, api)
 	reflection.Register(grpcServer)
 
