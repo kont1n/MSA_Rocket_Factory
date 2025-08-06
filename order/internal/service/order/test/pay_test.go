@@ -4,9 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/mock"
-
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	"github.com/stretchr/testify/mock"
 )
 
 func (s *ServiceSuite) TestPayOrder_Success() {

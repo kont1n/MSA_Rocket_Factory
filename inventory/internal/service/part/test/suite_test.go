@@ -3,11 +3,10 @@ package part_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/suite"
-
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/mocks"
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/service"
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/service/part"
+	"github.com/stretchr/testify/suite"
 )
 
 type ServiceSuite struct {

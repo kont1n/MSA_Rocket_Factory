@@ -5,10 +5,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/model"
+	"github.com/stretchr/testify/assert"
 )
 
 func (s *ConverterSuite) TestToModelPart_Success() {

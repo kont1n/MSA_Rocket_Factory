@@ -3,15 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/app"
-	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
-	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
-	"go.uber.org/zap"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/app"
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/config"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const configPath = "./deploy/compose/inventory/.env"
@@ -24,7 +24,6 @@ func init() {
 }
 
 func main() {
-
 	appCtx, appCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer appCancel()
 	defer gracefulShutdown()

@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
+	"github.com/stretchr/testify/assert"
 )
 
 func (s *ServiceSuite) TestGetSuccess() {

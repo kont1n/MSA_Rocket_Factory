@@ -2,10 +2,9 @@ package converter
 
 import (
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
+	"github.com/stretchr/testify/assert"
 )
 
 func (s *ConverterSuite) TestToModelPart_CompleteFilter() {

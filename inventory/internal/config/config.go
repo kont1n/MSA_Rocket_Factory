@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/config/env"
 )
 

@@ -4,10 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-
 	inventoryV1API "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/api/v1"
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository"
@@ -16,6 +12,9 @@ import (
 	inventoryService "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/service/part"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type diContainer struct {

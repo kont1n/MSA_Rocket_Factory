@@ -4,9 +4,8 @@ import (
 	"context"
 	"log"
 
-	"go.mongodb.org/mongo-driver/mongo"
-
 	def "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var _ def.InventoryRepository = (*repository)(nil)
