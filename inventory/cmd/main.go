@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/app"
-	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	"go.uber.org/zap"
+
+	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/config"
 )
 
-const configPath = "./deploy/compose/inventory/.env"
+const configPath = "../deploy/compose/inventory/.env"
 
 func init() {
 	err := config.Load(configPath)
@@ -24,6 +25,7 @@ func init() {
 }
 
 func main() {
+
 	appCtx, appCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer appCancel()
 	defer gracefulShutdown()

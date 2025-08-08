@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -28,6 +29,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+const configPath = "../deploy/compose/order/.env"
+
 const (
 	httpPort      = "8080"
 	paymentPort   = "50052"
@@ -36,6 +39,13 @@ const (
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second
 )
+
+func init() {
+	err := config.Load(configPath)
+	if err != nil {
+		panic(fmt.Errorf("failed to load config: %w", err))
+	}
+}
 
 func main() {
 	log.Printf("Order service starting...")
