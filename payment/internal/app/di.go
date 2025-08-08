@@ -2,20 +2,11 @@ package app
 
 import (
 	"context"
-	"fmt"
 
-	inventoryRepository "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/mongo"
-	inventoryService "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/service/part"
-	paymentV1API "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/v1"
-	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/config"
+	paymentV1API "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/payment/v1"
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/service"
 	paymentService "github.com/kont1n/MSA_Rocket_Factory/payment/internal/service/payment"
-	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
-	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type diContainer struct {
@@ -28,10 +19,10 @@ func NewDiContainer() *diContainer {
 }
 
 func (d *diContainer) PaymentV1API(ctx context.Context) paymentV1.PaymentServiceServer {
-	if d.inventoryAPIv1 == nil {
-		d.inventoryAPIv1 = paymentV1API.NewAPI(d.PartService(ctx))
+	if d.paymentAPIv1 == nil {
+		d.paymentAPIv1 = paymentV1API.NewAPI(d.PaymentService(ctx))
 	}
-	return d.inventoryAPIv1
+	return d.paymentAPIv1
 }
 
 func (d *diContainer) PaymentService(ctx context.Context) service.PaymentService {
