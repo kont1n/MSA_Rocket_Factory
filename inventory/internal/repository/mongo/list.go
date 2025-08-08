@@ -4,11 +4,12 @@ import (
 	"context"
 	"log"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 	repoConverter "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/converter"
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/model"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (r *repository) ListParts(ctx context.Context, filter *model.Filter) (*[]model.Part, error) {

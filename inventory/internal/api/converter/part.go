@@ -1,9 +1,10 @@
 package converter
 
 import (
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ToProtoPart(part *model.Part) *inventoryV1.Part {

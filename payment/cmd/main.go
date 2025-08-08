@@ -15,13 +15,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/reflection"
+
 	customMiddleware "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/middleware"
 	paymentV1API "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/payment/v1"
 	paymentService "github.com/kont1n/MSA_Rocket_Factory/payment/internal/service/payment"
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/reflection"
 )
 
 const (

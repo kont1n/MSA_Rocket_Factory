@@ -3,9 +3,10 @@ package payment_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/service"
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/service/payment"
-	"github.com/stretchr/testify/suite"
 )
 
 type ServiceSuite struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/client/converter"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 	generaredPaymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"

@@ -5,8 +5,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
-	def "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository"
 	"github.com/pressly/goose"
+
+	def "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository"
 )
 
 var _ def.OrderRepository = (*repository)(nil)

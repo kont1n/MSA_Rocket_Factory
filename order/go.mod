@@ -12,10 +12,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/joho/godotenv v1.5.1
+	github.com/kont1n/MSA_Rocket_Factory/platform v0.0.0-00010101000000-000000000000
 	github.com/kont1n/MSA_Rocket_Factory/shared v0.0.0-20250803050632-f7d5d1a5fd7f
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/samber/lo v1.51.0
 	github.com/stretchr/testify v1.10.0
+	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.74.2
 )
 
@@ -48,7 +50,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 // indirect
 	golang.org/x/net v0.42.0 // indirect

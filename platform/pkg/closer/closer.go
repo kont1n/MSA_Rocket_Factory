@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	"go.uber.org/zap"
+
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 )
 
 // shutdownTimeout по умолчанию, можно сделать параметром

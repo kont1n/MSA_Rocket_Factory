@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
 
 func (s *ServiceSuite) TestCreateOrder_Success() {

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 	repoConverter "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/repository/converter"
 )

@@ -1,23 +1,46 @@
 services: # Раздел, описывающий контейнеры, которые требуются для работы Order-сервиса
 
+  order-service: # Order микросервис
+    build:
+      context: ../../../
+      dockerfile: deploy/docker/order/Dockerfile
+    
+    container_name: order-service
+    
+    env_file:
+      - .env
+
+    volumes:
+      - ./migrations:/app/migrations
+
+    ports:
+      - "${HTTP_PORT}:8080" 
+    
+    depends_on:
+      postgres-order:
+        condition: service_healthy
+    
+    restart: unless-stopped
+    
+    networks:
+      - microservices-net
+
   postgres-order: # Контейнер с PostgreSQL, используемый для хранения данных заказов
-    image: postgres:17.0-alpine3.20
+    image: ${POSTGRES_IMAGE_NAME}
 
     container_name: postgres-order
 
-    environment:
-      POSTGRES_DB: order-service
-      POSTGRES_USER: order-service-user
-      POSTGRES_PASSWORD: order-service-password
+    env_file:
+      - .env
 
     volumes:
       - postgres_order_data:/var/lib/postgresql/data
 
     ports:
-      - "5432:5432"
+      - "${EXTERNAL_POSTGRES_PORT}:5432"
 
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U order-service-user -d order-service" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 )
 

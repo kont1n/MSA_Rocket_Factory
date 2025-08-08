@@ -4,10 +4,11 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/converter"
-	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/converter"
+	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
 func (a *api) PayOrder(ctx context.Context, req *paymentV1.PayOrderRequest) (*paymentV1.PayOrderResponse, error) {

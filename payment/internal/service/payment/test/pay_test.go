@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/model"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/model"
 )
 
 func (s *ServiceSuite) TestPaySuccess() {

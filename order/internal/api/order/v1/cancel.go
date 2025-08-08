@@ -6,9 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/samber/lo"
+
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
-	"github.com/samber/lo"
 )
 
 func (a *api) CancelOrder(ctx context.Context, params orderV1.CancelOrderParams) (orderV1.CancelOrderRes, error) {

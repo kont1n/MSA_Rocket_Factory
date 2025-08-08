@@ -6,11 +6,12 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/api/converter"
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func (a *api) GetPart(ctx context.Context, req *inventoryV1.GetPartRequest) (*inventoryV1.GetPartResponse, error) {
