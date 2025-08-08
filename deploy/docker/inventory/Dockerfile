@@ -22,6 +22,12 @@ COPY inventory/ ./inventory/
 COPY shared/ ./shared/
 COPY platform/ ./platform/
 
+# Скачиваем grpc-health-probe — это утилита для проверки состояния gRPC-сервиса
+ADD https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.37/grpc_health_probe-linux-amd64 ./grpc-health-probe
+
+# Делаем скачанный файл исполняемым
+RUN chmod +x grpc-health-probe
+
 # Собираем приложение с оптимизациями
 WORKDIR /app/inventory
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \

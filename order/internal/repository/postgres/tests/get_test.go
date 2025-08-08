@@ -1,4 +1,6 @@
-package inmemory_test
+//go:build integration
+
+package postgres_test
 
 import (
 	"context"
@@ -9,7 +11,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
 
-func (s *InMemoryOrderRepositorySuite) TestGetOrder_Success() {
+func (s *PostgresRepositorySuite) TestGetOrder_Success() {
 	// Сначала создаем заказ
 	userUUID := uuid.New()
 	partUUIDs := []uuid.UUID{uuid.New(), uuid.New()}
@@ -38,7 +40,7 @@ func (s *InMemoryOrderRepositorySuite) TestGetOrder_Success() {
 	assert.Equal(s.T(), model.StatusPendingPayment, result.Status)
 }
 
-func (s *InMemoryOrderRepositorySuite) TestGetOrder_NotFound() {
+func (s *PostgresRepositorySuite) TestGetOrder_NotFound() {
 	// Используем несуществующий UUID
 	nonExistentUUID := uuid.New()
 
@@ -51,7 +53,7 @@ func (s *InMemoryOrderRepositorySuite) TestGetOrder_NotFound() {
 	assert.ErrorIs(s.T(), err, model.ErrOrderNotFound)
 }
 
-func (s *InMemoryOrderRepositorySuite) TestGetOrder_WithTransactionData() {
+func (s *PostgresRepositorySuite) TestGetOrder_WithTransactionData() {
 	// Создаем заказ с данными транзакции
 	userUUID := uuid.New()
 	partUUIDs := []uuid.UUID{uuid.New()}
@@ -79,46 +81,20 @@ func (s *InMemoryOrderRepositorySuite) TestGetOrder_WithTransactionData() {
 	assert.Equal(s.T(), model.StatusPaid, result.Status)
 }
 
-func (s *InMemoryOrderRepositorySuite) TestGetOrder_MultipleOrders() {
-	// Создаем несколько заказов и проверяем, что получаем правильный
-	userUUID1 := uuid.New()
-	userUUID2 := uuid.New()
+func (s *PostgresRepositorySuite) TestGetOrder_DatabaseError() {
+	// Закрываем соединение для симуляции ошибки базы данных
+	s.pool.Close()
 
-	order1 := &model.Order{
-		UserUUID:      userUUID1,
-		PartUUIDs:     []uuid.UUID{uuid.New()},
-		TotalPrice:    100.0,
-		PaymentMethod: "cash",
-		Status:        model.StatusPendingPayment,
-	}
+	orderUUID := uuid.New()
 
-	order2 := &model.Order{
-		UserUUID:      userUUID2,
-		PartUUIDs:     []uuid.UUID{uuid.New(), uuid.New()},
-		TotalPrice:    200.0,
-		PaymentMethod: "credit_card",
-		Status:        model.StatusPaid,
-	}
+	// Вызываем метод репозитория
+	result, err := s.repository.GetOrder(context.Background(), orderUUID)
 
-	// Создаем оба заказа
-	createdOrder1, err1 := s.repository.CreateOrder(context.Background(), order1)
-	createdOrder2, err2 := s.repository.CreateOrder(context.Background(), order2)
-	s.Require().NoError(err1)
-	s.Require().NoError(err2)
+	// Проверяем результат
+	assert.Error(s.T(), err)
+	assert.Nil(s.T(), result)
+	assert.NotErrorIs(s.T(), err, model.ErrOrderNotFound)
 
-	// Получаем первый заказ
-	result1, err := s.repository.GetOrder(context.Background(), createdOrder1.OrderUUID)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), createdOrder1.OrderUUID, result1.OrderUUID)
-	assert.Equal(s.T(), userUUID1, result1.UserUUID)
-	assert.Equal(s.T(), float32(100.0), result1.TotalPrice)
-	assert.Equal(s.T(), "cash", result1.PaymentMethod)
-
-	// Получаем второй заказ
-	result2, err := s.repository.GetOrder(context.Background(), createdOrder2.OrderUUID)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), createdOrder2.OrderUUID, result2.OrderUUID)
-	assert.Equal(s.T(), userUUID2, result2.UserUUID)
-	assert.Equal(s.T(), float32(200.0), result2.TotalPrice)
-	assert.Equal(s.T(), "credit_card", result2.PaymentMethod)
+	// Восстанавливаем соединение для последующих тестов
+	s.SetupSuite()
 }

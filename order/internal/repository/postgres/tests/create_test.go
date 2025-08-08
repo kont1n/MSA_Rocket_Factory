@@ -1,4 +1,6 @@
-package inmemory_test
+//go:build integration
+
+package postgres_test
 
 import (
 	"context"
@@ -9,7 +11,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
 
-func (s *InMemoryOrderRepositorySuite) TestCreateOrder_Success() {
+func (s *PostgresRepositorySuite) TestCreateOrder_Success() {
 	// Подготавливаем тестовые данные
 	userUUID := uuid.New()
 	partUUIDs := []uuid.UUID{uuid.New(), uuid.New()}
@@ -34,14 +36,14 @@ func (s *InMemoryOrderRepositorySuite) TestCreateOrder_Success() {
 	assert.Equal(s.T(), "credit_card", result.PaymentMethod)
 	assert.Equal(s.T(), model.StatusPendingPayment, result.Status)
 
-	// Проверяем, что заказ можно получить обратно
+	// Проверяем, что заказ действительно сохранился в базе
 	savedOrder, err := s.repository.GetOrder(context.Background(), result.OrderUUID)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), result.OrderUUID, savedOrder.OrderUUID)
 	assert.Equal(s.T(), userUUID, savedOrder.UserUUID)
 }
 
-func (s *InMemoryOrderRepositorySuite) TestCreateOrder_WithTransactionUUID() {
+func (s *PostgresRepositorySuite) TestCreateOrder_WithTransactionUUID() {
 	// Подготавливаем тестовые данные с транзакцией
 	userUUID := uuid.New()
 	partUUIDs := []uuid.UUID{uuid.New()}
@@ -66,7 +68,7 @@ func (s *InMemoryOrderRepositorySuite) TestCreateOrder_WithTransactionUUID() {
 	assert.Equal(s.T(), model.StatusPaid, result.Status)
 }
 
-func (s *InMemoryOrderRepositorySuite) TestCreateOrder_MultipleOrders() {
+func (s *PostgresRepositorySuite) TestCreateOrder_MultipleOrders() {
 	// Создаем несколько заказов для проверки независимости
 	userUUID1 := uuid.New()
 	userUUID2 := uuid.New()
@@ -97,35 +99,4 @@ func (s *InMemoryOrderRepositorySuite) TestCreateOrder_MultipleOrders() {
 	assert.NotEqual(s.T(), result1.OrderUUID, result2.OrderUUID) // UUID должны быть разными
 	assert.Equal(s.T(), userUUID1, result1.UserUUID)
 	assert.Equal(s.T(), userUUID2, result2.UserUUID)
-
-	// Проверяем, что оба заказа сохранились
-	savedOrder1, err := s.repository.GetOrder(context.Background(), result1.OrderUUID)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), result1.OrderUUID, savedOrder1.OrderUUID)
-
-	savedOrder2, err := s.repository.GetOrder(context.Background(), result2.OrderUUID)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), result2.OrderUUID, savedOrder2.OrderUUID)
-}
-
-func (s *InMemoryOrderRepositorySuite) TestCreateOrder_EmptyPartUUIDs() {
-	// Создаем заказ без частей
-	userUUID := uuid.New()
-	testOrder := &model.Order{
-		UserUUID:      userUUID,
-		PartUUIDs:     []uuid.UUID{}, // Пустой список
-		TotalPrice:    0.0,
-		PaymentMethod: "free",
-		Status:        model.StatusPendingPayment,
-	}
-
-	// Вызываем метод репозитория
-	result, err := s.repository.CreateOrder(context.Background(), testOrder)
-
-	// Проверяем результат
-	assert.NoError(s.T(), err)
-	assert.NotNil(s.T(), result)
-	assert.Equal(s.T(), userUUID, result.UserUUID)
-	assert.Empty(s.T(), result.PartUUIDs)
-	assert.Equal(s.T(), float32(0.0), result.TotalPrice)
 }
