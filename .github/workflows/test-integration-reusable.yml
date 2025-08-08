@@ -1,0 +1,62 @@
+name: Run Integration Tests
+
+on:
+  workflow_call:
+    inputs:
+      modules:
+        required: true
+        type: string
+      go-version:
+        required: true
+        type: string
+
+jobs:
+  integration-test:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: 🛠 Set up Go
+        uses: actions/setup-go@v5.4.0
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: false
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🧩 Set up Docker cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: 📌 Install Task
+        uses: arduino/setup-task@v2.0.0
+
+      - name: 📄 Генерация .env файлов
+        env:
+          SERVICES: "inventory,order,payment"
+        run: |
+          # Генерируем все .env файлы для сервисов
+          echo "Генерация .env файлов для всех сервисов..."
+          task env:generate
+
+          # Проверяем результат
+          echo "✅ Файлы .env для сервисов созданы"
+
+      - name: 🧪 Run integration tests via Taskfile
+        env:
+          MODULES: ${{ inputs.modules }}
+        run: task test-integration
+
+      - name: 🧹 Cleanup Docker containers
+        if: always()
+        run: |
+          echo "🧹 Cleaning up dangling containers..."
+          docker container prune -f

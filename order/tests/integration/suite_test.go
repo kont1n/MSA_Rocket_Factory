@@ -29,7 +29,7 @@ var (
 
 func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Inventory Service Integration Test Suite")
+	RunSpecs(t, "Order Service Integration Test Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -40,15 +40,15 @@ var _ = BeforeSuite(func() {
 
 	suiteCtx, suiteCancel = context.WithTimeout(context.Background(), testsTimeout)
 
-	// Загружаем .env файл и устанавливаем переменные в окружение
-	envVars, err := godotenv.Read(filepath.Join("..", "..", "..", "deploy", "compose", "inventory", ".env"))
+	// Пытаемся загрузить .env файл, но не падаем если его нет
+	envVars, err := godotenv.Read(filepath.Join("..", "..", "..", "deploy", "compose", "order", ".env"))
 	if err != nil {
-		logger.Fatal(suiteCtx, "Не удалось загрузить .env файл", zap.Error(err))
-	}
-
-	// Устанавливаем переменные в окружение процесса
-	for key, value := range envVars {
-		_ = os.Setenv(key, value)
+		logger.Warn(suiteCtx, "Не удалось загрузить .env файл, используем значения по умолчанию", zap.Error(err))
+	} else {
+		// Устанавливаем переменные в окружение процесса только если файл найден
+		for key, value := range envVars {
+			_ = os.Setenv(key, value)
+		}
 	}
 
 	logger.Info(suiteCtx, "Запуск тестового окружения...")

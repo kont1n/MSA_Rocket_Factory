@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/docker/docker v28.2.2+incompatible
-	github.com/docker/go-connections v0.5.0
+	github.com/docker/go-connections v0.6.0
 	github.com/pkg/errors v0.9.1
 	go.mongodb.org/mongo-driver v1.17.4
 	go.uber.org/zap v1.27.0

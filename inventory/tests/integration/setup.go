@@ -1,3 +1,5 @@
+//go:build integration
+
 package integration
 
 import (
@@ -19,8 +21,8 @@ import (
 
 const (
 	// Параметры для контейнеров
-	ufoAppName    = "ufo-app"
-	ufoDockerfile = "deploy/docker/ufo/Dockerfile"
+	inventoryAppName    = "inventory-app"
+	inventoryDockerfile = "deploy/docker/inventory/Dockerfile"
 
 	// Переменные окружения приложения
 	grpcPortKey = "GRPC_PORT"
@@ -75,9 +77,23 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	// Шаг 3: Запускаем контейнер с приложением
 	projectRoot := path.GetProjectRoot()
 
+	// Создаем полный набор переменных окружения для приложения
 	appEnv := map[string]string{
-		// Переопределяем хост MongoDB для подключения к контейнеру из testcontainers
-		testcontainers.MongoHostKey: generatedMongo.Config().ContainerName,
+		// Настройки gRPC
+		"GRPC_HOST": "0.0.0.0",
+		"GRPC_PORT": grpcPort,
+
+		// Настройки логгера
+		"LOGGER_LEVEL":   "debug",
+		"LOGGER_AS_JSON": "false",
+
+		// Настройки MongoDB - используем значения из конфигурации MongoDB контейнера
+		testcontainers.MongoHostKey:     generatedMongo.Config().ContainerName,
+		testcontainers.MongoPortKey:     "27017",
+		testcontainers.MongoDatabaseKey: generatedMongo.Config().Database,
+		testcontainers.MongoUsernameKey: generatedMongo.Config().Username,
+		testcontainers.MongoPasswordKey: generatedMongo.Config().Password,
+		"MONGO_AUTH_DB":                 "admin",
 	}
 
 	// Создаем настраиваемую стратегию ожидания с увеличенным таймаутом
@@ -85,9 +101,9 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		WithStartupTimeout(startupTimeout)
 
 	appContainer, err := app.NewContainer(ctx,
-		app.WithName(ufoAppName),
+		app.WithName(inventoryAppName),
 		app.WithPort(grpcPort),
-		app.WithDockerfile(projectRoot, ufoDockerfile),
+		app.WithDockerfile(projectRoot, inventoryDockerfile),
 		app.WithNetwork(generatedNetwork.Name()),
 		app.WithEnv(appEnv),
 		app.WithLogOutput(os.Stdout),

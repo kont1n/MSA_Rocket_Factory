@@ -15,12 +15,17 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 )
 
-const configPath = "../deploy/compose/inventory/.env"
-
 func init() {
+	// В Docker контейнере используем переменные окружения
+	// В локальной разработке пытаемся загрузить .env файл
+	configPath := "../deploy/compose/inventory/.env"
 	err := config.Load(configPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to load config: %w", err))
+		// Если .env файл не найден, пробуем загрузить конфигурацию из переменных окружения
+		err = config.Load()
+		if err != nil {
+			panic(fmt.Errorf("failed to load config: %w", err))
+		}
 	}
 }
 
