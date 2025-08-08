@@ -3,17 +3,22 @@ package v1
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 )
 
 func (a *api) GetOrderByUUID(ctx context.Context, params orderV1.GetOrderByUUIDParams) (orderV1.GetOrderByUUIDRes, error) {
 	order, err := a.orderService.GetOrder(ctx, params.OrderUUID)
 	if err != nil {
-		slog.Error("Get order error", "order", params.OrderUUID, "error", err)
+		logger.Error(ctx, "Get order error",
+			zap.String("order_uuid", params.OrderUUID.String()),
+			zap.Error(err),
+		)
 
 		if errors.Is(err, model.ErrOrderNotFound) {
 			return &orderV1.NotFoundError{

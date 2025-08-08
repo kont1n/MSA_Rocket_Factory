@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -35,7 +36,7 @@ func New(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	return a.runGRPCServer(ctx)
+	return a.runServers(ctx)
 }
 
 func (a *App) initDeps(ctx context.Context) error {
@@ -45,6 +46,7 @@ func (a *App) initDeps(ctx context.Context) error {
 		a.initCloser,
 		a.initListener,
 		a.initGRPCServer,
+		a.initGateway,
 	}
 
 	for _, f := range inits {
@@ -110,12 +112,56 @@ func (a *App) initGRPCServer(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) runGRPCServer(ctx context.Context) error {
-	logger.Info(ctx, fmt.Sprintf("🚀 gRPC PaymentService server listening on %s", config.AppConfig().GRPC.Address()))
+func (a *App) initGateway(ctx context.Context) error {
+	gateway := a.diContainer.Gateway(ctx)
 
-	err := a.grpcServer.Serve(a.listener)
-	if err != nil {
-		return err
+	// Добавляем gateway в closer для корректного завершения
+	closer.AddNamed("HTTP Gateway", func(ctx context.Context) error {
+		return gateway.Stop(ctx)
+	})
+
+	return gateway.RegisterHandlers(ctx)
+}
+
+func (a *App) runServers(ctx context.Context) error {
+	var wg sync.WaitGroup
+	errCh := make(chan error, 2)
+
+	// Запускаем gRPC сервер
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logger.Info(ctx, fmt.Sprintf("🚀 gRPC PaymentService server listening on %s", config.AppConfig().GRPC.Address()))
+
+		err := a.grpcServer.Serve(a.listener)
+		if err != nil {
+			errCh <- fmt.Errorf("gRPC server error: %w", err)
+		}
+	}()
+
+	// Запускаем HTTP Gateway
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		gateway := a.diContainer.Gateway(ctx)
+
+		err := gateway.Start(ctx)
+		if err != nil {
+			errCh <- fmt.Errorf("HTTP gateway error: %w", err)
+		}
+	}()
+
+	// Ждем завершения или ошибки
+	go func() {
+		wg.Wait()
+		close(errCh)
+	}()
+
+	// Возвращаем первую ошибку, если она есть
+	for err := range errCh {
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

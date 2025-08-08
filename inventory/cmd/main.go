@@ -25,7 +25,6 @@ func init() {
 }
 
 func main() {
-
 	appCtx, appCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer appCancel()
 	defer gracefulShutdown()

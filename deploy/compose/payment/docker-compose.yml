@@ -1,5 +1,5 @@
-services: # Здесь описываются контейнеры, необходимые для Payment-сервиса
-
+#  services: # Здесь описываются контейнеры, необходимые для Payment-сервиса
+#
 #  payment-service: # Payment микросервис
 #    build:
 #      context: ../../../
@@ -18,7 +18,8 @@ services: # Здесь описываются контейнеры, необхо
 #
 #    networks:
 #      - microservices-net
-
-networks:
-  microservices-net:
-    external: true
+#
+#
+#  networks:
+#    microservices-net:
+#      external: true

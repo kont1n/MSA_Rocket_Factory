@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -22,7 +21,7 @@ func RequestLogger(next http.Handler) http.Handler {
 
 		// Логируем информацию о запросе
 		duration := time.Since(start)
-		logger.Info(context.Background(), fmt.Sprintf("%s %s %d %v", r.Method, r.URL.Path, ww.statusCode, duration))
+		logger.Info(r.Context(), fmt.Sprintf("%s %s %d %v", r.Method, r.URL.Path, ww.statusCode, duration))
 	})
 }
 

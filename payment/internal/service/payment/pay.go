@@ -13,6 +13,7 @@ import (
 func (s *service) Pay(ctx context.Context, order model.Order) (uuid.UUID, error) {
 	transactionUuid := uuid.New()
 	logger.Info(ctx, "Payment success",
+		zap.String("order_uuid", order.OrderUuid.String()),
 		zap.String("transaction_uuid", transactionUuid.String()),
 	)
 

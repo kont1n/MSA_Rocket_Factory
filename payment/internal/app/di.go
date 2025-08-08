@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 
+	gatewayV1 "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/gateway/v1"
 	paymentV1API "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/payment/v1"
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/service"
 	paymentService "github.com/kont1n/MSA_Rocket_Factory/payment/internal/service/payment"
@@ -12,6 +13,7 @@ import (
 type diContainer struct {
 	paymentAPIv1   paymentV1.PaymentServiceServer
 	paymentService service.PaymentService
+	gateway        *gatewayV1.Gateway
 }
 
 func NewDiContainer() *diContainer {
@@ -30,4 +32,11 @@ func (d *diContainer) PaymentService(ctx context.Context) service.PaymentService
 		d.paymentService = paymentService.NewService()
 	}
 	return d.paymentService
+}
+
+func (d *diContainer) Gateway(ctx context.Context) *gatewayV1.Gateway {
+	if d.gateway == nil {
+		d.gateway = gatewayV1.NewGateway()
+	}
+	return d.gateway
 }

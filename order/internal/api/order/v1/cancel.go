@@ -3,12 +3,13 @@ package v1
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 )
 
@@ -19,7 +20,10 @@ func (a *api) CancelOrder(ctx context.Context, params orderV1.CancelOrderParams)
 
 	_, err := a.orderService.CancelOrder(ctx, lo.ToPtr(orderDraft))
 	if err != nil {
-		slog.Error("Cancel order error", "order:", params.OrderUUID, "error:", err)
+		logger.Error(ctx, "Cancel order error",
+			zap.String("order_uuid", params.OrderUUID.String()),
+			zap.Error(err),
+		)
 
 		if errors.Is(err, model.ErrOrderNotFound) {
 			return &orderV1.NotFoundError{
