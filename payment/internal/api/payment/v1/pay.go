@@ -2,12 +2,13 @@ package v1
 
 import (
 	"context"
-	"log/slog"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/converter"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
@@ -19,7 +20,11 @@ func (a *api) PayOrder(ctx context.Context, req *paymentV1.PayOrderRequest) (*pa
 
 	transaction, err := a.paymentService.Pay(ctx, order)
 	if err != nil {
-		slog.Info("Payment fail", "transaction:", transaction, "err:", err)
+		logger.Error(ctx, "Payment fail",
+			zap.Error(err),
+			zap.String("transaction", transaction.String()),
+			zap.String("order", order.OrderUuid.String()),
+		)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
