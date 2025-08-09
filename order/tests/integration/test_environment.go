@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -44,7 +45,7 @@ func (env *TestEnvironment) InsertTestOrder(ctx context.Context) (string, error)
 		15750000.75,
 		uuid.New(),
 		"credit_card",
-		"pending",
+		string(model.StatusPendingPayment),
 	)
 	if err != nil {
 		return "", fmt.Errorf("не удалось вставить тестовый заказ: %w", err)
@@ -137,7 +138,7 @@ func (env *TestEnvironment) InsertMultipleTestOrders(ctx context.Context) ([]str
 			totalPrice:      15000000.50,
 			transactionUUID: uuid.New(),
 			paymentMethod:   "credit_card",
-			status:          "pending",
+			status:          string(model.StatusPendingPayment),
 		},
 		{
 			orderUUID:       uuid.New(),
@@ -146,7 +147,7 @@ func (env *TestEnvironment) InsertMultipleTestOrders(ctx context.Context) ([]str
 			totalPrice:      2750000.75,
 			transactionUUID: uuid.New(),
 			paymentMethod:   "bank_transfer",
-			status:          "paid",
+			status:          string(model.StatusPaid),
 		},
 		{
 			orderUUID:       uuid.New(),
@@ -155,7 +156,7 @@ func (env *TestEnvironment) InsertMultipleTestOrders(ctx context.Context) ([]str
 			totalPrice:      750000.00,
 			transactionUUID: uuid.New(),
 			paymentMethod:   "cryptocurrency",
-			status:          "cancelled",
+			status:          string(model.StatusCancelled),
 		},
 	}
 
@@ -239,8 +240,8 @@ func (env *TestEnvironment) GetOrderByUUID(ctx context.Context, orderUUID string
 		&order.Status,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("заказ не найден")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, model.ErrOrderNotFound
 		}
 		return nil, fmt.Errorf("не удалось получить заказ: %w", err)
 	}

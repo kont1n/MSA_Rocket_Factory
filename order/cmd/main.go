@@ -20,7 +20,11 @@ const configPath = "../deploy/compose/order/.env"
 func init() {
 	err := config.Load(configPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to load config: %w", err))
+		// В контейнере .env файла может не быть, используем переменные окружения
+		err = config.Load()
+		if err != nil {
+			panic(fmt.Errorf("failed to load config: %w", err))
+		}
 	}
 }
 

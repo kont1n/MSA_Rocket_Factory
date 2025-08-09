@@ -9,7 +9,7 @@ replace github.com/kont1n/MSA_Rocket_Factory/platform => ../platform
 require (
 	github.com/brianvoe/gofakeit/v7 v7.3.0
 	github.com/caarlos0/env/v11 v11.3.1
-	github.com/docker/go-connections v0.5.0
+	github.com/docker/go-connections v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kont1n/MSA_Rocket_Factory/platform v0.0.0-00010101000000-000000000000

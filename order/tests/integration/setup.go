@@ -32,25 +32,32 @@ const (
 	startupTimeout   = 3 * time.Minute
 )
 
+// TestEnvironment — структура для хранения ресурсов тестового окружения
+type TestEnvironment struct {
+	Network  *network.Network
+	Postgres *postgres.Container
+	App      *app.Container
+}
+
 // setupTestEnvironment — подготавливает тестовое окружение: сеть, контейнеры и возвращает структуру с ресурсами
 func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	logger.Info(ctx, "🚀 Подготовка тестового окружения...")
 
 	// Шаг 1: Создаём общую Docker-сеть
-	generatedNetwork, err := network.NewNetwork(ctx, "order-service")
+	generatedNetwork, err := network.NewNetwork(ctx, projectName)
 	if err != nil {
 		logger.Fatal(ctx, "не удалось создать общую сеть", zap.Error(err))
 	}
 	logger.Info(ctx, "✅ Сеть успешно создана")
 
 	// Получаем переменные окружения для PostgreSQL с проверкой на наличие
-	postgresUsername := getEnvWithDefault(ctx, testcontainers.PostgresUsernameKey, testcontainers.PostgresUsername)
-	postgresPassword := getEnvWithDefault(ctx, testcontainers.PostgresPasswordKey, testcontainers.PostgresPassword)
-	postgresImageName := getEnvWithDefault(ctx, testcontainers.PostgresImageNameKey, testcontainers.PostgresImageName)
-	postgresDatabase := getEnvWithDefault(ctx, testcontainers.PostgresDatabaseKey, testcontainers.PostgresDatabase)
+	postgresUsername := getEnvWithLogging(ctx, testcontainers.PostgresUsernameKey)
+	postgresPassword := getEnvWithLogging(ctx, testcontainers.PostgresPasswordKey)
+	postgresImageName := getEnvWithLogging(ctx, testcontainers.PostgresImageNameKey)
+	postgresDatabase := getEnvWithLogging(ctx, testcontainers.PostgresDatabaseKey)
 
 	// Получаем порт HTTP для waitStrategy
-	httpPort := getEnvWithDefault(ctx, httpPortKey, "8080")
+	httpPort := getEnvWithLogging(ctx, httpPortKey)
 
 	// Шаг 2: Запускаем контейнер с PostgreSQL
 	generatedPostgres, err := postgres.NewContainer(ctx,
@@ -59,7 +66,6 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		postgres.WithImageName(postgresImageName),
 		postgres.WithDatabase(postgresDatabase),
 		postgres.WithAuth(postgresUsername, postgresPassword),
-		// postgres.WithLogger(logger.Logger()), // Пока отключим логгер
 	)
 	if err != nil {
 		cleanupTestEnvironment(ctx, &TestEnvironment{Network: generatedNetwork})
@@ -73,8 +79,7 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	// Создаем полный набор переменных окружения для приложения
 	appEnv := map[string]string{
 		// Настройки HTTP
-		"HTTP_HOST": "0.0.0.0",
-		"HTTP_PORT": httpPort,
+		"HTTP_ADDRESS": "0.0.0.0:" + httpPort,
 
 		// Настройки логгера
 		"LOGGER_LEVEL":   "debug",
@@ -86,12 +91,8 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		testcontainers.PostgresDatabaseKey: generatedPostgres.Config().Database,
 		testcontainers.PostgresUsernameKey: generatedPostgres.Config().Username,
 		testcontainers.PostgresPasswordKey: generatedPostgres.Config().Password,
-
-		// Настройки gRPC клиентов (заглушки для тестов)
-		"GRPC_INVENTORY_HOST": "localhost",
-		"GRPC_INVENTORY_PORT": "50051",
-		"GRPC_PAYMENT_HOST":   "localhost",
-		"GRPC_PAYMENT_PORT":   "50052",
+		"POSTGRES_SSLMODE":                 "disable",
+		"POSTGRES_MIGRATIONS_DIR":          "migrations",
 	}
 
 	// Создаем настраиваемую стратегию ожидания с увеличенным таймаутом
@@ -106,7 +107,6 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		app.WithEnv(appEnv),
 		app.WithLogOutput(os.Stdout),
 		app.WithStartupWait(waitStrategy),
-		app.WithLogger(logger.Logger()),
 	)
 	if err != nil {
 		cleanupTestEnvironment(ctx, &TestEnvironment{Network: generatedNetwork, Postgres: generatedPostgres})
@@ -130,43 +130,4 @@ func getEnvWithLogging(ctx context.Context, key string) string {
 	}
 
 	return value
-}
-
-// getEnvWithDefault возвращает значение переменной окружения или значение по умолчанию
-func getEnvWithDefault(ctx context.Context, key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		logger.Info(ctx, "Используется значение по умолчанию для переменной окружения",
-			zap.String("key", key), zap.String("default", defaultValue))
-		return defaultValue
-	}
-
-	return value
-}
-
-// cleanupTestEnvironment — вспомогательная функция для освобождения ресурсов
-func cleanupTestEnvironment(ctx context.Context, env *TestEnvironment) {
-	if env.App != nil {
-		if err := env.App.Terminate(ctx); err != nil {
-			logger.Error(ctx, "не удалось остановить контейнер приложения", zap.Error(err))
-		} else {
-			logger.Info(ctx, "🛑 Контейнер приложения остановлен")
-		}
-	}
-
-	if env.Postgres != nil {
-		if err := env.Postgres.Terminate(ctx); err != nil {
-			logger.Error(ctx, "не удалось остановить контейнер PostgreSQL", zap.Error(err))
-		} else {
-			logger.Info(ctx, "🛑 Контейнер PostgreSQL остановлен")
-		}
-	}
-
-	if env.Network != nil {
-		if err := env.Network.Remove(ctx); err != nil {
-			logger.Error(ctx, "не удалось удалить сеть", zap.Error(err))
-		} else {
-			logger.Info(ctx, "🛑 Сеть удалена")
-		}
-	}
 }

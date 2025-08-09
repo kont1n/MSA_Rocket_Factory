@@ -115,7 +115,7 @@ var _ = Describe("OrderService", func() {
 
 				Expect(err).To(HaveOccurred())
 				Expect(order).To(BeNil())
-				Expect(err.Error()).To(ContainSubstring("заказ не найден"))
+				Expect(err.Error()).To(ContainSubstring("order not found"))
 			})
 
 			It("должен возвращать ошибку для невалидного UUID", func() {

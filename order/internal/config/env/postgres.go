@@ -11,8 +11,8 @@ type postgresEnvConfig struct {
 	Port          string `env:"POSTGRES_PORT,required"`
 	SslMode       string `env:"POSTGRES_SSLMODE,required"`
 	Database      string `env:"POSTGRES_DATABASE,required"`
-	User          string `env:"POSTGRES_INITDB_ROOT_USERNAME,required"`
-	Password      string `env:"POSTGRES_INITDB_ROOT_PASSWORD,required"`
+	User          string `env:"POSTGRES_USER,required"`
+	Password      string `env:"POSTGRES_PASSWORD,required"`
 	MigrationsDir string `env:"POSTGRES_MIGRATIONS_DIR,required"`
 }
 

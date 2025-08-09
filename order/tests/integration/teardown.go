@@ -5,6 +5,8 @@ package integration
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 )
 
@@ -16,4 +18,31 @@ func teardownTestEnvironment(ctx context.Context, env *TestEnvironment) {
 	cleanupTestEnvironment(ctx, env)
 
 	log.Info(ctx, "✅ Тестовое окружение успешно очищено")
+}
+
+// cleanupTestEnvironment — вспомогательная функция для освобождения ресурсов
+func cleanupTestEnvironment(ctx context.Context, env *TestEnvironment) {
+	if env.App != nil {
+		if err := env.App.Terminate(ctx); err != nil {
+			logger.Error(ctx, "не удалось остановить контейнер приложения", zap.Error(err))
+		} else {
+			logger.Info(ctx, "🛑 Контейнер приложения остановлен")
+		}
+	}
+
+	if env.Postgres != nil {
+		if err := env.Postgres.Terminate(ctx); err != nil {
+			logger.Error(ctx, "failed to terminate postgres container", zap.Error(err))
+		} else {
+			logger.Info(ctx, "Postgres container terminated")
+		}
+	}
+
+	if env.Network != nil {
+		if err := env.Network.Remove(ctx); err != nil {
+			logger.Error(ctx, "не удалось удалить сеть", zap.Error(err))
+		} else {
+			logger.Info(ctx, "🛑 Сеть удалена")
+		}
+	}
 }

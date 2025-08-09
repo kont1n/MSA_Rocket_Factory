@@ -26,8 +26,8 @@ func (s *ConfigSuite) SetupTest() {
 		"POSTGRES_PORT",
 		"POSTGRES_SSLMODE",
 		"POSTGRES_DATABASE",
-		"POSTGRES_INITDB_ROOT_USERNAME",
-		"POSTGRES_INITDB_ROOT_PASSWORD",
+		"POSTGRES_USER",
+		"POSTGRES_PASSWORD",
 		"POSTGRES_MIGRATIONS_DIR",
 		"INVENTORY_GRPC_ADDRESS",
 		"PAYMENT_GRPC_ADDRESS",
@@ -61,8 +61,8 @@ func (s *ConfigSuite) TearDownTest() {
 		"POSTGRES_PORT",
 		"POSTGRES_SSLMODE",
 		"POSTGRES_DATABASE",
-		"POSTGRES_INITDB_ROOT_USERNAME",
-		"POSTGRES_INITDB_ROOT_PASSWORD",
+		"POSTGRES_USER",
+		"POSTGRES_PASSWORD",
 		"POSTGRES_MIGRATIONS_DIR",
 		"INVENTORY_GRPC_ADDRESS",
 		"PAYMENT_GRPC_ADDRESS",
@@ -89,8 +89,8 @@ func (s *ConfigSuite) TestLoad_Success() {
 	_ = os.Setenv("POSTGRES_PORT", "5432")
 	_ = os.Setenv("POSTGRES_SSLMODE", "disable")
 	_ = os.Setenv("POSTGRES_DATABASE", "orders")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_USERNAME", "user")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_PASSWORD", "password")
+	_ = os.Setenv("POSTGRES_USER", "user")
+	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
 	_ = os.Setenv("INVENTORY_GRPC_ADDRESS", "localhost:50051")
 	_ = os.Setenv("PAYMENT_GRPC_ADDRESS", "localhost:50052")
@@ -121,8 +121,8 @@ func (s *ConfigSuite) TestLoad_HTTPConfigDefaults() {
 	_ = os.Setenv("POSTGRES_PORT", "5432")
 	_ = os.Setenv("POSTGRES_SSLMODE", "disable")
 	_ = os.Setenv("POSTGRES_DATABASE", "orders")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_USERNAME", "user")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_PASSWORD", "password")
+	_ = os.Setenv("POSTGRES_USER", "user")
+	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
 
 	err := Load()
@@ -146,8 +146,8 @@ func (s *ConfigSuite) TestLoad_MissingLoggerLevel() {
 	_ = os.Setenv("POSTGRES_PORT", "5432")
 	_ = os.Setenv("POSTGRES_SSLMODE", "disable")
 	_ = os.Setenv("POSTGRES_DATABASE", "orders")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_USERNAME", "user")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_PASSWORD", "password")
+	_ = os.Setenv("POSTGRES_USER", "user")
+	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
 
 	err := Load()
@@ -162,8 +162,8 @@ func (s *ConfigSuite) TestLoad_MissingPostgresHost() {
 	_ = os.Setenv("POSTGRES_PORT", "5432")
 	_ = os.Setenv("POSTGRES_SSLMODE", "disable")
 	_ = os.Setenv("POSTGRES_DATABASE", "orders")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_USERNAME", "user")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_PASSWORD", "password")
+	_ = os.Setenv("POSTGRES_USER", "user")
+	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
 
 	err := Load()
@@ -172,19 +172,19 @@ func (s *ConfigSuite) TestLoad_MissingPostgresHost() {
 }
 
 func (s *ConfigSuite) TestLoad_MissingPostgresPassword() {
-	// Устанавливаем все переменные кроме POSTGRES_INITDB_ROOT_PASSWORD
+	// Устанавливаем все переменные кроме POSTGRES_PASSWORD
 	_ = os.Setenv("LOGGER_LEVEL", "info")
 	_ = os.Setenv("LOGGER_AS_JSON", "true")
 	_ = os.Setenv("POSTGRES_HOST", "localhost")
 	_ = os.Setenv("POSTGRES_PORT", "5432")
 	_ = os.Setenv("POSTGRES_SSLMODE", "disable")
 	_ = os.Setenv("POSTGRES_DATABASE", "orders")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_USERNAME", "user")
+	_ = os.Setenv("POSTGRES_USER", "user")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
 
 	err := Load()
 	s.Error(err)
-	s.Contains(err.Error(), "POSTGRES_INITDB_ROOT_PASSWORD")
+	s.Contains(err.Error(), "POSTGRES_PASSWORD")
 }
 
 func (s *ConfigSuite) TestLoad_FromEnvFile() {
@@ -201,8 +201,8 @@ POSTGRES_HOST=db-host
 POSTGRES_PORT=5433
 POSTGRES_SSLMODE=require
 POSTGRES_DATABASE=test_orders
-POSTGRES_INITDB_ROOT_USERNAME=testuser
-POSTGRES_INITDB_ROOT_PASSWORD=testpass
+POSTGRES_USER=testuser
+POSTGRES_PASSWORD=testpass
 POSTGRES_MIGRATIONS_DIR=/migrations
 INVENTORY_GRPC_ADDRESS=inventory:50051
 PAYMENT_GRPC_ADDRESS=payment:50052`
@@ -235,8 +235,8 @@ func (s *ConfigSuite) TestLoad_NonExistentEnvFile() {
 	_ = os.Setenv("POSTGRES_PORT", "5432")
 	_ = os.Setenv("POSTGRES_SSLMODE", "disable")
 	_ = os.Setenv("POSTGRES_DATABASE", "orders")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_USERNAME", "user")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_PASSWORD", "password")
+	_ = os.Setenv("POSTGRES_USER", "user")
+	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
 
 	err := Load("/non/existent/file.env")
@@ -261,8 +261,8 @@ func (s *ConfigSuite) TestLoad_InvalidHTTPTimeout() {
 	_ = os.Setenv("POSTGRES_PORT", "5432")
 	_ = os.Setenv("POSTGRES_SSLMODE", "disable")
 	_ = os.Setenv("POSTGRES_DATABASE", "orders")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_USERNAME", "user")
-	_ = os.Setenv("POSTGRES_INITDB_ROOT_PASSWORD", "password")
+	_ = os.Setenv("POSTGRES_USER", "user")
+	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
 
 	err := Load()
@@ -285,8 +285,8 @@ POSTGRES_HOST=db-host
 POSTGRES_PORT=5433
 POSTGRES_SSLMODE=require
 POSTGRES_DATABASE=test_orders
-POSTGRES_INITDB_ROOT_USERNAME=testuser
-POSTGRES_INITDB_ROOT_PASSWORD=testpass
+POSTGRES_USER=testuser
+POSTGRES_PASSWORD=testpass
 POSTGRES_MIGRATIONS_DIR=/migrations`
 
 	err := os.WriteFile(envFile, []byte(envContent), 0o644)
