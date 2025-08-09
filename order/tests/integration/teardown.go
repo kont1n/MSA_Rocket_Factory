@@ -22,6 +22,11 @@ func teardownTestEnvironment(ctx context.Context, env *TestEnvironment) {
 
 // cleanupTestEnvironment — вспомогательная функция для освобождения ресурсов
 func cleanupTestEnvironment(ctx context.Context, env *TestEnvironment) {
+	if env.DBPool != nil {
+		env.DBPool.Close()
+		logger.Info(ctx, "🛑 Пул подключений к PostgreSQL закрыт")
+	}
+
 	if env.App != nil {
 		if err := env.App.Terminate(ctx); err != nil {
 			logger.Error(ctx, "не удалось остановить контейнер приложения", zap.Error(err))
@@ -32,9 +37,9 @@ func cleanupTestEnvironment(ctx context.Context, env *TestEnvironment) {
 
 	if env.Postgres != nil {
 		if err := env.Postgres.Terminate(ctx); err != nil {
-			logger.Error(ctx, "failed to terminate postgres container", zap.Error(err))
+			logger.Error(ctx, "не удалось остановить контейнер PostgreSQL", zap.Error(err))
 		} else {
-			logger.Info(ctx, "Postgres container terminated")
+			logger.Info(ctx, "🛑 Контейнер PostgreSQL остановлен")
 		}
 	}
 

@@ -15,25 +15,15 @@ import (
 type Container struct {
 	container testcontainers.Container
 	config    *Config
-	logger    *zap.Logger
 }
 
 // NewContainer создает и запускает новый PostgreSQL контейнер
-func NewContainer(ctx context.Context, opts ...interface{}) (*Container, error) {
+func NewContainer(ctx context.Context, opts ...Option) (*Container, error) {
 	config := NewConfig()
-	var networkName string
-	var logger *zap.Logger
 
 	// Применяем опции
 	for _, opt := range opts {
-		switch v := opt.(type) {
-		case Option:
-			v(config)
-		case NetworkOption:
-			networkName = v.NetworkName
-		case LoggerOption:
-			logger = v.Logger
-		}
+		opt(config)
 	}
 
 	// Настройки контейнера
@@ -59,8 +49,8 @@ func NewContainer(ctx context.Context, opts ...interface{}) (*Container, error) 
 	}
 
 	// Добавляем сеть если указана
-	if networkName != "" {
-		req.Networks = []string{networkName}
+	if config.NetworkName != "" {
+		req.Networks = []string{config.NetworkName}
 	}
 
 	// Создаем и запускаем контейнер
@@ -72,16 +62,13 @@ func NewContainer(ctx context.Context, opts ...interface{}) (*Container, error) 
 		return nil, fmt.Errorf("не удалось создать PostgreSQL контейнер: %w", err)
 	}
 
-	if logger != nil {
-		logger.Info("PostgreSQL контейнер успешно запущен",
-			zap.String("container_name", config.ContainerName),
-			zap.String("database", config.Database))
-	}
+	config.Logger.Info(ctx, "PostgreSQL контейнер успешно запущен",
+		zap.String("container_name", config.ContainerName),
+		zap.String("database", config.Database))
 
 	return &Container{
 		container: container,
 		config:    config,
-		logger:    logger,
 	}, nil
 }
 
@@ -123,12 +110,11 @@ func (c *Container) ConnectionString(ctx context.Context) (string, error) {
 
 // Terminate останавливает и удаляет контейнер
 func (c *Container) Terminate(ctx context.Context) error {
-	if c.logger != nil {
-		c.logger.Info("Остановка PostgreSQL контейнера",
-			zap.String("container_name", c.config.ContainerName))
-	}
+	c.config.Logger.Info(ctx, "Остановка PostgreSQL контейнера",
+		zap.String("container_name", c.config.ContainerName))
 
 	if err := c.container.Terminate(ctx); err != nil {
+		c.config.Logger.Error(ctx, "не удалось остановить PostgreSQL контейнер", zap.Error(err))
 		return fmt.Errorf("не удалось остановить PostgreSQL контейнер: %w", err)
 	}
 

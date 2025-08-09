@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/go-connections/nat"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 
@@ -37,6 +38,7 @@ type TestEnvironment struct {
 	Network  *network.Network
 	Postgres *postgres.Container
 	App      *app.Container
+	DBPool   *pgxpool.Pool
 }
 
 // setupTestEnvironment — подготавливает тестовое окружение: сеть, контейнеры и возвращает структуру с ресурсами
@@ -50,14 +52,14 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	}
 	logger.Info(ctx, "✅ Сеть успешно создана")
 
-	// Получаем переменные окружения для PostgreSQL с проверкой на наличие
-	postgresUsername := getEnvWithLogging(ctx, testcontainers.PostgresUsernameKey)
-	postgresPassword := getEnvWithLogging(ctx, testcontainers.PostgresPasswordKey)
-	postgresImageName := getEnvWithLogging(ctx, testcontainers.PostgresImageNameKey)
-	postgresDatabase := getEnvWithLogging(ctx, testcontainers.PostgresDatabaseKey)
+	// Получаем переменные окружения для PostgreSQL с проверкой на наличие и значениями по умолчанию
+	postgresUsername := getEnvWithDefault(ctx, testcontainers.PostgresUsernameKey, testcontainers.PostgresUsername)
+	postgresPassword := getEnvWithDefault(ctx, testcontainers.PostgresPasswordKey, testcontainers.PostgresPassword)
+	postgresImageName := getEnvWithDefault(ctx, testcontainers.PostgresImageNameKey, testcontainers.PostgresImageName)
+	postgresDatabase := getEnvWithDefault(ctx, testcontainers.PostgresDatabaseKey, testcontainers.PostgresDatabase)
 
 	// Получаем порт HTTP для waitStrategy
-	httpPort := getEnvWithLogging(ctx, httpPortKey)
+	httpPort := getEnvWithDefault(ctx, httpPortKey, "8081")
 
 	// Шаг 2: Запускаем контейнер с PostgreSQL
 	generatedPostgres, err := postgres.NewContainer(ctx,
@@ -66,6 +68,7 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		postgres.WithImageName(postgresImageName),
 		postgres.WithDatabase(postgresDatabase),
 		postgres.WithAuth(postgresUsername, postgresPassword),
+		postgres.WithLogger(logger.Logger()),
 	)
 	if err != nil {
 		cleanupTestEnvironment(ctx, &TestEnvironment{Network: generatedNetwork})
@@ -114,11 +117,26 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	}
 	logger.Info(ctx, "✅ Контейнер приложения успешно запущен")
 
+	// Шаг 4: Создаем пул подключений к PostgreSQL
+	connStr, err := generatedPostgres.ConnectionString(ctx)
+	if err != nil {
+		cleanupTestEnvironment(ctx, &TestEnvironment{Network: generatedNetwork, Postgres: generatedPostgres, App: appContainer})
+		logger.Fatal(ctx, "не удалось получить строку подключения к PostgreSQL", zap.Error(err))
+	}
+
+	dbPool, err := pgxpool.New(ctx, connStr)
+	if err != nil {
+		cleanupTestEnvironment(ctx, &TestEnvironment{Network: generatedNetwork, Postgres: generatedPostgres, App: appContainer})
+		logger.Fatal(ctx, "не удалось создать пул подключений к PostgreSQL", zap.Error(err))
+	}
+	logger.Info(ctx, "✅ Пул подключений к PostgreSQL создан")
+
 	logger.Info(ctx, "🎉 Тестовое окружение готово")
 	return &TestEnvironment{
 		Network:  generatedNetwork,
 		Postgres: generatedPostgres,
 		App:      appContainer,
+		DBPool:   dbPool,
 	}
 }
 
@@ -129,5 +147,21 @@ func getEnvWithLogging(ctx context.Context, key string) string {
 		logger.Warn(ctx, "Переменная окружения не установлена", zap.String("key", key))
 	}
 
+	return value
+}
+
+// getEnvWithDefault возвращает значение переменной окружения или значение по умолчанию
+func getEnvWithDefault(ctx context.Context, key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		logger.Info(ctx, "Используется значение по умолчанию для переменной окружения",
+			zap.String("key", key),
+			zap.String("default", defaultValue))
+		return defaultValue
+	}
+
+	logger.Info(ctx, "Используется значение из переменной окружения",
+		zap.String("key", key),
+		zap.String("value", value))
 	return value
 }

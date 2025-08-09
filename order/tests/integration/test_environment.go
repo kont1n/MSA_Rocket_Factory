@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
@@ -20,25 +19,13 @@ func (env *TestEnvironment) InsertTestOrder(ctx context.Context) (string, error)
 	userUUID := uuid.New()
 	partUUIDs := []uuid.UUID{uuid.New(), uuid.New()}
 
-	// Подключаемся к PostgreSQL
-	connStr, err := env.Postgres.ConnectionString(ctx)
-	if err != nil {
-		return "", fmt.Errorf("не удалось получить строку подключения: %w", err)
-	}
-
-	pool, err := pgxpool.New(ctx, connStr)
-	if err != nil {
-		return "", fmt.Errorf("не удалось подключиться к PostgreSQL: %w", err)
-	}
-	defer pool.Close()
-
-	// Вставляем тестовый заказ
+	// Вставляем тестовый заказ используя существующий пул подключений
 	query := `
 		INSERT INTO orders (order_uuid, user_uuid, part_uuid, total_price, transaction_uuid, payment_method, status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
-	_, err = pool.Exec(ctx, query,
+	_, err := env.DBPool.Exec(ctx, query,
 		orderUUID,
 		userUUID,
 		partUUIDs,
@@ -58,25 +45,13 @@ func (env *TestEnvironment) InsertTestOrder(ctx context.Context) (string, error)
 func (env *TestEnvironment) InsertTestOrderWithData(ctx context.Context, order *model.Order) (string, error) {
 	orderUUID := uuid.New()
 
-	// Подключаемся к PostgreSQL
-	connStr, err := env.Postgres.ConnectionString(ctx)
-	if err != nil {
-		return "", fmt.Errorf("не удалось получить строку подключения: %w", err)
-	}
-
-	pool, err := pgxpool.New(ctx, connStr)
-	if err != nil {
-		return "", fmt.Errorf("не удалось подключиться к PostgreSQL: %w", err)
-	}
-	defer pool.Close()
-
-	// Вставляем тестовый заказ
+	// Вставляем тестовый заказ используя существующий пул подключений
 	query := `
 		INSERT INTO orders (order_uuid, user_uuid, part_uuid, total_price, transaction_uuid, payment_method, status)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
-	_, err = pool.Exec(ctx, query,
+	_, err := env.DBPool.Exec(ctx, query,
 		orderUUID,
 		order.UserUUID,
 		order.PartUUIDs,
@@ -108,18 +83,6 @@ func (env *TestEnvironment) GetTestOrder() *model.Order {
 // InsertMultipleTestOrders — вставляет несколько тестовых заказов для тестирования
 func (env *TestEnvironment) InsertMultipleTestOrders(ctx context.Context) ([]string, error) {
 	var orderUUIDs []string
-
-	// Подключаемся к PostgreSQL
-	connStr, err := env.Postgres.ConnectionString(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("не удалось получить строку подключения: %w", err)
-	}
-
-	pool, err := pgxpool.New(ctx, connStr)
-	if err != nil {
-		return nil, fmt.Errorf("не удалось подключиться к PostgreSQL: %w", err)
-	}
-	defer pool.Close()
 
 	// Создаем тестовые заказы
 	testOrders := []struct {
@@ -166,7 +129,7 @@ func (env *TestEnvironment) InsertMultipleTestOrders(ctx context.Context) ([]str
 	`
 
 	for _, order := range testOrders {
-		_, err := pool.Exec(ctx, query,
+		_, err := env.DBPool.Exec(ctx, query,
 			order.orderUUID,
 			order.userUUID,
 			order.partUUIDs,
@@ -187,19 +150,7 @@ func (env *TestEnvironment) InsertMultipleTestOrders(ctx context.Context) ([]str
 
 // ClearOrdersTable — удаляет все записи из таблицы orders
 func (env *TestEnvironment) ClearOrdersTable(ctx context.Context) error {
-	// Подключаемся к PostgreSQL
-	connStr, err := env.Postgres.ConnectionString(ctx)
-	if err != nil {
-		return fmt.Errorf("не удалось получить строку подключения: %w", err)
-	}
-
-	pool, err := pgxpool.New(ctx, connStr)
-	if err != nil {
-		return fmt.Errorf("не удалось подключиться к PostgreSQL: %w", err)
-	}
-	defer pool.Close()
-
-	_, err = pool.Exec(ctx, "DELETE FROM orders")
+	_, err := env.DBPool.Exec(ctx, "DELETE FROM orders")
 	if err != nil {
 		return fmt.Errorf("не удалось очистить таблицу orders: %w", err)
 	}
@@ -209,18 +160,6 @@ func (env *TestEnvironment) ClearOrdersTable(ctx context.Context) error {
 
 // GetOrderByUUID — получает заказ по UUID из базы данных
 func (env *TestEnvironment) GetOrderByUUID(ctx context.Context, orderUUID string) (*model.Order, error) {
-	// Подключаемся к PostgreSQL
-	connStr, err := env.Postgres.ConnectionString(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("не удалось получить строку подключения: %w", err)
-	}
-
-	pool, err := pgxpool.New(ctx, connStr)
-	if err != nil {
-		return nil, fmt.Errorf("не удалось подключиться к PostgreSQL: %w", err)
-	}
-	defer pool.Close()
-
 	query := `
 		SELECT order_uuid, user_uuid, part_uuid, total_price, transaction_uuid, payment_method, status
 		FROM orders WHERE order_uuid = $1
@@ -230,7 +169,7 @@ func (env *TestEnvironment) GetOrderByUUID(ctx context.Context, orderUUID string
 	var orderUUIDStr, userUUIDStr, transactionUUIDStr string
 	var partUUIDs []uuid.UUID
 
-	err = pool.QueryRow(ctx, query, orderUUID).Scan(
+	err := env.DBPool.QueryRow(ctx, query, orderUUID).Scan(
 		&orderUUIDStr,
 		&userUUIDStr,
 		&partUUIDs,
@@ -269,25 +208,13 @@ func (env *TestEnvironment) GetOrderByUUID(ctx context.Context, orderUUID string
 
 // UpdateOrderInDB — обновляет заказ в базе данных (имитирует работу репозитория)
 func (env *TestEnvironment) UpdateOrderInDB(ctx context.Context, order *model.Order) error {
-	// Подключаемся к PostgreSQL
-	connStr, err := env.Postgres.ConnectionString(ctx)
-	if err != nil {
-		return fmt.Errorf("не удалось получить строку подключения: %w", err)
-	}
-
-	pool, err := pgxpool.New(ctx, connStr)
-	if err != nil {
-		return fmt.Errorf("не удалось подключиться к PostgreSQL: %w", err)
-	}
-	defer pool.Close()
-
 	query := `
 		UPDATE orders 
 		SET transaction_uuid = $1, payment_method = $2, status = $3, updated_at = NOW()
 		WHERE order_uuid = $4
 	`
 
-	_, err = pool.Exec(ctx, query,
+	_, err := env.DBPool.Exec(ctx, query,
 		order.TransactionUUID,
 		order.PaymentMethod,
 		string(order.Status),

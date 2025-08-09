@@ -39,20 +39,50 @@ jobs:
       - name: 📌 Install Task
         uses: arduino/setup-task@v2.0.0
 
-      - name: 📄 Генерация .env файлов
+      - name: 📄 Подготовка окружения для тестов
         env:
-          SERVICES: "inventory,order,payment"
+          # PostgreSQL environment variables for tests
+          POSTGRES_IMAGE_NAME: postgres:17.0-alpine3.20
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: 5432
+          POSTGRES_DATABASE: order-service
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          HTTP_PORT: 8081
+          # MongoDB environment variables for tests
+          MONGO_IMAGE_NAME: mongo:7.0.5
+          MONGO_HOST: mongo
+          MONGO_PORT: 27017
+          MONGO_DATABASE: inventory-service
+          MONGO_INITDB_ROOT_USERNAME: inventory-service-user
+          MONGO_INITDB_ROOT_PASSWORD: inventory-service-password
+          GRPC_PORT: 50051
         run: |
-          # Генерируем все .env файлы для сервисов
-          echo "Генерация .env файлов для всех сервисов..."
-          task env:generate
-
-          # Проверяем результат
-          echo "✅ Файлы .env для сервисов созданы"
+          echo "📋 Проверка переменных окружения для интеграционных тестов..."
+          echo "🐘 PostgreSQL: $POSTGRES_IMAGE_NAME на $POSTGRES_HOST:$POSTGRES_PORT"
+          echo "🍃 MongoDB: $MONGO_IMAGE_NAME на $MONGO_HOST:$MONGO_PORT"
+          echo "🔧 Порты: HTTP=$HTTP_PORT, gRPC=$GRPC_PORT"
+          echo "✅ Окружение подготовлено для интеграционных тестов"
 
       - name: 🧪 Run integration tests via Taskfile
         env:
           MODULES: ${{ inputs.modules }}
+          # PostgreSQL environment variables for tests
+          POSTGRES_IMAGE_NAME: postgres:17.0-alpine3.20
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: 5432
+          POSTGRES_DATABASE: order-service
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          HTTP_PORT: 8081
+          # MongoDB environment variables for tests
+          MONGO_IMAGE_NAME: mongo:7.0.5
+          MONGO_HOST: mongo
+          MONGO_PORT: 27017
+          MONGO_DATABASE: inventory-service
+          MONGO_INITDB_ROOT_USERNAME: inventory-service-user
+          MONGO_INITDB_ROOT_PASSWORD: inventory-service-password
+          GRPC_PORT: 50051
         run: |
           echo "🚀 Начало выполнения интеграционных тестов"
           echo "📋 Модули для тестирования: ${{ inputs.modules }}"

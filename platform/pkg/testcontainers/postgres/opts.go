@@ -1,7 +1,5 @@
 package postgres
 
-import "go.uber.org/zap"
-
 // Option представляет функцию для настройки PostgreSQL контейнера
 type Option func(*Config)
 
@@ -41,22 +39,16 @@ func WithPort(port string) Option {
 	}
 }
 
-// NetworkOption представляет опцию сети
-type NetworkOption struct {
-	NetworkName string
-}
-
-// LoggerOption представляет опцию логгера
-type LoggerOption struct {
-	Logger *zap.Logger
-}
-
 // WithNetworkName устанавливает имя Docker сети
-func WithNetworkName(networkName string) interface{} {
-	return NetworkOption{NetworkName: networkName}
+func WithNetworkName(networkName string) Option {
+	return func(c *Config) {
+		c.NetworkName = networkName
+	}
 }
 
 // WithLogger устанавливает логгер для контейнера
-func WithLogger(logger *zap.Logger) interface{} {
-	return LoggerOption{Logger: logger}
+func WithLogger(logger Logger) Option {
+	return func(c *Config) {
+		c.Logger = logger
+	}
 }
