@@ -398,21 +398,90 @@ jobs:
         env:
           MODULES: ${{ inputs.modules }}
         run: |
-          echo "🧪 Запуск интеграционных тестов..."
+          echo "🧪 Запуск интеграционных тестов с расширенным логированием..."
+          echo "📋 Модули: ${{ inputs.modules }}"
+          echo "🕒 Время начала: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "🖥️ Runner: ${{ runner.os }}"
           mkdir -p .github_pages/integration
           
+          # Показываем системную информацию
+          echo ""
+          echo "🔧 Системная информация:"
+          echo "- Go версия: $(go version 2>/dev/null || echo 'не установлен')"
+          echo "- Docker версия: $(docker --version 2>/dev/null || echo 'не установлен')"
+          echo "- Доступная память: $(free -h | grep Mem | awk '{print $7}' 2>/dev/null || echo 'неизвестно')"
+          echo "- Дисковое пространство: $(df -h / | tail -1 | awk '{print $4}' 2>/dev/null || echo 'неизвестно')"
+          echo ""
+          
           # Запускаем интеграционные тесты через Task и сохраняем результат
+          echo "▶️ Выполняем команду: task test-integration"
+          echo "========================================"
           set +e  # Отключаем автоматический выход при ошибке
-          task test-integration > integration_output.txt 2>&1
-          integration_exit_code=$?
+          
+          # Запускаем с детальным выводом и сохранением в файл
+          task test-integration 2>&1 | tee integration_output.txt
+          integration_exit_code=${PIPESTATUS[0]}
           set -e  # Включаем обратно
           
+          echo "========================================"
+          echo "🏁 Завершение интеграционных тестов"
+          echo "📊 Код завершения: $integration_exit_code"
+          echo "🕒 Время завершения: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          
+          # Анализируем результаты тестирования
+          if [ -f "integration_output.txt" ]; then
+            total_tests=$(grep -c "=== RUN" integration_output.txt 2>/dev/null || echo "0")
+            passed_tests=$(grep -c "PASS:" integration_output.txt 2>/dev/null || echo "0")
+            failed_tests=$(grep -c "FAIL:" integration_output.txt 2>/dev/null || echo "0")
+            
+            echo ""
+            echo "📈 СТАТИСТИКА ТЕСТИРОВАНИЯ:"
+            echo "- Всего тестов запущено: $total_tests"
+            echo "- Прошло успешно: $passed_tests"
+            echo "- Провалено: $failed_tests"
+            
+            # Показываем детали провалившихся тестов
+            if [ $failed_tests -gt 0 ]; then
+              echo ""
+              echo "❌ ДЕТАЛИ ПРОВАЛИВШИХСЯ ТЕСТОВ:"
+              grep -A 10 -B 2 "FAIL:" integration_output.txt || echo "Детали ошибок не найдены"
+            fi
+          else
+            echo "⚠️ Файл с результатами тестирования не найден"
+          fi
+          
+          # Проверяем Docker контейнеры
+          echo ""
+          echo "🐳 СОСТОЯНИЕ DOCKER КОНТЕЙНЕРОВ:"
+          docker ps -a 2>/dev/null || echo "Docker не доступен или нет контейнеров"
+          
           if [ $integration_exit_code -eq 0 ]; then
-            echo "✅ Интеграционные тесты прошли успешно"
+            echo ""
+            echo "✅ ВСЕ ИНТЕГРАЦИОННЫЕ ТЕСТЫ ПРОШЛИ УСПЕШНО!"
             echo "INTEGRATION_STATUS=success" >> $GITHUB_OUTPUT
             integration_result="success"
           else
-            echo "❌ Обнаружены ошибки в интеграционных тестах"
+            echo ""
+            echo "💥 ОБНАРУЖЕНЫ ОШИБКИ В ИНТЕГРАЦИОННЫХ ТЕСТАХ!"
+            echo "🔍 Детальная информация об ошибках выведена выше"
+            
+            # Дополнительная диагностика при ошибках
+            echo ""
+            echo "🔍 ДОПОЛНИТЕЛЬНАЯ ДИАГНОСТИКА:"
+            
+            # Показываем логи Docker контейнеров
+            if command -v docker >/dev/null 2>&1; then
+              echo "📋 Логи Docker контейнеров (последние 20 строк):"
+              for container in $(docker ps -aq 2>/dev/null || echo ""); do
+                if [ ! -z "$container" ]; then
+                  container_name=$(docker inspect --format='{{.Name}}' $container 2>/dev/null | sed 's/\///' || echo "unknown")
+                  echo "--- $container_name ($container) ---"
+                  docker logs --tail=20 $container 2>&1 || echo "Не удалось получить логи"
+                  echo ""
+                fi
+              done
+            fi
+            
             echo "INTEGRATION_STATUS=failure" >> $GITHUB_OUTPUT
             integration_result="failure"
           fi
