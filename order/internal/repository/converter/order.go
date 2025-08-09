@@ -13,12 +13,18 @@ func ToRepoOrder(order *model.Order) *repoModel.Order {
 		parts = append(parts, partUUID.String())
 	}
 
+	// TransactionUUID может быть пустым (uuid.Nil)
+	transactionUUIDStr := ""
+	if order.TransactionUUID != uuid.Nil {
+		transactionUUIDStr = order.TransactionUUID.String()
+	}
+
 	repoOrder := &repoModel.Order{
 		OrderUUID:       order.OrderUUID.String(),
 		UserUUID:        order.UserUUID.String(),
 		PartUUIDs:       parts,
 		TotalPrice:      float32(order.TotalPrice),
-		TransactionUUID: order.TransactionUUID.String(),
+		TransactionUUID: transactionUUIDStr,
 		PaymentMethod:   order.PaymentMethod,
 		Status:          string(order.Status),
 	}
@@ -49,9 +55,13 @@ func ToModelOrder(repoOrder *repoModel.Order) (*model.Order, error) {
 		return nil, model.ErrConvertFromRepo
 	}
 
-	transactionId, err := uuid.Parse(repoOrder.TransactionUUID)
-	if err != nil {
-		return nil, model.ErrConvertFromRepo
+	// TransactionUUID может быть пустым
+	var transactionId uuid.UUID
+	if repoOrder.TransactionUUID != "" {
+		transactionId, err = uuid.Parse(repoOrder.TransactionUUID)
+		if err != nil {
+			return nil, model.ErrConvertFromRepo
+		}
 	}
 
 	parts := make([]uuid.UUID, 0, len(repoOrder.PartUUIDs))

@@ -26,7 +26,7 @@ func (s *ConverterSuite) TestToModelOrder_Success() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), orderUUID, result.OrderUuid)
 	assert.Equal(s.T(), userUUID, result.UserUuid)
-	assert.Equal(s.T(), "CARD", result.PaymentMethod)
+	assert.Equal(s.T(), model.CARD.String(), result.PaymentMethod)
 }
 
 func (s *ConverterSuite) TestToModelOrder_InvalidOrderUUID() {
@@ -111,10 +111,10 @@ func (s *ConverterSuite) TestToModelOrder_AllPaymentMethods() {
 		expected      string
 	}{
 		{paymentV1.PaymentMethod_PAYMENT_METHOD_CARD, "CARD"},
-		{paymentV1.PaymentMethod_PAYMENT_METHOD_SBP, "CARD"},
-		{paymentV1.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD, "CARD"},
-		{paymentV1.PaymentMethod_PAYMENT_METHOD_INVESTOR_MONEY, "CARD"},
-		{paymentV1.PaymentMethod_PAYMENT_METHOD_UNSPECIFIED, "CARD"},
+		{paymentV1.PaymentMethod_PAYMENT_METHOD_SBP, "SBP"},
+		{paymentV1.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD, "CREDIT_CARD"},
+		{paymentV1.PaymentMethod_PAYMENT_METHOD_INVESTOR_MONEY, "INVESTOR_MONEY"},
+		{paymentV1.PaymentMethod_PAYMENT_METHOD_UNSPECIFIED, "UNKNOWN"},
 	}
 
 	for _, tc := range testCases {

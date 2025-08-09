@@ -29,13 +29,13 @@ func (pm PaymentMethod) String() string {
 // PaymentMethodFromString создает PaymentMethod из строки
 func PaymentMethodFromString(value string) PaymentMethod {
 	switch value {
-	case "CARD":
+	case "CARD", "PAYMENT_METHOD_CARD":
 		return CARD
-	case "SBP":
+	case "SBP", "PAYMENT_METHOD_SBP":
 		return SBP
-	case "CREDIT_CARD":
+	case "CREDIT_CARD", "PAYMENT_METHOD_CREDIT_CARD":
 		return CREDIT_CARD
-	case "INVESTOR_MONEY":
+	case "INVESTOR_MONEY", "PAYMENT_METHOD_INVESTOR_MONEY":
 		return INVESTOR_MONEY
 	default:
 		return UNKNOWN

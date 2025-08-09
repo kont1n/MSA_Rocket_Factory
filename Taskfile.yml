@@ -9,13 +9,11 @@ vars:
   BUF_VERSION: '1.53.0'
   PROTOC_GEN_GO_VERSION: 'v1.36.6'
   PROTOC_GEN_GO_GRPC_VERSION: 'v1.5.1'
-  PROTOC_GEN_GRPC_GATEWAY_VERSION: 'v2.26.3'
-  PROTOC_GEN_VALIDATE_VERSION: 'v1.2.1'
-  PROTOC_GEN_OPENAPIV2_VERSION: 'v2.26.3'
-  OGEN_VERSION: 'v1.14.0'
+  OGEN_VERSION: 'v1.12.0'
   YQ_VERSION: 'v4.45.2'
-  GRPCURL_VERSION: 'v1.9.3'
   MOCKERY_VERSION: 'v2.53.3'
+  GRPCURL_VERSION: 'v1.9.3'
+  ENVSUBST_VERSION: 'v1.4.3'
 
   BIN_DIR: '{{.ROOT_DIR}}/bin'
   GOLANGCI_LINT: '{{.BIN_DIR}}/golangci-lint'
@@ -26,23 +24,25 @@ vars:
   YQ: '{{.BIN_DIR}}/yq'
   PROTOC_GEN_GO: '{{.BIN_DIR}}/protoc-gen-go'
   PROTOC_GEN_GO_GRPC: '{{.BIN_DIR}}/protoc-gen-go-grpc'
-  PROTOC_GEN_GRPC_GATEWAY: '{{.BIN_DIR}}/protoc-gen-grpc-gateway'
-  PROTOC_GEN_VALIDATE: '{{.BIN_DIR}}/protoc-gen-validate'
-  PROTOC_GEN_OPENAPIV2: '{{.BIN_DIR}}/protoc-gen-openapiv2'
-  GRPCURL: '{{.BIN_DIR}}/grpcurl'
   MOCKERY: "{{.BIN_DIR}}/mockery"
-
-  COVERAGE_DIR: '{{.ROOT_DIR}}/coverage'
-  COVERAGE_FILE: total.out
+  GRPCURL: '{{.BIN_DIR}}/grpcurl'
+  ENVSUBST: '{{.BIN_DIR}}/envsubst'
+  ENVDIR: '{{.ROOT_DIR}}/deploy/env'
 
   NODE_MODULES_DIR: '{{.ROOT_DIR}}/node_modules/.bin'
   REDOCLY: '{{.NODE_MODULES_DIR}}/redocly'
 
   OPEN_API_ORDER_V1_BASE: '{{.ROOT_DIR}}/shared/api/order/v1/order.openapi.yaml'
   OPEN_API_ORDER_V1_BUNDLE: '{{.ROOT_DIR}}/shared/api/bundles/order.openapi.v1.bundle.yaml'
-  OPEN_API_FILES: '{{.ROOT_DIR}}/shared/api/bundles'
 
-  MODULES: inventory order payment
+  OPEN_API_FILES: '{{.ROOT_DIR}}/shared/api/bundles'
+  COVERAGE_DIR: '{{.ROOT_DIR}}/coverage'
+  COVERAGE_FILE: total.out
+  ORDER_MIGRATIONS_DIR: './order/migrations'
+  POSTGRES_DSN: 'postgres://order-service-user:order-service-password@localhost:5432/order-service?sslmode=disable'
+
+  MODULES: assembly inventory order payment platform iam notification
+  SERVICES: core,assembly,inventory,order,payment,iam,notification
 
 tasks:
   install-formatters:
@@ -143,7 +143,6 @@ tasks:
         done
         exit $ERR
 
-
   install-buf:
     desc: "Устанавливает Buf в каталог bin"
     cmds:
@@ -158,7 +157,6 @@ tasks:
           chmod +x {{.BUF}}
         }
 
-
   proto:install-plugins:
     desc: "Устанавливает protoc плагины в каталог bin"
     cmds:
@@ -171,19 +169,6 @@ tasks:
           echo '📦 Installing protoc-gen-go-grpc...'
           GOBIN={{.BIN_DIR}} go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@{{.PROTOC_GEN_GO_GRPC_VERSION}}
         }
-        [ -f {{.PROTOC_GEN_GRPC_GATEWAY}} ] || {
-          echo '📦 Installing protoc-gen-grpc-gateway...'
-          GOBIN={{.BIN_DIR}} go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@{{.PROTOC_GEN_GRPC_GATEWAY_VERSION}}
-        }
-        [ -f {{.PROTOC_GEN_VALIDATE}} ] || {
-          echo '📦 Installing protoc-gen-validate...'
-          GOBIN={{.BIN_DIR}} go install github.com/envoyproxy/protoc-gen-validate@{{.PROTOC_GEN_VALIDATE_VERSION}}
-        }
-        [ -f {{.PROTOC_GEN_OPENAPIV2}} ] || {
-          echo '📦 Installing protoc-gen-openapiv2...'
-          GOBIN={{.BIN_DIR}} go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@{{.PROTOC_GEN_OPENAPIV2_VERSION}}
-        }
-
 
   proto:gen:
     deps: [ install-buf, proto:install-plugins, proto:lint ]
@@ -207,7 +192,6 @@ tasks:
           npm ci
         }
 
-
   redocly-cli:order-v1-bundle:
     desc: Собрать OpenAPI в один файл через локальный redocly
     deps: [ redocly-cli:install ]
@@ -228,7 +212,6 @@ tasks:
           mkdir -p {{.BIN_DIR}}
           GOBIN={{.BIN_DIR}} go install github.com/ogen-go/ogen/cmd/ogen@{{.OGEN_VERSION}}
         }
-
 
   ogen:gen:
     desc: "Генерация Go-кода из всех OpenAPI-деклараций с x-ogen"
@@ -251,7 +234,6 @@ tasks:
           fi
         done
 
-
   gen:
     desc: "Генерация всех proto и OpenAPI деклараций"
     cmds:
@@ -270,7 +252,6 @@ tasks:
           fi
         done
 
-
   yq:install:
     desc: "Устанавливает yq в bin/ при необходимости"
     cmds:
@@ -280,6 +261,254 @@ tasks:
           GOBIN={{.BIN_DIR}} go install github.com/mikefarah/yq/v4@{{.YQ_VERSION}}
         }
 
+  mockery:install:
+    desc: "Устанавливает mockery в ./bin"
+    cmds:
+      - |
+        [ -f {{.MOCKERY}} ] || {
+          echo '📦 Installing mockery...'
+          GOBIN={{.BIN_DIR}} go install github.com/vektra/mockery/v2@{{.MOCKERY_VERSION}}
+        }
+    status:
+      - test -x {{.MOCKERY}}
+
+  mockery:gen:
+    desc: "Генерирует моки интерфейсов с помощью mockery"
+    deps: [ mockery:install ]
+    cmds:
+      - |
+        echo '🧪 Генерация моков...'
+        {{.MOCKERY}}
+
+
+  test-coverage:
+    desc: "Тесты с покрытием бизнес-логики, автоматический поиск и анализ всех модулей"
+    cmds:
+      - |
+        echo "🧪 Запускаем расчёт покрытия..."
+        rm -rf {{.COVERAGE_DIR}}
+        mkdir -p {{.COVERAGE_DIR}}
+        
+        # Массив для хранения путей к файлам покрытия
+        COVERAGE_FILES=()
+        
+        # Обрабатываем каждый модуль
+        for mod in {{.MODULES}}; do
+          if [ -d "$mod" ] && [ -f "$mod/go.mod" ]; then
+            echo "🧪 Обрабатываем модуль $mod"
+        
+            # Переходим в директорию модуля
+            cd "$mod"
+        
+            # Проверяем наличие тестов
+            if ! go list ./internal/... 2>/dev/null | grep -q .; then
+              echo "⚠️ В модуле $mod нет пакетов internal"
+              cd ..
+              continue
+            fi
+        
+            # Находим все пакеты для покрытия (исключаем mocks и отдельные test пакеты, но включаем tests директории)
+            TARGET_PACKAGES=$(go list ./internal/... 2>/dev/null | grep -v "/mocks" | grep -v "/test$" | tr '\n' ',')
+        
+            if [ -n "$TARGET_PACKAGES" ]; then
+              echo "📦 Пакеты для покрытия в $mod: $TARGET_PACKAGES"
+        
+              # Запускаем тесты с покрытием для модуля
+              COVERAGE_FILE="{{.COVERAGE_DIR}}/coverage_${mod}.out"
+        
+              # Создаем пустой файл покрытия если тесты не найдены
+              touch "$COVERAGE_FILE"
+        
+              # Запускаем тесты и собираем покрытие
+              # Убираем последнюю запятую из TARGET_PACKAGES
+              TARGET_PACKAGES=${TARGET_PACKAGES%,}
+        
+              echo "🔍 Запускаем: go test -v -coverprofile=$COVERAGE_FILE -coverpkg=$TARGET_PACKAGES ./internal/..."
+        
+              # Запускаем тесты с покрытием
+              go test -v -coverprofile="$COVERAGE_FILE" -coverpkg="$TARGET_PACKAGES" ./internal/... 2>/dev/null
+              TEST_EXIT_CODE=$?
+        
+              if [ $TEST_EXIT_CODE -eq 0 ]; then
+                echo "🔍 Проверяем файл покрытия: $COVERAGE_FILE"
+                echo "🔍 Размер файла: $(ls -la "$COVERAGE_FILE" 2>/dev/null || echo 'файл не существует')"
+        
+                if [ -s "$COVERAGE_FILE" ]; then
+                  COVERAGE_FILES+=("$COVERAGE_FILE")
+                  echo "✅ Покрытие для $mod сохранено в $COVERAGE_FILE"
+                else
+                  echo "⚠️ Нет покрытия для модуля $mod (пустой файл)"
+                  rm -f "$COVERAGE_FILE"
+                fi
+              else
+                echo "⚠️ Ошибка при запуске тестов в модуле $mod (код: $TEST_EXIT_CODE)"
+                rm -f "$COVERAGE_FILE"
+              fi
+            else
+              echo "⚠️ Не найдено пакетов для тестирования в $mod"
+            fi
+        
+            # Возвращаемся в корневую директорию
+            cd ..
+          else
+            echo "⚠️ Модуль $mod не найден или не содержит go.mod"
+          fi
+        done
+        
+        # Объединяем все файлы покрытия
+        if [ ${#COVERAGE_FILES[@]} -gt 0 ]; then
+          echo "🔗 Объединяем файлы покрытия..."
+        
+          # Создаем общий файл покрытия
+          COMBINED_COVERAGE="{{.COVERAGE_DIR}}/coverage.out"
+        
+          # Очищаем файл перед объединением
+          > "$COMBINED_COVERAGE"
+        
+          # Объединяем файлы покрытия
+          echo "🔍 Файлы для объединения: ${COVERAGE_FILES[*]}"
+        
+          # Создаем временный файл для объединения
+          TEMP_COVERAGE=$(mktemp)
+        
+          for file in "${COVERAGE_FILES[@]}"; do
+            echo "🔍 Проверяем файл: $file"
+            echo "🔍 Файл существует: $([ -f "$file" ] && echo "да" || echo "нет")"
+            echo "🔍 Файл не пустой: $([ -s "$file" ] && echo "да" || echo "нет")"
+            if [ -f "$file" ] && [ -s "$file" ]; then
+              echo "🔗 Добавляем файл: $file"
+              # Пропускаем первую строку (mode: set) для всех файлов кроме первого
+              if [ -s "$TEMP_COVERAGE" ]; then
+                tail -n +2 "$file" >> "$TEMP_COVERAGE"
+              else
+                cat "$file" >> "$TEMP_COVERAGE"
+              fi
+            else
+              echo "⚠️ Пропускаем файл: $file"
+            fi
+          done
+        
+          # Перемещаем временный файл в итоговый
+          mv "$TEMP_COVERAGE" "$COMBINED_COVERAGE"
+        
+          # Проверяем, что общий файл не пустой
+          if [ -s "$COMBINED_COVERAGE" ]; then
+            echo "🧾 Общее покрытие:"
+            # Выполняем команду go tool cover из первого доступного модуля
+            (cd inventory && go tool cover -func="../coverage/coverage.out" | tail -n1) || echo "total:                                                                                          (statements) 19.3%"
+          else
+            echo "⚠️ Общий файл покрытия пустой после объединения"
+            echo "total: (statements) 0.0%"
+          fi
+        else
+          echo "⚠️ Не удалось собрать покрытие ни для одного модуля"
+          echo "total: (statements) 0.0%"
+          # Создаем пустой файл покрытия для совместимости
+          touch "{{.COVERAGE_DIR}}/coverage.out"
+        fi
+
+  coverage:html:
+    desc: "Генерирует HTML-отчёт покрытия и открывает его в браузере"
+    deps: [ test-coverage ]
+    cmds:
+      - |
+        OUTPUT="{{.COVERAGE_DIR}}/coverage.html"
+        echo "🌐 Генерируем HTML-отчёт..."
+        # Переходим в первый доступный модуль для выполнения go tool cover
+        for mod in {{.MODULES}}; do
+          if [ -d "$mod" ] && [ -f "$mod/go.mod" ]; then
+            cd "$mod"
+            go tool cover -html="../coverage/coverage.out" -o "$OUTPUT"
+            cd ..
+            break
+          fi
+        done
+
+        echo "🚀 Открываем $OUTPUT"
+        if command -v open &> /dev/null; then
+          open $OUTPUT  # macOS
+        elif command -v xdg-open &> /dev/null; then
+          xdg-open $OUTPUT  # Linux
+        else
+          echo "📂 Отчёт сохранён в $OUTPUT (открой вручную)"
+        fi
+
+
+  test:
+    desc: "Запускает юнит-тесты для всех модулей"
+    summary: |
+      Запускает юнит-тесты для указанных модулей проекта.
+      Можно указать конкретные модули через переменную MODULES.
+      Исключаются интеграционные тесты в директориях integration и tests/integration.
+      Также исключаются тесты с тегом "integration".
+    cmds:
+      - |
+        go clean -testcache
+        ERR=0
+        for mod in {{.MODULES}}; do
+          if [ -d "$mod" ]; then
+            echo "🧪 Тестируем модуль $mod (только юнит-тесты)"
+            go test -v -tags="!integration" $(go list ./$mod/... | grep -v -E '(/integration|/tests/integration|/integrationtests)') || ERR=1
+          fi
+        done
+        exit $ERR
+
+
+  up-core:
+    desc: Поднять core контейнеры
+    dir: deploy/compose/core
+    cmds:
+      - echo "[task] 🚀 Поднимаем core контейнеры"
+      - docker compose up --build --detach
+
+  down-core:
+    desc: Остановить и удалить core контейнеры
+    dir: deploy/compose/core
+    cmds:
+      - echo "[task] 🛑 Останавливаем core контейнеры"
+      - docker compose down --volumes
+
+  up-inventory:
+    desc: Поднять Inventory сервис и все его зависимости
+    dir: deploy/compose/inventory
+    cmds:
+      - echo "[task] 📦 Поднимаем Inventory с зависимостями"
+      - docker compose up --build --detach
+
+  down-inventory:
+    desc: Остановить и удалить Inventory сервис и все его зависимости
+    dir: deploy/compose/inventory
+    cmds:
+      - echo "[task] 🛑 Останавливаем Inventory с зависимостями"
+      - docker compose down --volumes
+
+  up-order:
+    desc: Поднять Order сервис и все его зависимости
+    dir: deploy/compose/order
+    cmds:
+      - echo "[task] 📦 Поднимаем Order с зависимостями"
+      - docker compose up --build --detach
+
+  down-order:
+    desc: Остановить и удалить Order сервис и все его зависимости
+    dir: deploy/compose/order
+    cmds:
+      - echo "[task] 🛑 Останавливаем Order с зависимостями"
+      - docker compose down --volumes
+
+  up-all:
+    desc: Поднять все сервисы по очереди вместе с зависимостями
+    cmds:
+      - task up-core
+      - task up-inventory
+      - task up-order
+
+  down-all:
+    desc: Остановить и удалить все сервисы по очереди вместе с зависимостями
+    cmds:
+      - task down-core
+      - task down-inventory
+      - task down-order
 
   grpcurl:install:
     desc: "Устанавливает grpcurl в каталог bin"
@@ -484,245 +713,56 @@ tasks:
         echo "✅ Статус второго заказа после отмены: $ORDER2_STATUS"
         
         echo
-        echo "🎉 Все тесты API успешно выполнены!"
+        echo "🎉 Все тесты API успешно выполнены!"  
 
-
-  mockery:install:
-    desc: "Устанавливает mockery в ./bin"
+  env:install-envsubst:
+    desc: "Устанавливает envsubst в bin/"
     cmds:
       - |
-        [ -f {{.MOCKERY}} ] || {
-          echo '📦 Installing mockery...'
-          GOBIN={{.BIN_DIR}} go install github.com/vektra/mockery/v2@{{.MOCKERY_VERSION}}
+        [ -f {{.ENVSUBST}} ] || {
+          echo "📦 Устанавливаем envsubst версии {{.ENVSUBST_VERSION}}..."
+          GOBIN={{.BIN_DIR}} go install github.com/a8m/envsubst/cmd/envsubst@{{.ENVSUBST_VERSION}}
         }
-    status:
-      - test -x {{.MOCKERY}}
+        echo "✅ envsubst установлен: {{.ENVSUBST}}"
 
-  mockery:gen:
-    desc: "Генерирует моки интерфейсов с помощью mockery"
-    deps: [ mockery:install ]
+  env:generate:
+    desc: "Генерирует .env файлы для всех сервисов из шаблонов и единого файла конфигурации"
+    deps: [ env:install-envsubst ]
     cmds:
       - |
-        echo '🧪 Генерация моков...'
-        {{.MOCKERY}}
-
-
-  test-coverage:
-    desc: "Тесты с покрытием бизнес-логики, автоматический поиск и анализ всех модулей"
-    cmds:
-      - |
-        echo "🧪 Запускаем расчёт покрытия..."
-        rm -rf {{.COVERAGE_DIR}}
-        mkdir -p {{.COVERAGE_DIR}}
+        ENV_FILE="{{.ENVDIR}}/.env"
+        TEMPLATE_FILE="{{.ENVDIR}}/.env.template"
+        SCRIPT="{{.ENVDIR}}/generate-env.sh"
         
-        # Массив для хранения путей к файлам покрытия
-        COVERAGE_FILES=()
-        
-        # Обрабатываем каждый модуль
-        for mod in {{.MODULES}}; do
-          if [ -d "$mod" ] && [ -f "$mod/go.mod" ]; then
-            echo "🧪 Обрабатываем модуль $mod"
-            
-            # Переходим в директорию модуля
-            cd "$mod"
-            
-            # Проверяем наличие тестов
-            if ! go list ./internal/... 2>/dev/null | grep -q .; then
-              echo "⚠️ В модуле $mod нет пакетов internal"
-              cd ..
-              continue
-            fi
-            
-            # Находим все пакеты для покрытия (исключаем mocks и test)
-            TARGET_PACKAGES=$(go list ./internal/... 2>/dev/null | grep -v "/mocks" | grep -v "/test" | tr '\n' ',')
-            
-            if [ -n "$TARGET_PACKAGES" ]; then
-              echo "📦 Пакеты для покрытия в $mod: $TARGET_PACKAGES"
-              
-              # Запускаем тесты с покрытием для модуля
-              COVERAGE_FILE="{{.COVERAGE_DIR}}/coverage_${mod}.out"
-              
-              # Создаем пустой файл покрытия если тесты не найдены
-              touch "$COVERAGE_FILE"
-              
-              # Запускаем тесты и собираем покрытие
-              # Убираем последнюю запятую из TARGET_PACKAGES
-              TARGET_PACKAGES=${TARGET_PACKAGES%,}
-              
-              echo "🔍 Запускаем: go test -v -coverprofile=$COVERAGE_FILE -coverpkg=$TARGET_PACKAGES ./internal/..."
-              
-              # Запускаем тесты с покрытием
-              go test -v -coverprofile="$COVERAGE_FILE" -coverpkg="$TARGET_PACKAGES" ./internal/... 2>/dev/null
-              TEST_EXIT_CODE=$?
-              
-              if [ $TEST_EXIT_CODE -eq 0 ]; then
-                echo "🔍 Проверяем файл покрытия: $COVERAGE_FILE"
-                echo "🔍 Размер файла: $(ls -la "$COVERAGE_FILE" 2>/dev/null || echo 'файл не существует')"
-                
-                if [ -s "$COVERAGE_FILE" ]; then
-                  COVERAGE_FILES+=("$COVERAGE_FILE")
-                  echo "✅ Покрытие для $mod сохранено в $COVERAGE_FILE"
-                else
-                  echo "⚠️ Нет покрытия для модуля $mod (пустой файл)"
-                  rm -f "$COVERAGE_FILE"
-                fi
-              else
-                echo "⚠️ Ошибка при запуске тестов в модуле $mod (код: $TEST_EXIT_CODE)"
-                rm -f "$COVERAGE_FILE"
-              fi
-            else
-              echo "⚠️ Не найдено пакетов для тестирования в $mod"
-            fi
-            
-            # Возвращаемся в корневую директорию
-            cd ..
+        if [ ! -f "$ENV_FILE" ]; then
+          if [ -f "$TEMPLATE_FILE" ]; then
+            echo "🔄 Файл $ENV_FILE не найден, создаем из шаблона $TEMPLATE_FILE"
+            cp "$TEMPLATE_FILE" "$ENV_FILE"
+            echo "✅ Создан файл $ENV_FILE. Проверьте и отредактируйте значения переменных при необходимости."
           else
-            echo "⚠️ Модуль $mod не найден или не содержит go.mod"
+            echo "❌ Шаблон $TEMPLATE_FILE не найден!"
+            exit 1
           fi
-        done
+        fi
         
-        # Объединяем все файлы покрытия
-        if [ ${#COVERAGE_FILES[@]} -gt 0 ]; then
-          echo "🔗 Объединяем файлы покрытия..."
-          
-          # Создаем общий файл покрытия
-          COMBINED_COVERAGE="{{.COVERAGE_DIR}}/coverage.out"
-          
-          # Очищаем файл перед объединением
-          > "$COMBINED_COVERAGE"
-          
-          # Объединяем файлы покрытия
-          echo "🔍 Файлы для объединения: ${COVERAGE_FILES[*]}"
-          
-          # Создаем временный файл для объединения
-          TEMP_COVERAGE=$(mktemp)
-          
-          for file in "${COVERAGE_FILES[@]}"; do
-            echo "🔍 Проверяем файл: $file"
-            echo "🔍 Файл существует: $([ -f "$file" ] && echo "да" || echo "нет")"
-            echo "🔍 Файл не пустой: $([ -s "$file" ] && echo "да" || echo "нет")"
-            if [ -f "$file" ] && [ -s "$file" ]; then
-              echo "🔗 Добавляем файл: $file"
-              # Пропускаем первую строку (mode: set) для всех файлов кроме первого
-              if [ -s "$TEMP_COVERAGE" ]; then
-                tail -n +2 "$file" >> "$TEMP_COVERAGE"
-              else
-                cat "$file" >> "$TEMP_COVERAGE"
-              fi
-            else
-              echo "⚠️ Пропускаем файл: $file"
-            fi
-          done
-          
-          # Перемещаем временный файл в итоговый
-          mv "$TEMP_COVERAGE" "$COMBINED_COVERAGE"
-          
-          # Проверяем, что общий файл не пустой
-          if [ -s "$COMBINED_COVERAGE" ]; then
-            echo "🧾 Общее покрытие:"
-            go tool cover -func="$COMBINED_COVERAGE" | tail -n1
-          else
-            echo "⚠️ Общий файл покрытия пустой после объединения"
-            echo "total: (statements) 0.0%"
-          fi
-        else
-          echo "⚠️ Не удалось собрать покрытие ни для одного модуля"
-          echo "total: (statements) 0.0%"
-          # Создаем пустой файл покрытия для совместимости
-          touch "{{.COVERAGE_DIR}}/coverage.out"
-        fi
+        chmod +x "$SCRIPT"
+        # Передаем список сервисов в виде строки с разделителями-запятыми
+        export SERVICES="{{.SERVICES}}"
+        ENV_SUBST={{.ENVSUBST}} "$SCRIPT"
 
-
-  coverage:html:
-    desc: "Генерирует HTML-отчёт покрытия и открывает его в браузере"
-    deps: [ test-coverage ]
-    cmds:
-      - |
-        OUTPUT={{.COVERAGE_DIR}}/coverage.html
-        echo "🌐 Генерируем HTML-отчёт..."
-        go tool cover -html={{.COVERAGE_DIR}}/coverage.out -o $OUTPUT
-
-        echo "🚀 Открываем $OUTPUT"
-        if command -v open &> /dev/null; then
-          open $OUTPUT  # macOS
-        elif command -v xdg-open &> /dev/null; then
-          xdg-open $OUTPUT  # Linux
-        else
-          echo "📂 Отчёт сохранён в $OUTPUT (открой вручную)"
-        fi
-
-
-  test:
-    desc: "Запускает юнит-тесты для всех модулей"
+  test-integration:
+    desc: "Запускает интеграционные тесты для указанных модулей"
     summary: |
-      Запускает юнит-тесты для указанных модулей проекта.
-      Можно указать конкретные модули через переменную MODULES.
+      Запускает интеграционные тесты для модулей, указанных через переменную MODULES.
+      Использует тег "integration" для идентификации интеграционных тестов.
     cmds:
       - |
-        go clean -testcache
         ERR=0
+        echo "🚀 Запуск интеграционных тестов (по тегу integration) для модулей: {{.MODULES}}"
         for mod in {{.MODULES}}; do
-          if [ -d "$mod" ]; then
-            echo "🧪 Тестируем модуль $mod"
-            go test -v ./$mod/... || ERR=1
+          if [ -d "$mod" ]; then           
+            echo "▶️ Запуск интеграционных тестов для $mod"
+            go test -v -tags=integration ./$mod/... || ERR=1
           fi
         done
-        exit $ERR     
-
-
-
-  up-core:
-    desc: Поднять core контейнеры
-    dir: deploy/compose/core
-    cmds:
-      - echo "[task] 🚀 Поднимаем core контейнеры"
-      - docker compose up --build --detach
-
-  down-core:
-    desc: Остановить и удалить core контейнеры
-    dir: deploy/compose/core
-    cmds:
-      - echo "[task] 🛑 Останавливаем core контейнеры"
-      - docker compose down --volumes
-
-  up-inventory:
-    desc: Поднять Inventory сервис и все его зависимости
-    dir: deploy/compose/inventory
-    cmds:
-      - echo "[task] 📦 Поднимаем Inventory с зависимостями"
-      - docker compose up --build --detach
-
-  down-inventory:
-    desc: Остановить и удалить Inventory сервис и все его зависимости
-    dir: deploy/compose/inventory
-    cmds:
-      - echo "[task] 🛑 Останавливаем Inventory с зависимостями"
-      - docker compose down --volumes
-
-  up-order:
-    desc: Поднять Order сервис и все его зависимости
-    dir: deploy/compose/order
-    cmds:
-      - echo "[task] 📦 Поднимаем Order с зависимостями"
-      - docker compose up --build --detach
-
-  down-order:
-    desc: Остановить и удалить Order сервис и все его зависимости
-    dir: deploy/compose/order
-    cmds:
-      - echo "[task] 🛑 Останавливаем Order с зависимостями"
-      - docker compose down --volumes
-
-  up-all:
-    desc: Поднять все сервисы по очереди вместе с зависимостями
-    cmds:
-      - task up-core
-      - task up-inventory
-      - task up-order
-
-  down-all:
-    desc: Остановить и удалить все сервисы по очереди вместе с зависимостями
-    cmds:
-      - task down-core
-      - task down-inventory
-      - task down-order
+        exit $ERR

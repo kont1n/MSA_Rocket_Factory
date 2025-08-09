@@ -3,10 +3,12 @@ package v1
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 )
 
@@ -18,7 +20,10 @@ func (a *api) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params
 
 	order, err := a.orderService.PayOrder(ctx, &orderDraft)
 	if err != nil {
-		slog.Error("Pay order error", "order", params.OrderUUID, "error", err)
+		logger.Error(ctx, "Pay order error",
+			zap.String("order_uuid", params.OrderUUID.String()),
+			zap.Error(err),
+		)
 
 		if errors.Is(err, model.ErrOrderNotFound) {
 			return &orderV1.NotFoundError{

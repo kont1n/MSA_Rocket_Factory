@@ -2,16 +2,20 @@ package payment
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/model"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 )
 
 func (s *service) Pay(ctx context.Context, order model.Order) (uuid.UUID, error) {
 	transactionUuid := uuid.New()
-	slog.Info("Payment success", "transaction_uuid:", transactionUuid)
+	logger.Info(ctx, "Payment success",
+		zap.String("order_uuid", order.OrderUuid.String()),
+		zap.String("transaction_uuid", transactionUuid.String()),
+	)
 
 	return transactionUuid, nil
 }

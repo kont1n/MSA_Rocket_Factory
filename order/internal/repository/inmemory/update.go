@@ -8,11 +8,18 @@ import (
 )
 
 func (r *repository) UpdateOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
-	repoOrder := converter.ToRepoOrder(order)
-
 	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Проверяем, существует ли заказ
+	_, exists := r.data[order.OrderUUID.String()]
+	if !exists {
+		return nil, model.ErrOrderNotFound
+	}
+
+	// Конвертируем и сохраняем
+	repoOrder := converter.ToRepoOrder(order)
 	r.data[order.OrderUUID.String()] = *repoOrder
-	r.mu.Unlock()
 
 	return order, nil
 }
