@@ -3,13 +3,14 @@ package v1
 import (
 	"context"
 	"errors"
-	"log/slog"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/api/converter"
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/model"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
@@ -18,7 +19,10 @@ func (a *api) ListParts(ctx context.Context, req *inventoryV1.ListPartsRequest) 
 
 	parts, err := a.inventoryService.ListParts(ctx, filter)
 	if err != nil {
-		slog.Error("Failed to get list part", "filter:", filter, "error:", err)
+		logger.Error(ctx, "Failed to get list part",
+			zap.Any("filter", filter),
+			zap.Error(err),
+		)
 
 		if errors.Is(err, model.ErrConvertFromRepo) {
 			return nil, status.Errorf(codes.Internal, "failed to get list parts")

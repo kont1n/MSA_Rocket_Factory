@@ -21,6 +21,6 @@ func ToModelOrder(req *paymentV1.PayOrderRequest) (model.Order, error) {
 	return model.Order{
 		OrderUuid:     orderUuid,
 		UserUuid:      userUuid,
-		PaymentMethod: "CARD", // Используем строковое значение по умолчанию
+		PaymentMethod: model.PaymentMethodFromString(req.PaymentMethod.String()).String(),
 	}, nil
 }

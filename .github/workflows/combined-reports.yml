@@ -178,7 +178,8 @@ jobs:
               
               <div class="navigation">
                   <a href="../" class="nav-link">📊 Coverage Report</a>
-                  <a href="../tests/" class="nav-link">🧪 Test Report</a>
+                  <a href="../tests/" class="nav-link">🧪 Unit Tests</a>
+                  <a href="../integration/" class="nav-link">🔗 Integration Tests</a>
                   <a href="./" class="nav-link">🔍 Lint Report</a>
                   <a href="../reports.html" class="nav-link">📋 All Reports</a>
               </div>
@@ -325,7 +326,8 @@ jobs:
               
               <div class="navigation">
                   <a href="../" class="nav-link">📊 Coverage Report</a>
-                  <a href="./" class="nav-link">🧪 Test Report</a>
+                  <a href="./" class="nav-link">🧪 Unit Tests</a>
+                  <a href="../integration/" class="nav-link">🔗 Integration Tests</a>
                   <a href="../lint/" class="nav-link">🔍 Lint Report</a>
                   <a href="../reports.html" class="nav-link">📋 All Reports</a>
               </div>
@@ -368,6 +370,304 @@ jobs:
           </body>
           </html>
           EOF
+
+      - name: 📄 Генерация .env файлов
+        env:
+          SERVICES: "inventory,order,payment"
+        run: |
+          # Генерируем все .env файлы для сервисов
+          echo "Генерация .env файлов для всех сервисов..."
+          task env:generate
+
+          # Проверяем результат
+          echo "✅ Файлы .env для сервисов созданы"
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🧩 Set up Docker cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: 📄 Подготовка окружения для тестов
+        env:
+          # PostgreSQL environment variables for tests
+          POSTGRES_IMAGE_NAME: postgres:17.0-alpine3.20
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: 5432
+          POSTGRES_DATABASE: order-service
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          HTTP_PORT: 8081
+          # MongoDB environment variables for tests
+          MONGO_IMAGE_NAME: mongo:7.0.5
+          MONGO_HOST: mongo
+          MONGO_PORT: 27017
+          MONGO_DATABASE: inventory-service
+          MONGO_INITDB_ROOT_USERNAME: inventory-service-user
+          MONGO_INITDB_ROOT_PASSWORD: inventory-service-password
+          GRPC_PORT: 50051
+        run: |
+          echo "📋 Проверка переменных окружения для интеграционных тестов..."
+          echo "🐘 PostgreSQL: $POSTGRES_IMAGE_NAME на $POSTGRES_HOST:$POSTGRES_PORT"
+          echo "🍃 MongoDB: $MONGO_IMAGE_NAME на $MONGO_HOST:$MONGO_PORT"
+          echo "🔧 Порты: HTTP=$HTTP_PORT, gRPC=$GRPC_PORT"
+          echo "✅ Окружение подготовлено для интеграционных тестов"
+
+      - name: 📊 Run Integration Tests
+        id: integration_test_step
+        env:
+          MODULES: ${{ inputs.modules }}
+          # PostgreSQL environment variables for tests
+          POSTGRES_IMAGE_NAME: postgres:17.0-alpine3.20
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: 5432
+          POSTGRES_DATABASE: order-service
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          HTTP_PORT: 8081
+          # MongoDB environment variables for tests
+          MONGO_IMAGE_NAME: mongo:7.0.5
+          MONGO_HOST: mongo
+          MONGO_PORT: 27017
+          MONGO_DATABASE: inventory-service
+          MONGO_INITDB_ROOT_USERNAME: inventory-service-user
+          MONGO_INITDB_ROOT_PASSWORD: inventory-service-password
+          GRPC_PORT: 50051
+        run: |
+          echo "🧪 Запуск интеграционных тестов с расширенным логированием..."
+          echo "📋 Модули: ${{ inputs.modules }}"
+          echo "🕒 Время начала: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "🖥️ Runner: ${{ runner.os }}"
+          mkdir -p .github_pages/integration
+          
+          # Показываем системную информацию
+          echo ""
+          echo "🔧 Системная информация:"
+          echo "- Go версия: $(go version 2>/dev/null || echo 'не установлен')"
+          echo "- Docker версия: $(docker --version 2>/dev/null || echo 'не установлен')"
+          echo "- Доступная память: $(free -h | grep Mem | awk '{print $7}' 2>/dev/null || echo 'неизвестно')"
+          echo "- Дисковое пространство: $(df -h / | tail -1 | awk '{print $4}' 2>/dev/null || echo 'неизвестно')"
+          echo ""
+          
+          # Запускаем интеграционные тесты через Task и сохраняем результат
+          echo "▶️ Выполняем команду: task test-integration"
+          echo "========================================"
+          set +e  # Отключаем автоматический выход при ошибке
+          
+          # Запускаем с детальным выводом и сохранением в файл
+          task test-integration 2>&1 | tee integration_output.txt
+          integration_exit_code=${PIPESTATUS[0]}
+          set -e  # Включаем обратно
+          
+          echo "========================================"
+          echo "🏁 Завершение интеграционных тестов"
+          echo "📊 Код завершения: $integration_exit_code"
+          echo "🕒 Время завершения: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          
+          # Анализируем результаты тестирования
+          if [ -f "integration_output.txt" ]; then
+            total_tests=$(grep -c "=== RUN" integration_output.txt 2>/dev/null || echo "0")
+            passed_tests=$(grep -c "PASS:" integration_output.txt 2>/dev/null || echo "0")
+            failed_tests=$(grep -c "FAIL:" integration_output.txt 2>/dev/null || echo "0")
+            
+            echo ""
+            echo "📈 СТАТИСТИКА ТЕСТИРОВАНИЯ:"
+            echo "- Всего тестов запущено: $total_tests"
+            echo "- Прошло успешно: $passed_tests"
+            echo "- Провалено: $failed_tests"
+            
+            # Показываем детали провалившихся тестов
+            if [ $failed_tests -gt 0 ]; then
+              echo ""
+              echo "❌ ДЕТАЛИ ПРОВАЛИВШИХСЯ ТЕСТОВ:"
+              grep -A 10 -B 2 "FAIL:" integration_output.txt || echo "Детали ошибок не найдены"
+            fi
+          else
+            echo "⚠️ Файл с результатами тестирования не найден"
+          fi
+          
+          # Проверяем Docker контейнеры
+          echo ""
+          echo "🐳 СОСТОЯНИЕ DOCKER КОНТЕЙНЕРОВ:"
+          docker ps -a 2>/dev/null || echo "Docker не доступен или нет контейнеров"
+          
+          if [ $integration_exit_code -eq 0 ]; then
+            echo ""
+            echo "✅ ВСЕ ИНТЕГРАЦИОННЫЕ ТЕСТЫ ПРОШЛИ УСПЕШНО!"
+            echo "INTEGRATION_STATUS=success" >> $GITHUB_OUTPUT
+            integration_result="success"
+          else
+            echo ""
+            echo "💥 ОБНАРУЖЕНЫ ОШИБКИ В ИНТЕГРАЦИОННЫХ ТЕСТАХ!"
+            echo "🔍 Детальная информация об ошибках выведена выше"
+            
+            # Дополнительная диагностика при ошибках
+            echo ""
+            echo "🔍 ДОПОЛНИТЕЛЬНАЯ ДИАГНОСТИКА:"
+            
+            # Показываем логи Docker контейнеров
+            if command -v docker >/dev/null 2>&1; then
+              echo "📋 Логи Docker контейнеров (последние 20 строк):"
+              for container in $(docker ps -aq 2>/dev/null || echo ""); do
+                if [ ! -z "$container" ]; then
+                  container_name=$(docker inspect --format='{{.Name}}' $container 2>/dev/null | sed 's/\///' || echo "unknown")
+                  echo "--- $container_name ($container) ---"
+                  docker logs --tail=20 $container 2>&1 || echo "Не удалось получить логи"
+                  echo ""
+                fi
+              done
+            fi
+            
+            echo "INTEGRATION_STATUS=failure" >> $GITHUB_OUTPUT
+            integration_result="failure"
+          fi
+          
+          # Создаем HTML отчет интеграционных тестов
+          cat > .github_pages/integration/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>🔗 Integration Test Report</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                      line-height: 1.6;
+                      color: #24292f;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      background: #ffffff;
+                  }
+                  .header {
+                      text-align: center;
+                      padding: 20px 0;
+                      border-bottom: 2px solid #e1e4e8;
+                      margin-bottom: 30px;
+                  }
+                  .status-success {
+                      background: #dcfce7;
+                      color: #15803d;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bbf7d0;
+                  }
+                  .status-failure {
+                      background: #fef2f2;
+                      color: #dc2626;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #fecaca;
+                  }
+                  .report-content {
+                      background: #f6f8fa;
+                      padding: 20px;
+                      border-radius: 8px;
+                      border: 1px solid #d1d9e0;
+                      font-family: 'SF Mono', Consolas, monospace;
+                      white-space: pre-wrap;
+                      font-size: 14px;
+                      overflow-x: auto;
+                  }
+                  .info {
+                      background: #f0f9ff;
+                      color: #0369a1;
+                      padding: 12px 20px;
+                      border-radius: 8px;
+                      border: 1px solid #bae6fd;
+                      margin: 20px 0;
+                  }
+                  .navigation {
+                      text-align: center;
+                      margin: 30px 0;
+                  }
+                  .nav-link {
+                      display: inline-block;
+                      margin: 0 10px;
+                      padding: 8px 16px;
+                      background: #f6f8fa;
+                      color: #24292f;
+                      text-decoration: none;
+                      border-radius: 6px;
+                      border: 1px solid #d1d9e0;
+                  }
+                  .nav-link:hover {
+                      background: #e1e4e8;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>🔗 Integration Test Report</h1>
+          EOF
+          
+          if [ "$integration_result" = "success" ]; then
+              echo '        <div class="status-success">✅ Все интеграционные тесты прошли успешно</div>' >> .github_pages/integration/index.html
+          else
+              echo '        <div class="status-failure">❌ Обнаружены ошибки в интеграционных тестах</div>' >> .github_pages/integration/index.html
+          fi
+          
+          cat >> .github_pages/integration/index.html << 'EOF'
+              </div>
+              
+              <div class="navigation">
+                  <a href="../" class="nav-link">📊 Coverage Report</a>
+                  <a href="../tests/" class="nav-link">🧪 Unit Tests</a>
+                  <a href="./" class="nav-link">🔗 Integration Tests</a>
+                  <a href="../lint/" class="nav-link">🔍 Lint Report</a>
+                  <a href="../reports.html" class="nav-link">📋 All Reports</a>
+              </div>
+              
+              <div class="info">
+                  <strong>Отчет сгенерирован:</strong> 
+          EOF
+          
+          echo "$(date)" >> .github_pages/integration/index.html
+          echo '<br><strong>Commit:</strong> ${{ github.sha }}' >> .github_pages/integration/index.html
+          echo '<br><strong>Branch:</strong> ${{ github.ref_name }}' >> .github_pages/integration/index.html
+          
+          # Извлекаем краткую статистику тестов из вывода
+          integration_summary=""
+          if [ -f integration_output.txt ]; then
+            passed_count=$(grep -o "PASS.*" integration_output.txt | wc -l | tr -d ' ')
+            failed_count=$(grep -o "FAIL.*" integration_output.txt | wc -l | tr -d ' ')
+            
+            if [ "$passed_count" -gt 0 ] || [ "$failed_count" -gt 0 ]; then
+              integration_summary="<br><strong>Пройдено:</strong> $passed_count <strong>Провалено:</strong> $failed_count"
+            fi
+          fi
+          
+          cat >> .github_pages/integration/index.html << EOF
+              $integration_summary
+              </div>
+              
+              <h2>📋 Результаты интеграционного тестирования:</h2>
+              <div class="report-content">
+          EOF
+          
+          if [ -f integration_output.txt ]; then
+              sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' integration_output.txt >> .github_pages/integration/index.html
+          else
+              echo "Результаты интеграционного тестирования недоступны" >> .github_pages/integration/index.html
+          fi
+          
+          cat >> .github_pages/integration/index.html << 'EOF'
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: 🧹 Cleanup Docker containers
+        if: always()
+        run: |
+          echo "🧹 Cleaning up dangling containers..."
+          docker container prune -f
 
       - name: 📊 Run Coverage
         run: |
@@ -428,7 +728,8 @@ jobs:
                   sed -i '/<body>/a\
                   <div class="navigation">\
                     <a href="./" class="nav-link">📊 Coverage</a>\
-                    <a href="./tests/" class="nav-link">🧪 Tests</a>\
+                    <a href="./tests/" class="nav-link">🧪 Unit Tests</a>\
+                    <a href="./integration/" class="nav-link">🔗 Integration Tests</a>\
                     <a href="./lint/" class="nav-link">🔍 Lint</a>\
                     <a href="./reports.html" class="nav-link">📋 All Reports</a>\
                   </div>' .github_pages/index.html
@@ -559,7 +860,10 @@ jobs:
                       🔍 Lint: ${{ steps.lint_step.outputs.LINT_STATUS }}
                   </div>
                   <div class="status-item $([[ "${{ steps.test_step.outputs.TEST_STATUS }}" == "success" ]] && echo "status-success" || echo "status-failure")">
-                      🧪 Tests: ${{ steps.test_step.outputs.TEST_STATUS }}
+                      🧪 Unit Tests: ${{ steps.test_step.outputs.TEST_STATUS }}
+                  </div>
+                  <div class="status-item $([[ "${{ steps.integration_test_step.outputs.INTEGRATION_STATUS }}" == "success" ]] && echo "status-success" || echo "status-failure")">
+                      🔗 Integration Tests: ${{ steps.integration_test_step.outputs.INTEGRATION_STATUS }}
                   </div>
                   <div class="status-item status-success">
                       📊 Coverage: Generated
@@ -575,8 +879,14 @@ jobs:
                   
                   <div class="report-card">
                       <h2>🧪</h2>
-                      <a href="./tests/" class="report-link">Test Report</a>
+                      <a href="./tests/" class="report-link">Unit Test Report</a>
                       <p class="report-desc">Результаты выполнения unit тестов по всем модулям проекта</p>
+                  </div>
+                  
+                  <div class="report-card">
+                      <h2>🔗</h2>
+                      <a href="./integration/" class="report-link">Integration Test Report</a>
+                      <p class="report-desc">Результаты выполнения интеграционных тестов с реальными зависимостями</p>
                   </div>
                   
                   <div class="report-card">
@@ -644,6 +954,7 @@ jobs:
             cover.out
             lint_output.txt
             test_output.txt
+            integration_output.txt
           retention-days: 30
 
       # Проверяем итоговый статус CI
@@ -653,12 +964,14 @@ jobs:
           
           LINT_STATUS="${{ steps.lint_step.outputs.LINT_STATUS }}"
           TEST_STATUS="${{ steps.test_step.outputs.TEST_STATUS }}"
+          INTEGRATION_STATUS="${{ steps.integration_test_step.outputs.INTEGRATION_STATUS }}"
           
           echo "🔍 Статус линтинга: $LINT_STATUS"
-          echo "🧪 Статус тестов: $TEST_STATUS" 
+          echo "🧪 Статус unit тестов: $TEST_STATUS"
+          echo "🔗 Статус интеграционных тестов: $INTEGRATION_STATUS"
           
           # Определяем общий статус
-          if [[ "$LINT_STATUS" == "failure" ]] || [[ "$TEST_STATUS" == "failure" ]]; then
+          if [[ "$LINT_STATUS" == "failure" ]] || [[ "$TEST_STATUS" == "failure" ]] || [[ "$INTEGRATION_STATUS" == "failure" ]]; then
             echo "❌ CI провален из-за ошибок в линтинге или тестах"
             echo "📊 Отчеты всё равно будут созданы и опубликованы"
             exit 1

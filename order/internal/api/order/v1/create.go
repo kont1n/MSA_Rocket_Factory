@@ -3,12 +3,13 @@ package v1
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 )
 
@@ -20,7 +21,10 @@ func (a *api) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) 
 
 	createOrder, err := a.orderService.CreateOrder(ctx, &orderDraft)
 	if err != nil {
-		slog.Error("Create order error", "order:", req, "error:", err)
+		logger.Error(ctx, "Create order error",
+			zap.Any("order", req),
+			zap.Error(err),
+		)
 
 		if errors.Is(err, model.ErrPartsSpecified) {
 			return &orderV1.BadRequestError{

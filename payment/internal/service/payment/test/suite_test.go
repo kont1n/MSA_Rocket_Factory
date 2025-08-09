@@ -7,6 +7,7 @@ import (
 
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/service"
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/service/payment"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 )
 
 type ServiceSuite struct {
@@ -15,6 +16,12 @@ type ServiceSuite struct {
 }
 
 func (s *ServiceSuite) SetupSuite() {
+	// Инициализируем логгер для тестов
+	err := logger.Init("info", false)
+	if err != nil {
+		s.T().Fatalf("Failed to initialize logger: %v", err)
+	}
+
 	s.service = payment.NewService()
 }
 
