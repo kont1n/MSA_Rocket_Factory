@@ -17,13 +17,13 @@ type repository struct {
 	db *mongo.Database
 }
 
-func NewRepository(database *mongo.Database) *repository {
+func NewRepository(ctx context.Context, database *mongo.Database) def.InventoryRepository {
 	repo := &repository{
 		db: database,
 	}
 
 	// Добавляем тестовые данные при инициализации
-	if err := repo.AddTestData(context.Background()); err != nil {
+	if err := repo.AddTestData(ctx); err != nil {
 		log.Printf("Предупреждение: не удалось добавить тестовые данные в MongoDB: %v", err)
 	}
 

@@ -1,0 +1,25 @@
+#  services: # Здесь описываются контейнеры, необходимые для Payment-сервиса
+#
+#  payment-service: # Payment микросервис
+#    build:
+#      context: ../../../
+#      dockerfile: deploy/docker/payment/Dockerfile
+#
+#    container_name: payment-service
+#
+#    env_file:
+#      - .env
+#
+#    ports:
+#      - "${GRPC_PORT}:50051"
+#      - "${HTTP_PORT}:8080"
+#
+#    restart: unless-stopped
+#
+#    networks:
+#      - microservices-net
+#
+#
+#  networks:
+#    microservices-net:
+#      external: true

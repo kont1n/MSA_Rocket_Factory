@@ -10,9 +10,11 @@ import (
 )
 
 func (r *repository) CreateOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
-	repoOrder := converter.ToRepoOrder(order)
-
+	// Генерируем новый UUID для заказа
 	order.OrderUUID = uuid.New()
+
+	// Конвертируем в repo модель ПОСЛЕ установки UUID
+	repoOrder := converter.ToRepoOrder(order)
 
 	r.mu.Lock()
 	r.data[order.OrderUUID.String()] = *repoOrder
