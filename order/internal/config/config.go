@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 
@@ -11,10 +12,13 @@ import (
 var appConfig *config
 
 type config struct {
-	Logger     LoggerConfig
-	HTTP       HTTPConfig
-	DB         DBConfig
-	GRPCClient GRPCClientConfig
+	Logger                LoggerConfig
+	HTTP                  HTTPConfig
+	DB                    DBConfig
+	GRPCClient            GRPCClientConfig
+	Kafka                 *env.KafkaConfig
+	OrderPaidProducer     *env.OrderPaidProducerConfig
+	ShipAssembledConsumer *env.ShipAssembledConsumerConfig
 }
 
 func Load(path ...string) error {
@@ -43,11 +47,29 @@ func Load(path ...string) error {
 		return err
 	}
 
+	kafkaCfg, err := env.NewKafkaConfig()
+	if err != nil {
+		return err
+	}
+
+	orderPaidProducerCfg, err := env.NewOrderPaidProducerConfig()
+	if err != nil {
+		return err
+	}
+
+	shipAssembledConsumerCfg, err := env.NewShipAssembledConsumerConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
-		Logger:     loggerCfg,
-		HTTP:       httpCfg,
-		DB:         dbCfg,
-		GRPCClient: grpcClientCfg,
+		Logger:                loggerCfg,
+		HTTP:                  httpCfg,
+		DB:                    dbCfg,
+		GRPCClient:            grpcClientCfg,
+		Kafka:                 kafkaCfg,
+		OrderPaidProducer:     orderPaidProducerCfg,
+		ShipAssembledConsumer: shipAssembledConsumerCfg,
 	}
 
 	return nil
@@ -55,4 +77,20 @@ func Load(path ...string) error {
 
 func AppConfig() *config {
 	return appConfig
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvAsInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
 }

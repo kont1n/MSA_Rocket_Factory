@@ -24,5 +24,12 @@ func (s *service) OrderPaidHandler(ctx context.Context, msg kafka.Message) error
 		zap.String("order_uuid", event.OrderUUID.String()),
 	)
 
+	// Вызываем логику сборки корабля
+	err = s.assemblyService.Assemble(ctx, event)
+	if err != nil {
+		logger.Error(ctx, "Failed to assemble ship", zap.Error(err))
+		return err
+	}
+
 	return nil
 }

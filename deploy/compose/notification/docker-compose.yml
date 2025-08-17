@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  notification:
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/notification/Dockerfile
+    container_name: notification-service
+    environment:
+      - LOG_LEVEL=info
+      - LOG_AS_JSON=false
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_ORDER_PAID_TOPIC=order.paid
+      - KAFKA_ORDER_PAID_GROUP_ID=notification-service
+      - KAFKA_SHIP_ASSEMBLED_TOPIC=ship.assembled
+      - KAFKA_SHIP_ASSEMBLED_GROUP_ID=notification-service
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+    depends_on:
+      - kafka
+    networks:
+      - rocket-factory-network
+    restart: unless-stopped
+
+networks:
+  rocket-factory-network:
+    external: true

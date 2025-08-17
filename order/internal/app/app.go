@@ -15,6 +15,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
+	"go.uber.org/zap"
 )
 
 type App struct {
@@ -34,6 +35,14 @@ func New(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
+	// Запускаем Kafka Consumer в горутине
+	go func() {
+		err := a.diContainer.ShipAssembledConsumer(ctx).RunConsumer(ctx)
+		if err != nil {
+			logger.Error(ctx, "❌ Ошибка при работе Kafka Consumer", zap.Error(err))
+		}
+	}()
+
 	return a.runHTTPServer(ctx)
 }
 

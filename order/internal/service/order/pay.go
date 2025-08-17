@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
 
@@ -24,6 +26,20 @@ func (s service) PayOrder(ctx context.Context, order *model.Order) (*model.Order
 	order, err = s.orderRepository.UpdateOrder(ctx, order)
 	if err != nil {
 		return nil, fmt.Errorf("service: failed to update order in repository: %w", err)
+	}
+
+	// Отправляем событие OrderPaid
+	event := model.OrderPaidEvent{
+		EventUUID:       uuid.New(),
+		OrderUUID:       order.OrderUUID,
+		UserUUID:        order.UserUUID,
+		PaymentMethod:   order.PaymentMethod,
+		TransactionUUID: order.TransactionUUID,
+	}
+
+	err = s.orderPaidProducer.ProduceOrderPaid(ctx, event)
+	if err != nil {
+		return nil, fmt.Errorf("service: failed to produce OrderPaid event: %w", err)
 	}
 
 	return order, nil
