@@ -11,13 +11,19 @@ type KafkaConfig interface {
 	Brokers() []string
 }
 
-type AssemblyProducerConfig interface {
-	Topic() string
-	Config() *sarama.Config
-}
-
-type AssemblyConsumerConfig interface {
+type OrderPaidConsumerConfig interface {
 	Topic() string
 	GroupID() string
 	Config() *sarama.Config
+}
+
+type ShipAssemblyConsumerConfig interface {
+	Topic() string
+	GroupID() string
+	Config() *sarama.Config
+}
+
+type TelegramConfig interface {
+	BotToken() string
+	ChatID() string
 }

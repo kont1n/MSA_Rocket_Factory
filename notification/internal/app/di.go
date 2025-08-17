@@ -68,7 +68,7 @@ func (d *diContainer) ShipAssembledConsumer(ctx context.Context) service.ShipAss
 
 func (d *diContainer) TelegramClient(ctx context.Context) telegramClient.TelegramClient {
 	if d.telegramClient == nil {
-		client, err := telegramClient.NewClient(*config.AppConfig().Telegram)
+		client, err := telegramClient.NewClient(config.AppConfig().Telegram)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create telegram client: %s\n", err.Error()))
 		}

@@ -11,11 +11,11 @@ import (
 var appConfig *config
 
 type config struct {
-	Logger                 *env.LoggerConfig
-	Kafka                 *env.KafkaConfig
-	OrderPaidConsumer     *env.OrderPaidConsumerConfig
-	ShipAssembledConsumer *env.ShipAssembledConsumerConfig
-	Telegram              *env.TelegramConfig
+	Logger                LoggerConfig
+	Kafka                 KafkaConfig
+	OrderPaidConsumer     OrderPaidConsumerConfig
+	ShipAssembledConsumer ShipAssemblyConsumerConfig
+	Telegram              TelegramConfig
 }
 
 func Load(path ...string) error {
@@ -50,7 +50,7 @@ func Load(path ...string) error {
 	}
 
 	appConfig = &config{
-		Logger:                 loggerCfg,
+		Logger:                loggerCfg,
 		Kafka:                 kafkaCfg,
 		OrderPaidConsumer:     orderPaidConsumerCfg,
 		ShipAssembledConsumer: shipAssembledConsumerCfg,

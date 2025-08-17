@@ -16,9 +16,9 @@ type config struct {
 	HTTP                  HTTPConfig
 	DB                    DBConfig
 	GRPCClient            GRPCClientConfig
-	Kafka                 *env.KafkaConfig
-	OrderPaidProducer     *env.OrderPaidProducerConfig
-	ShipAssembledConsumer *env.ShipAssembledConsumerConfig
+	Kafka                 KafkaConfig
+	OrderPaidProducer     OrderPaidProducerConfig
+	ShipAssembledConsumer ShipAssemblyConsumerConfig
 }
 
 func Load(path ...string) error {

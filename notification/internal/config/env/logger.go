@@ -3,8 +3,8 @@ package env
 import "github.com/caarlos0/env/v11"
 
 type loggerEnvConfig struct {
-	Level  string `env:"LOG_LEVEL" envDefault:"info"`
-	AsJSON bool   `env:"LOG_AS_JSON" envDefault:"false"`
+	Level  string `env:"LOGGER_LEVEL" envDefault:"info"`
+	AsJSON bool   `env:"LOGGER_AS_JSON" envDefault:"false"`
 }
 
 type LoggerConfig struct {
