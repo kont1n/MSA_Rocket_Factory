@@ -1,11 +1,13 @@
 package order_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
 
 	clientMocks "github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc/mocks"
+	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 	repoMocks "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/mocks"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/service"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/service/order"
@@ -24,10 +26,14 @@ func (s *ServiceSuite) SetupSuite() {
 	s.inventoryClient = clientMocks.NewInventoryClient(s.T())
 	s.paymentClient = clientMocks.NewPaymentClient(s.T())
 
+	// Создаем мок для OrderPaidProducer
+	orderPaidProducer := &mockOrderPaidProducer{}
+
 	s.service = order.NewService(
 		s.orderRepository,
 		s.inventoryClient,
 		s.paymentClient,
+		orderPaidProducer,
 	)
 }
 
@@ -43,4 +49,11 @@ func (s *ServiceSuite) TearDownSuite() {
 
 func TestServiceIntegration(t *testing.T) {
 	suite.Run(t, new(ServiceSuite))
+}
+
+// mockOrderPaidProducer - мок для OrderPaidProducer
+type mockOrderPaidProducer struct{}
+
+func (m *mockOrderPaidProducer) ProduceOrderPaid(ctx context.Context, event model.OrderPaidEvent) error {
+	return nil
 }

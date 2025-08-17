@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-telegram/bot"
 	"go.uber.org/zap"
 
-	"github.com/go-telegram/bot"
-	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/config/env"
+	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 )
 
@@ -16,7 +16,7 @@ type client struct {
 	chatID string
 }
 
-func NewClient(cfg env.TelegramConfig) (*client, error) {
+func NewClient(cfg config.TelegramConfig) (*client, error) {
 	b, err := bot.New(cfg.BotToken())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create telegram bot: %w", err)

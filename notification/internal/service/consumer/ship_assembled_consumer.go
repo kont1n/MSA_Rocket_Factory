@@ -14,14 +14,14 @@ import (
 type shipAssembledService struct {
 	shipAssembledConsumer wrappedKafka.Consumer
 	shipAssembledDecoder  kafkaConverter.ShipAssembledDecoder
-	notificationService    def.NotificationService
+	notificationService   def.NotificationService
 }
 
 func NewShipAssembledService(shipAssembledConsumer wrappedKafka.Consumer, shipAssembledDecoder kafkaConverter.ShipAssembledDecoder, notificationService def.NotificationService) *shipAssembledService {
 	return &shipAssembledService{
 		shipAssembledConsumer: shipAssembledConsumer,
 		shipAssembledDecoder:  shipAssembledDecoder,
-		notificationService:    notificationService,
+		notificationService:   notificationService,
 	}
 }
 

@@ -3,9 +3,9 @@ package decoder
 import (
 	"fmt"
 
-	"github.com/kont1n/MSA_Rocket_Factory/assembly/internal/converter"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/kont1n/MSA_Rocket_Factory/assembly/internal/converter"
 	"github.com/kont1n/MSA_Rocket_Factory/assembly/internal/model"
 	eventsV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/events/v1"
 )

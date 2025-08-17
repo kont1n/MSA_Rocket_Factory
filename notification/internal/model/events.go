@@ -1,6 +1,10 @@
 package model
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // OrderPaidEvent - событие оплаты заказа
 type OrderPaidEvent struct {
@@ -17,4 +21,14 @@ type ShipAssembledEvent struct {
 	OrderUUID uuid.UUID
 	UserUUID  uuid.UUID
 	BuildTime int64
+}
+
+// SightingInfo - информация о наблюдении UFO
+type SightingInfo struct {
+	Location        string
+	Description     string
+	ObservedAt      *time.Time
+	Color           *string
+	Sound           *bool
+	DurationSeconds *int32
 }

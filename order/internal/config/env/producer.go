@@ -32,6 +32,6 @@ func (cfg *OrderPaidProducerConfig) Config() *sarama.Config {
 	config.Producer.Return.Successes = true
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Retry.Max = 3
+
 	return config
 }
-

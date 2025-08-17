@@ -36,6 +36,6 @@ func (cfg *ShipAssembledConsumerConfig) Config() *sarama.Config {
 	config.Version = sarama.V4_0_0_0
 	config.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.NewBalanceStrategyRoundRobin()}
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+
 	return config
 }
-

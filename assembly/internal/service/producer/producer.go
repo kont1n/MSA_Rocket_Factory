@@ -23,7 +23,6 @@ func NewService(assemblyProducer kafka.Producer) *service {
 }
 
 func (p *service) ProduceAssembly(ctx context.Context, event model.ShipAssembledEvent) error {
-
 	msg := &eventsV1.ShipAssembled{
 		EventUuid:    event.EventUUID.String(),
 		OrderUuid:    event.OrderUUID.String(),
@@ -33,7 +32,7 @@ func (p *service) ProduceAssembly(ctx context.Context, event model.ShipAssembled
 
 	payload, err := proto.Marshal(msg)
 	if err != nil {
-		logger.Error(ctx, model.EreMarshalToKafkaEvent.Error(), zap.Error(err))
+		logger.Error(ctx, model.ErrMarshalToKafkaEvent.Error(), zap.Error(err))
 		return err
 	}
 

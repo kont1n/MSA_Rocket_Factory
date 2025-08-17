@@ -7,7 +7,7 @@ import (
 	eventsV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/events/v1"
 )
 
-func ToModelOrder (order *eventsV1.OrderPaid) (*model.OrderPaidEvent, error) {
+func ToModelOrder(order *eventsV1.OrderPaid) (*model.OrderPaidEvent, error) {
 	eventId, err := uuid.Parse(order.EventUuid)
 	if err != nil {
 		return nil, model.ErrConvertFromKafkaEvent

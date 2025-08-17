@@ -12,15 +12,15 @@ import (
 )
 
 type orderPaidService struct {
-	orderPaidConsumer wrappedKafka.Consumer
-	orderPaidDecoder  kafkaConverter.OrderPaidDecoder
+	orderPaidConsumer   wrappedKafka.Consumer
+	orderPaidDecoder    kafkaConverter.OrderPaidDecoder
 	notificationService def.NotificationService
 }
 
 func NewOrderPaidService(orderPaidConsumer wrappedKafka.Consumer, orderPaidDecoder kafkaConverter.OrderPaidDecoder, notificationService def.NotificationService) *orderPaidService {
 	return &orderPaidService{
-		orderPaidConsumer: orderPaidConsumer,
-		orderPaidDecoder:  orderPaidDecoder,
+		orderPaidConsumer:   orderPaidConsumer,
+		orderPaidDecoder:    orderPaidDecoder,
 		notificationService: notificationService,
 	}
 }

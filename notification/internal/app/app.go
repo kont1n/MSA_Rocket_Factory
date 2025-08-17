@@ -41,11 +41,9 @@ func (a *App) Run(ctx context.Context) error {
 	}()
 
 	// Держим приложение запущенным
-	select {
-	case <-ctx.Done():
-		logger.Info(ctx, "🛑 Получен сигнал завершения работы")
-		return nil
-	}
+	<-ctx.Done()
+	logger.Info(ctx, "🛑 Получен сигнал завершения работы")
+	return nil
 }
 
 func (a *App) initDeps(ctx context.Context) error {

@@ -11,8 +11,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/converter/kafka"
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/converter/kafka/decoder"
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/service"
-	orderPaidConsumer "github.com/kont1n/MSA_Rocket_Factory/notification/internal/service/consumer"
-	shipAssembledConsumer "github.com/kont1n/MSA_Rocket_Factory/notification/internal/service/consumer"
+	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/service/consumer"
 	notificationService "github.com/kont1n/MSA_Rocket_Factory/notification/internal/service/notification"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	wrappedKafka "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/kafka"
@@ -46,7 +45,7 @@ func (d *diContainer) NotificationService(ctx context.Context) service.Notificat
 
 func (d *diContainer) OrderPaidConsumer(ctx context.Context) service.OrderPaidConsumerService {
 	if d.orderPaidConsumer == nil {
-		d.orderPaidConsumer = orderPaidConsumer.NewOrderPaidService(
+		d.orderPaidConsumer = consumer.NewOrderPaidService(
 			d.OrderPaidKafkaConsumer(),
 			d.OrderPaidDecoder(ctx),
 			d.NotificationService(ctx),
@@ -57,7 +56,7 @@ func (d *diContainer) OrderPaidConsumer(ctx context.Context) service.OrderPaidCo
 
 func (d *diContainer) ShipAssembledConsumer(ctx context.Context) service.ShipAssembledConsumerService {
 	if d.shipAssembledConsumer == nil {
-		d.shipAssembledConsumer = shipAssembledConsumer.NewShipAssembledService(
+		d.shipAssembledConsumer = consumer.NewShipAssembledService(
 			d.ShipAssembledKafkaConsumer(),
 			d.ShipAssembledDecoder(ctx),
 			d.NotificationService(ctx),

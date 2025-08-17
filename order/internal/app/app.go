@@ -9,13 +9,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 
 	customMiddleware "github.com/kont1n/MSA_Rocket_Factory/order/internal/api/middleware"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
-	"go.uber.org/zap"
 )
 
 type App struct {

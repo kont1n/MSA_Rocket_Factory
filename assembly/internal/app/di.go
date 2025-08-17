@@ -54,9 +54,9 @@ func (d *diContainer) AssemblyProducerService() service.ProducerService {
 	return d.assemblyProducerService
 }
 
-func (d *diContainer) AssemblyConsumerService() service.ConsumerService {
+func (d *diContainer) AssemblyConsumerService(ctx context.Context) service.ConsumerService {
 	if d.assemblyConsumerService == nil {
-		d.assemblyConsumerService = assemblyConsumer.NewService(d.AssemblyRecordedConsumer(), d.AssemblyRecordedDecoder(), d.AssemblyService(context.Background()))
+		d.assemblyConsumerService = assemblyConsumer.NewService(d.AssemblyRecordedConsumer(), d.AssemblyRecordedDecoder(), d.AssemblyService(ctx))
 	}
 
 	return d.assemblyConsumerService
