@@ -7,13 +7,13 @@ import (
 )
 
 type AssemblyService interface {
-	Assemble()
+	Assemble(ctx context.Context, event model.OrderPaidEvent) error
 }
 
 type ConsumerService interface {
 	RunConsumer(ctx context.Context) error
 }
 
-type AssemblyProducerService interface {
-	ProduceAssemblyRecorded(ctx context.Context, event model.AssemblyRecordedEvent) error
+type ProducerService interface {
+	ProduceAssembly(ctx context.Context, event model.ShipAssembledEvent) error
 }

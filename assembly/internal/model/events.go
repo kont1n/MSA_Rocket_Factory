@@ -1,25 +1,20 @@
 package model
 
-import "time"
+import (
+	"github.com/google/uuid"
+)
 
-type AssemblyRecordedEvent struct {
-	UUID        string
-	ObservedAt  *time.Time
-	Location    string
-	Description string
-}
-
-type OrderPaid struct {
-	EventUUID       string
-	OrderUUID       string
-	UserUUID        string
+type OrderPaidEvent struct {
+	EventUUID       uuid.UUID
+	OrderUUID       uuid.UUID
+	UserUUID        uuid.UUID
 	PaymentMethod   string
-	TransactionUUID string
+	TransactionUUID uuid.UUID
 }
 
-type ShipAssembled struct {
-	EventUUID string
-	OrderUUID string
-	UserUUID  string
+type ShipAssembledEvent struct {
+	EventUUID uuid.UUID
+	OrderUUID uuid.UUID
+	UserUUID  uuid.UUID
 	BuildTime int64
 }

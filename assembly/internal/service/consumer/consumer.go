@@ -14,23 +14,23 @@ import (
 var _ def.ConsumerService = (*service)(nil)
 
 type service struct {
-	ufoRecordedConsumer kafka.Consumer
-	ufoRecordedDecoder  kafkaConverter.UFORecordedDecoder
+	assemblyRecordedConsumer 	kafka.Consumer
+	assemblyRecordedDecoder     kafkaConverter.AssemblyRecordedDecoder
 }
 
-func NewService(ufoRecordedConsumer kafka.Consumer, ufoRecordedDecoder kafkaConverter.UFORecordedDecoder) *service {
+func NewService(assemblyRecordedConsumer kafka.Consumer, assemblyRecordedDecoder kafkaConverter.AssemblyRecordedDecoder) *service {
 	return &service{
-		ufoRecordedConsumer: ufoRecordedConsumer,
-		ufoRecordedDecoder:  ufoRecordedDecoder,
+		assemblyRecordedConsumer: assemblyRecordedConsumer,
+		assemblyRecordedDecoder:  assemblyRecordedDecoder,
 	}
 }
 
 func (s *service) RunConsumer(ctx context.Context) error {
-	logger.Info(ctx, "Starting order ufoRecordedConsumer service")
+	logger.Info(ctx, "Starting Assembly Consumer service")
 
-	err := s.ufoRecordedConsumer.Consume(ctx, s.OrderHandler)
+	err := s.assemblyRecordedConsumer.Consume(ctx, s.OrderPaidHandler)
 	if err != nil {
-		logger.Error(ctx, "Consume from ufo.recorded topic error", zap.Error(err))
+		logger.Error(ctx, "Consume from order.paid topic error", zap.Error(err))
 		return err
 	}
 

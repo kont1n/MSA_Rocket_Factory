@@ -18,7 +18,7 @@ import (
 func init() {
 	// В Docker контейнере используем переменные окружения
 	// В локальной разработке пытаемся загрузить .env файл
-	configPath := "../deploy/compose/inventory/.env"
+	configPath := "../deploy/compose/assembly/.env"
 	err := config.Load(configPath)
 	if err != nil {
 		// Если .env файл не найден, пробуем загрузить конфигурацию из переменных окружения

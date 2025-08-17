@@ -1,10 +1,136 @@
 services:
-  placeholder:
-    image: alpine
-    command:
-      ["sh", "-c", "echo 'This is a placeholder service' && sleep infinity"]
+
+  kafka: # Сервис Kafka
+    image: confluentinc/cp-kafka:7.9.0 # Образ Kafka от компании Confluent, версия 7.9.0 (современная, с поддержкой KRaft)
+    container_name: kafka # Явное имя контейнера, чтобы легче обращаться к нему
+    ports:
+      - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}" # Пробрасываем порт ${KAFKA_EXTERNAL_PORT} наружу — для доступа с хост-машины. Через этот порт будем подключаться клиентами с локального компьютера.
+
+    env_file:
+      - .env
+
+    environment: # Список переменных окружения для конфигурации Kafka
+      # === Основные параметры KRaft (Kafka без Zookeeper) ===
+      KAFKA_KRAFT_MODE: "true" # Включаем работу в режиме KRaft (Kafka Raft Metadata Mode), без ZooKeeper.
+
+      KAFKA_PROCESS_ROLES: controller,broker # Роль текущего процесса: одновременно controller (управляет metadata) и broker (обрабатывает сообщения).
+
+      KAFKA_NODE_ID: 1 # Уникальный идентификатор ноды в кластере Kafka. В кластере должно быть уникальным для каждой ноды.
+
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:${KAFKA_CONTROLLER_PORT}"
+      # Указываем список участников controller quorum для Raft —
+      # в формате "ID@адрес:порт". У нас один узел: ID=1, адрес kafka, порт ${KAFKA_CONTROLLER_PORT}.
+      # Это необходимо для распределённого консенсуса Kafka Metadata.
+
+      # === Listeners (слушатели сети) ===
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:${KAFKA_INTERNAL_PORT},PLAINTEXT_EXTERNAL://0.0.0.0:${KAFKA_EXTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT}
+      # Настраиваем, на каких интерфейсах и портах Kafka будет слушать подключения.
+      # - PLAINTEXT://0.0.0.0:${KAFKA_INTERNAL_PORT} — внутренний listener для контейнерной сети Docker.
+      # - PLAINTEXT_EXTERNAL://0.0.0.0:${KAFKA_EXTERNAL_PORT} — внешний listener для подключения с локальной машины.
+      # - CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT} — служебный listener для связи контроллера и брокера внутри Kafka.
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      # Определяем, какие протоколы безопасности используются для каждого listener.
+      # В данном случае все listener'ы используют незашифрованный PLAINTEXT (для локальной разработки).
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Указываем, какой listener используется для связи между брокерами (у нас один broker, но указать нужно).
+      # PLAINTEXT — это внутренний listener на ${KAFKA_INTERNAL_PORT}.
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Указываем, какой listener Kafka будет использовать для связи с controller (служебный трафик Raft).
+
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${KAFKA_INTERNAL_PORT},PLAINTEXT_EXTERNAL://localhost:${KAFKA_EXTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT}
+      # Важно! Kafka сообщает клиентам, по каким адресам её можно найти.
+      # - Внутри Docker сети Kafka объявляет адрес kafka:${KAFKA_INTERNAL_PORT}.
+      # - Для подключения с хоста Kafka объявляет localhost:${KAFKA_EXTERNAL_PORT}.
+      # - Контроллеру Kafka сообщает адрес kafka:${KAFKA_CONTROLLER_PORT}.
+
+      # === Поведение кластера ===
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Позволяет Kafka автоматически создавать топики при их первом использовании.
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Количество реплик для системного топика offset'ов (у нас один брокер, поэтому 1).
+
+      KAFKA_LOG_RETENTION_HOURS: 168
+      # Хранить сообщения в топиках 168 часов (7 дней).
+
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Устанавливаем задержку перед начальной балансировкой consumer group в 0 мс (ускоряем старт).
+
+      CLUSTER_ID: "Mk3OEYBSD34fcwNTJENDM2Qk"
+      # Уникальный идентификатор кластера Kafka.
+
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      # Подключаем volume для хранения данных Kafka (логи и сообщения).
+      # Это позволяет сохранять данные между перезапусками контейнера.
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "echo > /dev/tcp/localhost/${KAFKA_INTERNAL_PORT}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+      # Проверяем, доступен ли порт ${KAFKA_INTERNAL_PORT} внутри контейнера.
+      # Если порт недоступен — Kafka считается неготовой.
+      # start_period: 20s — ждём 20 секунд перед началом проверки.
+
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+
     networks:
       - microservices-net
+      # Подключаем контейнер к общей сети, в которой живут все сервисы микросервисной архитектуры
+
+  kafka-ui: # Веб-интерфейс Kafka UI для управления брокером и топиками.
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
+    ports:
+      - "${KAFKA_UI_PORT}:8080"
+      # Пробрасываем порт веб-интерфейса на хост-машину.
+
+    env_file:
+      - .env
+
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "local-cluster"
+      # Имя кластера, которое отобразится в UI.
+
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:${KAFKA_INTERNAL_PORT}"
+      # Адрес Kafka брокера внутри контейнерной сети для подключения UI.
+
+    depends_on:
+      kafka:
+        condition: service_healthy
+      # Гарантируем, что Kafka UI стартует только после того, как Kafka станет healthy.
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+      # Проверяем состояние UI по HTTP endpoint /actuator/health.
+      # UI будет считаться healthy только после успешного ответа от сервера.
+
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети, в которой живут все сервисы микросервисной архитектуры
+
+volumes: # Раздел с определением томов
+  kafka_data: # Именованный том для хранения данных Kafka
+  # Docker сам управляет этим хранилищем, данные сохраняются между перезапусками контейнеров.
 
 networks:
   microservices-net:

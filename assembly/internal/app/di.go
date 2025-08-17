@@ -23,7 +23,7 @@ import (
 
 type diContainer struct {
 	assemblyService         service.AssemblyService
-	assemblyProducerService service.AssemblyProducerService
+	assemblyProducerService service.ProducerService
 	assemblyConsumerService service.ConsumerService
 
 	consumerGroup            sarama.ConsumerGroup
@@ -46,7 +46,7 @@ func (d *diContainer) AssemblyService(ctx context.Context) service.AssemblyServi
 	return d.assemblyService
 }
 
-func (d *diContainer) AssemblyProducerService() service.AssemblyProducerService {
+func (d *diContainer) AssemblyProducerService() service.ProducerService {
 	if d.assemblyProducerService == nil {
 		d.assemblyProducerService = assemblyProducer.NewService(d.AssemblyRecordedProducer())
 	}

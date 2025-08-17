@@ -9,10 +9,10 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 )
 
-func (s *service) OrderHandler(ctx context.Context, msg kafka.Message) error {
-	event, err := s.ufoRecordedDecoder.Decode(msg.Value)
+func (s *service) OrderPaidHandler(ctx context.Context, msg kafka.Message) error {
+	event, err := s.assemblyRecordedDecoder.Decode(msg.Value)
 	if err != nil {
-		logger.Error(ctx, "Failed to decode UFORecorded", zap.Error(err))
+		logger.Error(ctx, "Failed to decode OrderPaid", zap.Error(err))
 		return err
 	}
 
@@ -20,9 +20,8 @@ func (s *service) OrderHandler(ctx context.Context, msg kafka.Message) error {
 		zap.String("topic", msg.Topic),
 		zap.Any("partition", msg.Partition),
 		zap.Any("offset", msg.Offset),
-		zap.String("order_uuid", event.UUID),
-		zap.String("location", event.Location),
-		zap.String("description", event.Description),
+		zap.String("event_uuid", event.EventUUID.String()),
+		zap.String("order_uuid", event.OrderUUID.String()),
 	)
 
 	return nil

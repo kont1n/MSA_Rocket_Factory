@@ -2,9 +2,8 @@ package decoder
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/samber/lo"
+	"github.com/kont1n/MSA_Rocket_Factory/assembly/internal/converter"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/kont1n/MSA_Rocket_Factory/assembly/internal/model"
@@ -17,21 +16,22 @@ func NewAssemblyRecordedDecoder() *decoder {
 	return &decoder{}
 }
 
-func (d *decoder) Decode(data []byte) (model.AssemblyRecordedEvent, error) {
-	var pb eventsV1.AssemblyRecorded
+func (d *decoder) Decode(data []byte) (model.OrderPaidEvent, error) {
+	var pb eventsV1.OrderPaid
 	if err := proto.Unmarshal(data, &pb); err != nil {
-		return model.AssemblyRecordedEvent{}, fmt.Errorf("failed to unmarshal protobuf: %w", err)
+		return model.OrderPaidEvent{}, fmt.Errorf("failed to unmarshal protobuf: %w", err)
 	}
 
-	var observedAt *time.Time
-	if pb.ObservedAt != nil {
-		observedAt = lo.ToPtr(pb.ObservedAt.AsTime())
+	event, err := converter.ToModelOrder(&pb)
+	if err != nil {
+		return model.OrderPaidEvent{}, fmt.Errorf("failed to convert protobuf to model: %w", err)
 	}
 
-	return model.AssemblyRecordedEvent{
-		UUID:        pb.Uuid,
-		ObservedAt:  observedAt,
-		Location:    pb.Location,
-		Description: pb.Description,
+	return model.OrderPaidEvent{
+		EventUUID:       event.EventUUID,
+		OrderUUID:       event.OrderUUID,
+		UserUUID:        event.UserUUID,
+		PaymentMethod:   event.PaymentMethod,
+		TransactionUUID: event.TransactionUUID,
 	}, nil
 }

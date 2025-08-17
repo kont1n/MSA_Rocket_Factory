@@ -5,29 +5,29 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
-type assemblyRecordedProducerEnvConfig struct {
-	TopicName string `env:"ASSEMBLY_RECORDED_TOPIC_NAME,required"`
+type assemblyProducerEnvConfig struct {
+	TopicName string `env:"PRODUCER_TOPIC_NAME,required"`
 }
 
-type assemblyRecordedProducerConfig struct {
-	raw assemblyRecordedProducerEnvConfig
+type assemblyProducerConfig struct {
+	raw assemblyProducerEnvConfig
 }
 
-func NewAssemblyRecordedProducerConfig() (*assemblyRecordedProducerConfig, error) {
-	var raw assemblyRecordedProducerEnvConfig
+func NewAssemblyRecordedProducerConfig() (*assemblyProducerConfig, error) {
+	var raw assemblyProducerEnvConfig
 	if err := env.Parse(&raw); err != nil {
 		return nil, err
 	}
 
-	return &assemblyRecordedProducerConfig{raw: raw}, nil
+	return &assemblyProducerConfig{raw: raw}, nil
 }
 
-func (cfg *assemblyRecordedProducerConfig) Topic() string {
+func (cfg *assemblyProducerConfig) Topic() string {
 	return cfg.raw.TopicName
 }
 
 // Config возвращает конфигурацию для sarama consumer
-func (cfg *assemblyRecordedProducerConfig) Config() *sarama.Config {
+func (cfg *assemblyProducerConfig) Config() *sarama.Config {
 	config := sarama.NewConfig()
 	config.Version = sarama.V4_0_0_0
 	config.Producer.Return.Successes = true

@@ -7,10 +7,10 @@ import (
 var _ def.AssemblyService = (*service)(nil)
 
 type service struct {
-	assemblyProducerService def.AssemblyProducerService
+	assemblyProducerService def.ProducerService
 }
 
-func NewService(assemblyProducerService def.AssemblyProducerService) *service {
+func NewService(assemblyProducerService def.ProducerService) *service {
 	return &service{
 		assemblyProducerService: assemblyProducerService,
 	}

@@ -92,7 +92,7 @@ func (a *App) initCloser(_ context.Context) error {
 }
 
 func (a *App) runConsumer(ctx context.Context) error {
-	logger.Info(ctx, "🚀 AssemblyRecorded Kafka consumer running")
+	logger.Info(ctx, "🚀 Assembly Kafka consumer running")
 
 	err := a.diContainer.AssemblyConsumerService().RunConsumer(ctx)
 	if err != nil {

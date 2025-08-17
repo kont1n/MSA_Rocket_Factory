@@ -4,44 +4,42 @@ import (
 	"context"
 
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/kont1n/MSA_Rocket_Factory/assembly/internal/model"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/kafka"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	eventsV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/events/v1"
 )
 
 type service struct {
-	ufoRecordedProducer kafka.Producer
+	assemblyProducer kafka.Producer
 }
 
-func NewService(ufoRecordedProducer kafka.Producer) *service {
+func NewService(assemblyProducer kafka.Producer) *service {
 	return &service{
-		ufoRecordedProducer: ufoRecordedProducer,
+		assemblyProducer: assemblyProducer,
 	}
 }
 
-func (p *service) ProduceAssemblyRecorded(ctx context.Context, event model.AssemblyRecordedEvent) error {
-	var observedAt *timestamppb.Timestamp
-	if event.ObservedAt != nil {
-		observedAt = timestamppb.New(*event.ObservedAt)
-	}
+func (p *service) ProduceAssembly(ctx context.Context, event model.ShipAssembledEvent) error {
 
-	msg := &eventsV1.UFORecorded{
-		ObservedAt:  observedAt,
-		Location:    event.Location,
-		Description: event.Description,
+	msg := &eventsV1.ShipAssembled{
+		EventUuid:    event.EventUUID.String(),
+		OrderUuid:    event.OrderUUID.String(),
+		UserUuid:     event.UserUUID.String(),
+		BuildTimeSec: 1,
 	}
 
 	payload, err := proto.Marshal(msg)
 	if err != nil {
-		logger.Error(ctx, "failed to marshal UFORecorded", zap.Error(err))
+		logger.Error(ctx, model.EreMarshalToKafkaEvent.Error(), zap.Error(err))
 		return err
 	}
 
-	err = p.ufoRecordedProducer.Send(ctx, []byte(event.UUID), payload)
+	err = p.assemblyProducer.Send(ctx, []byte(event.EventUUID.String()), payload)
 	if err != nil {
-		logger.Error(ctx, "failed to publish UFORecorded", zap.Error(err))
+		logger.Error(ctx, model.ErrSendToKafka.Error(), zap.Error(err))
 		return err
 	}
 
