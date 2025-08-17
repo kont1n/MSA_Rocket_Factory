@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package events.v1;
+
+option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/events/v1;events_v1";
+
+// Корабль собран
+message ShipAssembled  {
+  string event_uuid = 1; // Уникальный идентификатор события (для идемпотентности)
+  string order_uuid = 2; // Уникальный идентификатор заказа
+  string user_uuid = 3; // Уникальный идентификатор пользователя
+  int64 build_time_sec = 4; // Время (в секундах), потраченное на сборку корабля
+}

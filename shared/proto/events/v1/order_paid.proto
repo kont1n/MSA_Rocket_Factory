@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package events.v1;
+
+option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/events/v1;events_v1";
+
+// Заказ оплачен
+message OrderPaid  {
+  string event_uuid = 1; // Уникальный идентификатор события (для идемпотентности)
+  string order_uuid = 2; // Уникальный идентификатор заказа
+  string user_uuid = 3; // Уникальный идентификатор пользователя
+  string payment_method = 4; // Способ оплаты
+  string transaction_uuid = 5; // Уникальный идентификатор транзакции
+}
