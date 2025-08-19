@@ -29,6 +29,6 @@ func (s *ServiceSuite) SetupTest() {
 func (s *ServiceSuite) TearDownSuite() {
 }
 
-func TestServiceIntegration(t *testing.T) {
+func TestService(t *testing.T) {
 	suite.Run(t, new(ServiceSuite))
 }

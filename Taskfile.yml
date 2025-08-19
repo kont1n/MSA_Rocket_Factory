@@ -475,6 +475,48 @@ tasks:
       - echo "[task] 📦 Поднимаем Inventory с зависимостями"
       - docker compose up --build --detach
 
+  up-payment:
+    desc: Поднять Payment сервис и все его зависимости
+    dir: deploy/compose/payment
+    cmds:
+      - echo "[task] 📦 Поднимаем Payment с зависимостями"
+      - docker compose up --build --detach      
+
+  up-assembly:
+    desc: Поднять Assembly сервис и все его зависимости
+    dir: deploy/compose/assembly
+    cmds:
+      - echo "[task] 📦 Поднимаем Assembly с зависимостями"
+      - docker compose up --build --detach      
+
+  up-notification:
+    desc: Поднять Notification сервис и все его зависимости
+    dir: deploy/compose/notification
+    cmds:
+      - echo "[task] 📦 Поднимаем Notification с зависимостями"
+      - docker compose up --build --detach
+
+  down-payment:
+    desc: Остановить и удалить Payment сервис и все его зависимости
+    dir: deploy/compose/payment
+    cmds:
+      - echo "[task] 🛑 Останавливаем Payment с зависимостями"
+      - docker compose down --volumes
+
+  down-assembly:
+    desc: Остановить и удалить Assembly сервис и все его зависимости
+    dir: deploy/compose/assembly
+    cmds:
+      - echo "[task] 🛑 Останавливаем Assembly с зависимостями"
+      - docker compose down --volumes
+
+  down-notification:
+    desc: Остановить и удалить Notification сервис и все его зависимости
+    dir: deploy/compose/notification
+    cmds:
+      - echo "[task] 🛑 Останавливаем Notification с зависимостями"
+      - docker compose down --volumes
+
   down-inventory:
     desc: Остановить и удалить Inventory сервис и все его зависимости
     dir: deploy/compose/inventory
@@ -501,14 +543,20 @@ tasks:
     cmds:
       - task up-core
       - task up-inventory
+      - task up-payment
       - task up-order
+      - task up-assembly
+      - task up-notification
 
   down-all:
     desc: Остановить и удалить все сервисы по очереди вместе с зависимостями
     cmds:
-      - task down-core
-      - task down-inventory
       - task down-order
+      - task down-payment
+      - task down-inventory
+      - task down-assembly
+      - task down-notification
+      - task down-core      
 
   grpcurl:install:
     desc: "Устанавливает grpcurl в каталог bin"

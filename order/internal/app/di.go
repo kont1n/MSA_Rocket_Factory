@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/IBM/sarama"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -118,6 +119,12 @@ func (d *diContainer) DBPool(ctx context.Context) *pgxpool.Pool {
 
 func (d *diContainer) InventoryGRPCConn(ctx context.Context) *grpc.ClientConn {
 	if d.inventoryGRPCConn == nil {
+		// Для интеграционных тестов пропускаем подключение к реальному gRPC сервису
+		if os.Getenv("SKIP_GRPC_CONNECTIONS") == "true" {
+			// Возвращаем nil - клиенты должны обрабатывать этот случай
+			return nil
+		}
+
 		conn, err := grpc.NewClient(
 			config.AppConfig().GRPCClient.InventoryAddress(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -137,6 +144,12 @@ func (d *diContainer) InventoryGRPCConn(ctx context.Context) *grpc.ClientConn {
 
 func (d *diContainer) PaymentGRPCConn(ctx context.Context) *grpc.ClientConn {
 	if d.paymentGRPCConn == nil {
+		// Для интеграционных тестов пропускаем подключение к реальному gRPC сервису
+		if os.Getenv("SKIP_GRPC_CONNECTIONS") == "true" {
+			// Возвращаем nil - клиенты должны обрабатывать этот случай
+			return nil
+		}
+
 		conn, err := grpc.NewClient(
 			config.AppConfig().GRPCClient.PaymentAddress(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -156,20 +169,32 @@ func (d *diContainer) PaymentGRPCConn(ctx context.Context) *grpc.ClientConn {
 
 func (d *diContainer) InventoryGRPCClient(ctx context.Context) inventoryV1.InventoryServiceClient {
 	if d.inventoryGRPCClient == nil {
-		d.inventoryGRPCClient = inventoryV1.NewInventoryServiceClient(d.InventoryGRPCConn(ctx))
+		conn := d.InventoryGRPCConn(ctx)
+		if conn != nil {
+			d.inventoryGRPCClient = inventoryV1.NewInventoryServiceClient(conn)
+		}
+		// Для интеграционных тестов возвращаем nil - клиенты должны обрабатывать этот случай
 	}
 	return d.inventoryGRPCClient
 }
 
 func (d *diContainer) PaymentGRPCClient(ctx context.Context) paymentV1.PaymentServiceClient {
 	if d.paymentGRPCClient == nil {
-		d.paymentGRPCClient = paymentV1.NewPaymentServiceClient(d.PaymentGRPCConn(ctx))
+		conn := d.PaymentGRPCConn(ctx)
+		if conn != nil {
+			d.paymentGRPCClient = paymentV1.NewPaymentServiceClient(conn)
+		}
+		// Для интеграционных тестов возвращаем nil - клиенты должны обрабатывать этот случай
 	}
 	return d.paymentGRPCClient
 }
 
 func (d *diContainer) OrderPaidProducer(ctx context.Context) service.OrderPaidProducer {
 	if d.orderPaidProducer == nil {
+		if os.Getenv("SKIP_KAFKA_CONSUMER") == "true" {
+			// Для интеграционных тестов возвращаем nil
+			return nil
+		}
 		d.orderPaidProducer = orderProducer.NewService(d.OrderPaidKafkaProducer())
 	}
 	return d.orderPaidProducer
@@ -177,6 +202,10 @@ func (d *diContainer) OrderPaidProducer(ctx context.Context) service.OrderPaidPr
 
 func (d *diContainer) ShipAssembledConsumer(ctx context.Context) service.ShipAssembledConsumer {
 	if d.shipAssembledConsumer == nil {
+		if os.Getenv("SKIP_KAFKA_CONSUMER") == "true" {
+			// Для интеграционных тестов возвращаем nil
+			return nil
+		}
 		d.shipAssembledConsumer = shipAssembledConsumer.NewService(
 			d.ShipAssembledKafkaConsumer(),
 			d.ShipAssembledDecoder(ctx),

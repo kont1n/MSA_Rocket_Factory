@@ -45,7 +45,9 @@ func (p *service) ProduceOrderPaid(ctx context.Context, event model.OrderPaidEve
 
 	logger.Info(ctx, "OrderPaid event sent successfully",
 		zap.String("event_uuid", event.EventUUID.String()),
-		zap.String("order_uuid", event.OrderUUID.String()))
+		zap.String("order_uuid", event.OrderUUID.String()),
+		zap.String("payment_method", event.PaymentMethod),
+		zap.String("transaction_uuid", event.TransactionUUID.String()))
 
 	return nil
 }

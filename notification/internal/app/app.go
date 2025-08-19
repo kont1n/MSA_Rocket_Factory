@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/config"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 )
 
@@ -25,6 +26,14 @@ func New(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
+	// Запускаем Telegram бота
+	go func() {
+		err := a.diContainer.TelegramClient(ctx).Start(ctx)
+		if err != nil {
+			logger.Error(ctx, "❌ Ошибка при запуске Telegram бота", zap.Error(err))
+		}
+	}()
+
 	// Запускаем оба Kafka Consumer в горутинах
 	go func() {
 		err := a.diContainer.OrderPaidConsumer(ctx).RunConsumer(ctx)
@@ -50,6 +59,7 @@ func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initDI,
 		a.initLogger,
+		a.initCloser,
 	}
 
 	for _, f := range inits {
@@ -72,4 +82,9 @@ func (a *App) initLogger(_ context.Context) error {
 		config.AppConfig().Logger.Level(),
 		config.AppConfig().Logger.AsJson(),
 	)
+}
+
+func (a *App) initCloser(_ context.Context) error {
+	closer.SetLogger(logger.Logger())
+	return nil
 }

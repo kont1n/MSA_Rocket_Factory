@@ -23,6 +23,6 @@ func (s *InMemoryOrderRepositorySuite) TearDownTest() {
 	// Очистка не требуется, так как каждый тест создает новый репозиторий
 }
 
-func TestInMemoryOrderRepositoryIntegration(t *testing.T) {
+func TestInMemoryOrderRepository(t *testing.T) {
 	suite.Run(t, new(InMemoryOrderRepositorySuite))
 }

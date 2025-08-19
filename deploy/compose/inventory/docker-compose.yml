@@ -1,26 +1,26 @@
 services: # Здесь описываются контейнеры, необходимые для Inventory-сервиса
 
-#  inventory-service: # Inventory микросервис
-#    build:
-#      context: ../../../
-#      dockerfile: deploy/docker/inventory/Dockerfile
-#
-#    container_name: inventory-service
-#
-#    env_file:
-#      - .env
-#
-#    ports:
-#      - "${GRPC_PORT}:50051"
-#
-#    depends_on:
-#      mongo-inventory:
-#        condition: service_healthy
-#
-#    restart: unless-stopped
-#
-#    networks:
-#      - microservices-net
+  inventory-service: # Inventory микросервис
+    build:
+      context: ../../../
+      dockerfile: deploy/docker/inventory/Dockerfile
+
+    container_name: inventory-service
+
+    env_file:
+      - .env
+
+    ports:
+      - "${GRPC_PORT}:50051"
+
+    depends_on:
+      mongo-inventory:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    networks:
+      - microservices-net
 
   mongo-inventory: # Контейнер с MongoDB — используется для хранения данных об инвентаре (например, запчасти, компоненты)
     image: ${MONGO_IMAGE_NAME}

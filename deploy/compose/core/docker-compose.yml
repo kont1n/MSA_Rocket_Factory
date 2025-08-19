@@ -23,7 +23,7 @@ services:
       # Это необходимо для распределённого консенсуса Kafka Metadata.
 
       # === Listeners (слушатели сети) ===
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:${KAFKA_INTERNAL_PORT},PLAINTEXT_EXTERNAL://0.0.0.0:${KAFKA_EXTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT}
+      KAFKA_LISTENERS: PLAINTEXT://kafka:${KAFKA_INTERNAL_PORT},PLAINTEXT_EXTERNAL://0.0.0.0:${KAFKA_EXTERNAL_PORT},CONTROLLER://kafka:${KAFKA_CONTROLLER_PORT}
       # Настраиваем, на каких интерфейсах и портах Kafka будет слушать подключения.
       # - PLAINTEXT://0.0.0.0:${KAFKA_INTERNAL_PORT} — внутренний listener для контейнерной сети Docker.
       # - PLAINTEXT_EXTERNAL://0.0.0.0:${KAFKA_EXTERNAL_PORT} — внешний listener для подключения с локальной машины.
@@ -73,13 +73,13 @@ services:
           "CMD",
           "bash",
           "-c",
-          "echo > /dev/tcp/localhost/${KAFKA_INTERNAL_PORT}",
+          "echo > /dev/tcp/localhost/${KAFKA_EXTERNAL_PORT}",
         ]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
-      # Проверяем, доступен ли порт ${KAFKA_INTERNAL_PORT} внутри контейнера.
+      # Проверяем, доступен ли порт ${KAFKA_EXTERNAL_PORT} внутри контейнера.
       # Если порт недоступен — Kafka считается неготовой.
       # start_period: 20s — ждём 20 секунд перед началом проверки.
 

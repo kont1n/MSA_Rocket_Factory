@@ -295,6 +295,6 @@ func (s *ConfigSuite) TestLoad_BooleanLoggerAsJson() {
 	}
 }
 
-func TestConfigIntegration(t *testing.T) {
+func TestConfig(t *testing.T) {
 	suite.Run(t, new(ConfigSuite))
 }

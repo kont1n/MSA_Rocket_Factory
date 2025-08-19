@@ -1,29 +1,29 @@
 services: # Раздел, описывающий контейнеры, которые требуются для работы Order-сервиса
 
-#  order-service: # Order микросервис
-#    build:
-#      context: ../../../
-#      dockerfile: deploy/docker/order/Dockerfile
-#
-#    container_name: order-service
-#
-#    env_file:
-#      - .env
-#
-#    volumes:
-#      - ../../../order/migrations:/app/migrations
-#
-#    ports:
-#      - "${HTTP_PORT}:8080"
-#
-#    depends_on:
-#      postgres-order:
-#        condition: service_healthy
-#
-#    restart: unless-stopped
-#
-#    networks:
-#      - microservices-net
+  order-service: # Order микросервис
+    build:
+      context: ../../../
+      dockerfile: deploy/docker/order/Dockerfile
+
+    container_name: order-service
+
+    env_file:
+      - .env
+
+    volumes:
+      - ../../../order/migrations:/app/migrations
+
+    ports:
+      - "${HTTP_PORT}:8080"
+
+    depends_on:
+      postgres-order:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    networks:
+      - microservices-net
 
   postgres-order: # Контейнер с PostgreSQL, используемый для хранения данных заказов
     image: ${POSTGRES_IMAGE_NAME}
@@ -40,7 +40,7 @@ services: # Раздел, описывающий контейнеры, кото�
       - "${EXTERNAL_POSTGRES_PORT}:5432"
 
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DATABASE}" ]
       interval: 10s
       timeout: 5s
       retries: 5

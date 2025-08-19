@@ -10,15 +10,29 @@ type grpcClientConfig struct {
 }
 
 func NewGRPCClientConfig() (*grpcClientConfig, error) {
-	inventoryAddress := os.Getenv("INVENTORY_GRPC_ADDRESS")
-	if inventoryAddress == "" {
-		inventoryAddress = "localhost:50051"
+	inventoryHost := os.Getenv("INVENTORY_GRPC_HOST")
+	if inventoryHost == "" {
+		inventoryHost = "localhost"
 	}
 
-	paymentAddress := os.Getenv("PAYMENT_GRPC_ADDRESS")
-	if paymentAddress == "" {
-		paymentAddress = "localhost:50052"
+	inventoryPort := os.Getenv("INVENTORY_GRPC_PORT")
+	if inventoryPort == "" {
+		inventoryPort = "50051"
 	}
+
+	inventoryAddress := inventoryHost + ":" + inventoryPort
+
+	paymentHost := os.Getenv("PAYMENT_GRPC_HOST")
+	if paymentHost == "" {
+		paymentHost = "localhost"
+	}
+
+	paymentPort := os.Getenv("PAYMENT_GRPC_PORT")
+	if paymentPort == "" {
+		paymentPort = "50052"
+	}
+
+	paymentAddress := paymentHost + ":" + paymentPort
 
 	return &grpcClientConfig{
 		inventoryAddress: inventoryAddress,

@@ -261,6 +261,6 @@ MONGO_AUTH_DB=admin`
 	s.Equal("mongodb://testuser:testpass@override-host:8080/test_inventory?authSource=admin", cfg.Mongo.URI())
 }
 
-func TestConfigIntegration(t *testing.T) {
+func TestConfig(t *testing.T) {
 	suite.Run(t, new(ConfigSuite))
 }

@@ -27,7 +27,7 @@ func (p *service) ProduceAssembly(ctx context.Context, event model.ShipAssembled
 		EventUuid:    event.EventUUID.String(),
 		OrderUuid:    event.OrderUUID.String(),
 		UserUuid:     event.UserUUID.String(),
-		BuildTimeSec: 1,
+		BuildTimeSec: event.BuildTime,
 	}
 
 	payload, err := proto.Marshal(msg)
