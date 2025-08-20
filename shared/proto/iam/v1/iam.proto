@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package iam.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1;iam_v1";
+
+service AuthService {
+  // Login
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Whoami
+  rpc Whoami(WhoamiRequest) returns (WhoamiResponse);
+}
+
+service UserService {
+  // Register
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // GetUser
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+// LoginRequest
+message LoginRequest {
+  // login - Логин пользователя
+  string login = 1;
+  // password - Пароль пользователя
+  string password = 2;
+}
+
+// LoginResponse
+message LoginResponse {
+  // session_uuid - UUID активной сессии
+  string session_uuid = 1;
+}
+
+// WhoamiRequest
+message WhoamiRequest {
+  // login - Логин пользователя
+  string session_uuid = 1;
+}
+
+// WhoamiResponse
+message WhoamiResponse {
+  // session - Информация о текущей сессии
+  string session = 1;
+  // user - Владелец текущей сессии
+  string user = 2;
+}
+
+
+
+
+
+
+
+

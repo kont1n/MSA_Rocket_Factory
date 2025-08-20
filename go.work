@@ -8,4 +8,5 @@ use (
 	./platform
 	./assembly
 	./notification
+	./iam
 )
