@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package iam.v1;
+
+import "shared/proto/iam/v1/common.proto";
+
+option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1;iam_v1";
+
+// UserService - Сервис управления пользователями
+service UserService {
+  // Register - Регистрация нового пользователя
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  // GetUser - Получение информации о пользователе
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+// UserRegistrationInfo - Информация для регистрации пользователя
+message UserRegistrationInfo {
+  // info - Основная информация пользователя
+  UserInfo info = 1;
+  // password - Пароль пользователя
+  string password = 2;
+}
+
+// RegisterRequest - Запрос на регистрацию пользователя
+message RegisterRequest {
+  // info - Данные для регистрации
+  UserRegistrationInfo info = 1;
+}
+
+// RegisterResponse - Ответ на регистрацию пользователя
+message RegisterResponse {
+  // user_uuid - UUID созданного пользователя
+  string user_uuid = 1;
+}
+
+// GetUserRequest - Запрос информации о пользователе
+message GetUserRequest {
+  // user_uuid - UUID пользователя
+  string user_uuid = 1;
+}
+
+// GetUserResponse - Ответ с информацией о пользователе
+message GetUserResponse {
+  // user - Пользователь
+  User user = 1;
+}

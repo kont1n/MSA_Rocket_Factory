@@ -1,0 +1,91 @@
+services: # Раздел, описывающий контейнеры, которые требуются для работы IAM-сервиса
+
+  iam-service: # IAM микросервис - обрабатывает события авторизации и управляет пользователями
+    build:
+      context: ../../../
+      dockerfile: deploy/docker/iam/Dockerfile
+
+    container_name: iam-service
+
+    env_file:
+      - .env
+
+    ports:
+      - "${GRPC_PORT}:50053"
+
+    depends_on:
+      postgres-iam:
+        condition: service_healthy
+      redis-iam:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    networks:
+      - microservices-net
+
+  postgres-iam: # Сервис с PostgreSQL, используемый IAM-сервисом для хранения данных пользователей
+    image: postgres:17.0-alpine3.20 # Используем официальный образ PostgreSQL 17 на базе Alpine — он лёгкий и быстрый
+    container_name: postgres-iam # Устанавливаем читаемое имя контейнера — удобно при отладке и работе в CLI
+
+    env_file:
+      - .env
+
+    volumes:
+      - postgres_iam_data:/var/lib/postgresql/data
+      # Подключаем именованный том — он будет хранить данные БД вне контейнера
+      # Это позволяет не потерять данные при перезапуске контейнера
+
+    ports:
+      - "${EXTERNAL_POSTGRES_PORT}:5432"
+      # Пробрасываем внутренний порт PostgreSQL (5432) на порт хоста, указанный в переменной EXTERNAL_POSTGRES_PORT
+      # Это нужно, чтобы можно было подключиться к базе извне, например, из DBeaver или другого сервиса
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      # Проверяем готовность базы с помощью встроенной команды pg_isready, используя логин из .env
+      interval: 10s # Периодичность проверок — каждые 10 секунд
+      timeout: 5s # Таймаут на выполнение одной проверки
+      retries: 5 # Сервис будет считаться "неработающим", если 5 проверок подряд неуспешны
+
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети, в которой живут все сервисы микросервисной архитектуры
+
+  redis-iam: # Redis — кэш и хранилище сессий для IAM
+    image: redis:7.2.5-alpine3.20 # Лёгкий образ Redis последней стабильной версии
+    container_name: redis-iam # Явное имя контейнера Redis
+
+    env_file:
+      - .env
+
+    ports:
+      - "${EXTERNAL_REDIS_PORT}:6379"
+      # Пробрасываем внутренний порт Redis на внешний, указанный в .env (например, 6380)
+      # Это позволяет IAM-сервису обращаться к Redis по порту хоста
+
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      # Проверка: если Redis отвечает на команду ping, значит он жив
+      interval: 10s # Проверяем Redis каждые 10 секунд
+      timeout: 5s # Ждём ответа до 5 секунд
+      retries: 5 # После 5 неудачных попыток контейнер считается unhealthy
+
+    restart: unless-stopped
+    # Перезапуск Redis при сбое, если контейнер не остановлен вручную
+
+    networks:
+      - microservices-net
+      # Redis подключается к той же общей сети, что и PostgreSQL, и остальные сервисы
+
+volumes: # Раздел томов — Docker сам создаст и будет управлять этим хранилищем данных
+  postgres_iam_data:
+  # Том для хранения данных PostgreSQL (таблицы, индексы и т.д.)
+  # Он сохраняется между перезапусками контейнера
+
+networks:
+  microservices-net:
+    external: true
