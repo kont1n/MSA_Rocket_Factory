@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"sync"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
@@ -24,6 +24,104 @@ type App struct {
 	listener    net.Listener
 }
 
+// extractDBName извлекает имя базы данных из URI
+func extractDBName(uri string) (string, error) {
+	if len(uri) == 0 {
+		return "", fmt.Errorf("пустой URI")
+	}
+
+	lastSlash := -1
+	questionMark := -1
+	for i := len(uri) - 1; i >= 0; i-- {
+		if uri[i] == '?' && questionMark == -1 {
+			questionMark = i
+		}
+		if uri[i] == '/' && lastSlash == -1 {
+			lastSlash = i
+			break
+		}
+	}
+
+	if lastSlash == -1 || questionMark == -1 || lastSlash >= questionMark {
+		return "", fmt.Errorf("неверный формат URI")
+	}
+
+	return uri[lastSlash+1 : questionMark], nil
+}
+
+// createSystemURI создает URI для подключения к системной БД postgres
+func createSystemURI(uri string) (string, error) {
+	if len(uri) == 0 {
+		return "", fmt.Errorf("пустой URI")
+	}
+
+	lastSlash := -1
+	questionMark := -1
+	for i := len(uri) - 1; i >= 0; i-- {
+		if uri[i] == '?' && questionMark == -1 {
+			questionMark = i
+		}
+		if uri[i] == '/' && lastSlash == -1 {
+			lastSlash = i
+			break
+		}
+	}
+
+	if lastSlash == -1 || questionMark == -1 || lastSlash >= questionMark {
+		return "", fmt.Errorf("неверный формат URI")
+	}
+
+	return uri[:lastSlash+1] + "postgres" + uri[questionMark:], nil
+}
+
+// checkAndCreateDB проверяет существование БД и создает её при необходимости
+func checkAndCreateDB(ctx context.Context, systemURI, dbName string) error {
+	pool, err := pgxpool.New(ctx, systemURI)
+	if err != nil {
+		return fmt.Errorf("не удалось подключиться к PostgreSQL: %w", err)
+	}
+	defer pool.Close()
+
+	var exists bool
+	err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", dbName).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("ошибка при проверке существования БД: %w", err)
+	}
+
+	if !exists {
+		logger.Info(ctx, fmt.Sprintf("📝 База данных %s не существует, создаем...", dbName))
+		_, err = pool.Exec(ctx, fmt.Sprintf("CREATE DATABASE \"%s\"", dbName))
+		if err != nil {
+			return fmt.Errorf("не удалось создать БД %s: %w", dbName, err)
+		}
+		logger.Info(ctx, fmt.Sprintf("✅ База данных %s успешно создана", dbName))
+	} else {
+		logger.Info(ctx, fmt.Sprintf("✅ База данных %s уже существует", dbName))
+	}
+
+	return nil
+}
+
+// ensureDatabaseExists проверяет существование базы данных и создает её при необходимости
+func (a *App) ensureDatabaseExists(ctx context.Context) error {
+	logger.Info(ctx, "🔍 Проверяем существование базы данных...")
+
+	dbConfig := config.AppConfig().DB
+	uri := dbConfig.URI()
+
+	dbName, err := extractDBName(uri)
+	if err != nil {
+		return fmt.Errorf("не удалось извлечь имя БД из URI: %s", uri)
+	}
+
+	systemURI, err := createSystemURI(uri)
+	if err != nil {
+		return fmt.Errorf("не удалось создать URI для системной БД")
+	}
+
+	return checkAndCreateDB(ctx, systemURI, dbName)
+}
+
 func New(ctx context.Context) (*App, error) {
 	a := &App{}
 
@@ -36,13 +134,14 @@ func New(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	return a.runServers(ctx)
+	return a.runGRPCServer(ctx)
 }
 
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
-		a.initDI,
 		a.initLogger,
+		a.ensureDatabaseExists, // Проверяем и создаем БД перед инициализацией DI
+		a.initDI,
 		a.initCloser,
 		a.initListener,
 		a.initGRPCServer,
@@ -106,38 +205,18 @@ func (a *App) initGRPCServer(ctx context.Context) error {
 	// Регистрируем health service для проверки работоспособности
 	health.RegisterService(a.grpcServer)
 
-	iamV1.RegisterIamServiceServer(a.grpcServer, a.diContainer.IamV1API(ctx))
+	iamV1.RegisterAuthServiceServer(a.grpcServer, a.diContainer.AuthV1API(ctx))
+	iamV1.RegisterUserServiceServer(a.grpcServer, a.diContainer.UserV1API(ctx))
 
 	return nil
 }
 
-func (a *App) runServers(ctx context.Context) error {
-	var wg sync.WaitGroup
-	errCh := make(chan error, 2)
+func (a *App) runGRPCServer(ctx context.Context) error {
+	logger.Info(ctx, fmt.Sprintf("🚀 gRPC IAM server listening on %s", config.AppConfig().GRPC.Address()))
 
-	// Запускаем gRPC сервер
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		logger.Info(ctx, fmt.Sprintf("🚀 gRPC PaymentService server listening on %s", config.AppConfig().GRPC.Address()))
-
-		err := a.grpcServer.Serve(a.listener)
-		if err != nil {
-			errCh <- fmt.Errorf("gRPC server error: %w", err)
-		}
-	}()
-
-	// Ждем завершения или ошибки
-	go func() {
-		wg.Wait()
-		close(errCh)
-	}()
-
-	// Возвращаем первую ошибку, если она есть
-	for err := range errCh {
-		if err != nil {
-			return err
-		}
+	err := a.grpcServer.Serve(a.listener)
+	if err != nil {
+		return err
 	}
 
 	return nil

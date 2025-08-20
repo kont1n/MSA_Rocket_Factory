@@ -13,6 +13,7 @@ var appConfig *config
 type config struct {
 	Logger LoggerConfig
 	GRPC   GRPCConfig
+	DB     DBConfig
 }
 
 func Load(path ...string) error {
@@ -31,9 +32,15 @@ func Load(path ...string) error {
 		return err
 	}
 
+	dbCfg, err := env.NewDBConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
 		Logger: loggerCfg,
 		GRPC:   GRPCCfg,
+		DB:     dbCfg,
 	}
 
 	return nil

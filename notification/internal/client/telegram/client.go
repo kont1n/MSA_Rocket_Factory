@@ -20,6 +20,11 @@ type client struct {
 	chatID int64
 }
 
+// noopClient заглушка для разработки, не делает реальных API вызовов
+type noopClient struct {
+	chatID int64
+}
+
 // startCommandHandler обрабатывает команду /start
 func (c *client) startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	message := "🚀 Добро пожаловать в Rocket Factory!\n\n" +
@@ -48,8 +53,23 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 // NewClient создает новый Telegram клиент
-func NewClient(ctx context.Context, cfg config.TelegramConfig) (*client, error) {
-	// Валидация токена
+func NewClient(ctx context.Context, cfg config.TelegramConfig) (TelegramClient, error) {
+	// Если пропускаем API проверку, возвращаем заглушку для разработки
+	if cfg.SkipAPICheck() {
+		logger.Info(ctx, "Telegram API check skipped - using noop client for development")
+
+		// Парсим ChatID (для логов, но используем дефолт если ошибка)
+		chatID := int64(0)
+		if chatIDStr := cfg.ChatID(); chatIDStr != "" {
+			if parsed, err := strconv.ParseInt(chatIDStr, 10, 64); err == nil {
+				chatID = parsed
+			}
+		}
+
+		return &noopClient{chatID: chatID}, nil
+	}
+
+	// Обычный режим с реальным API
 	token := cfg.BotToken()
 	if token == "" {
 		return nil, fmt.Errorf("telegram bot token is empty")
@@ -58,7 +78,7 @@ func NewClient(ctx context.Context, cfg config.TelegramConfig) (*client, error) 
 	// Убираем лишние пробелы
 	token = strings.TrimSpace(token)
 
-	// Для разработки разрешаем тестовые токены
+	// Проверяем формат токена
 	if !strings.Contains(token, ":") {
 		return nil, fmt.Errorf("invalid telegram bot token format: must contain ':'")
 	}
@@ -74,19 +94,15 @@ func NewClient(ctx context.Context, cfg config.TelegramConfig) (*client, error) 
 
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, reportBot.startHandler)
 
-	// Проверяем подключение к Telegram API только если не пропущено
-	if !cfg.SkipAPICheck() {
-		me, err := b.GetMe(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to connect to telegram API: %w", err)
-		}
-
-		logger.Info(ctx, "Telegram bot connected successfully",
-			zap.String("bot_username", me.Username),
-			zap.Int64("bot_id", me.ID))
-	} else {
-		logger.Info(ctx, "Telegram bot created (API check skipped)")
+	// Проверяем подключение к Telegram API
+	me, err := b.GetMe(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to telegram API: %w", err)
 	}
+
+	logger.Info(ctx, "Telegram bot connected successfully",
+		zap.String("bot_username", me.Username),
+		zap.Int64("bot_id", me.ID))
 
 	// Парсим ChatID
 	chatID, err := strconv.ParseInt(cfg.ChatID(), 10, 64)
@@ -146,5 +162,32 @@ func (c *client) Close(ctx context.Context) error {
 		//nolint:gosec // Ошибка закрытия бота не критична для cleanup
 		_, _ = c.bot.Close(ctx)
 	}
+	return nil
+}
+
+// Методы noopClient для режима разработки
+
+// Start заглушка - не запускает реального бота
+func (n *noopClient) Start(ctx context.Context) error {
+	logger.Info(ctx, "Development mode: Telegram bot start skipped")
+	return nil
+}
+
+// SendMessage заглушка - логирует сообщение вместо отправки в Telegram
+func (n *noopClient) SendMessage(ctx context.Context, chatID int64, message string) error {
+	targetChatID := chatID
+	if targetChatID == 0 {
+		targetChatID = n.chatID
+	}
+
+	logger.Info(ctx, "Development mode: Telegram message simulated",
+		zap.Int64("chat_id", targetChatID),
+		zap.String("message", message))
+	return nil
+}
+
+// Close заглушка - ничего не делает
+func (n *noopClient) Close(ctx context.Context) error {
+	logger.Info(ctx, "Development mode: Telegram client close skipped")
 	return nil
 }
