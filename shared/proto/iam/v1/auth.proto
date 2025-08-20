@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package iam.v1;
 
-import "shared/proto/iam/v1/common.proto";
+import "iam/v1/common.proto";
 
 option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1;iam_v1";
 

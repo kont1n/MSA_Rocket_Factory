@@ -5,14 +5,13 @@ import (
 	"net/http"
 
 	grpcAuth "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/grpc"
-	authV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/auth/v1"
-	commonV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/common/v1"
+	iamV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1"
 )
 
 const SessionUUIDHeader = "X-Session-Uuid"
 
 // IAMClient это алиас для сгенерированного gRPC клиента
-type IAMClient = authV1.AuthServiceClient
+type IAMClient = iamV1.AuthServiceClient
 
 // AuthMiddleware middleware для аутентификации HTTP запросов
 type AuthMiddleware struct {
@@ -38,7 +37,7 @@ func (m *AuthMiddleware) Handle(next http.Handler) http.Handler {
 		}
 
 		// Валидируем сессию через IAM сервис
-		whoamiRes, err := m.iamClient.Whoami(r.Context(), &authV1.WhoamiRequest{
+		whoamiRes, err := m.iamClient.Whoami(r.Context(), &iamV1.WhoamiRequest{
 			SessionUuid: sessionUUID,
 		})
 		if err != nil {
@@ -58,7 +57,7 @@ func (m *AuthMiddleware) Handle(next http.Handler) http.Handler {
 }
 
 // GetUserFromContext извлекает пользователя из контекста
-func GetUserFromContext(ctx context.Context) (*commonV1.User, bool) {
+func GetUserFromContext(ctx context.Context) (*iamV1.User, bool) {
 	return grpcAuth.GetUserFromContext(ctx)
 }
 

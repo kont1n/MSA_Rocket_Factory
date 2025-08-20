@@ -9,8 +9,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	authV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/auth/v1"
-	commonV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/common/v1"
+	iamV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1"
 )
 
 const (
@@ -28,7 +27,7 @@ const (
 )
 
 // IAMClient это алиас для сгенерированного gRPC клиента
-type IAMClient = authV1.AuthServiceClient
+type IAMClient = iamV1.AuthServiceClient
 
 // AuthInterceptor interceptor для аутентификации gRPC запросов
 type AuthInterceptor struct {
@@ -79,7 +78,7 @@ func (i *AuthInterceptor) authenticate(ctx context.Context) (context.Context, er
 	}
 
 	// Валидируем сессию через IAM сервис
-	whoamiRes, err := i.iamClient.Whoami(ctx, &authV1.WhoamiRequest{
+	whoamiRes, err := i.iamClient.Whoami(ctx, &iamV1.WhoamiRequest{
 		SessionUuid: sessionUUID,
 	})
 	if err != nil {
@@ -93,8 +92,8 @@ func (i *AuthInterceptor) authenticate(ctx context.Context) (context.Context, er
 }
 
 // GetUserFromContext извлекает пользователя из контекста
-func GetUserFromContext(ctx context.Context) (*commonV1.User, bool) {
-	user, ok := ctx.Value(userContextKey).(*commonV1.User)
+func GetUserFromContext(ctx context.Context) (*iamV1.User, bool) {
+	user, ok := ctx.Value(userContextKey).(*iamV1.User)
 	return user, ok
 }
 
