@@ -9,10 +9,14 @@ type LoggerConfig interface {
 
 type GRPCConfig interface {
 	Address() string
+	TLSCertFile() string
+	TLSKeyFile() string
+	IsInsecure() bool
 }
 
 type DBConfig interface {
 	URI() string
+	SafeURI() string
 	MigrationsDir() string
 }
 
@@ -22,4 +26,11 @@ type RedisConfig interface {
 	MaxIdle() int
 	IdleTimeout() time.Duration
 	CacheTTL() time.Duration
+}
+
+type TokenConfig interface {
+	AccessTokenSecret() string
+	RefreshTokenSecret() string
+	AccessTokenTTL() time.Duration
+	RefreshTokenTTL() time.Duration
 }

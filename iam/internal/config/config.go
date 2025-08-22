@@ -15,6 +15,7 @@ type config struct {
 	GRPC   GRPCConfig
 	DB     DBConfig
 	Redis  RedisConfig
+	Token  TokenConfig
 }
 
 func Load(path ...string) error {
@@ -43,11 +44,17 @@ func Load(path ...string) error {
 		return err
 	}
 
+	jwtCfg, err := env.NewJWTConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
 		Logger: loggerCfg,
 		GRPC:   GRPCCfg,
 		DB:     dbCfg,
 		Redis:  redisCfg,
+		Token:  jwtCfg,
 	}
 
 	return nil

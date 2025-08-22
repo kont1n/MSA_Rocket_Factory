@@ -42,6 +42,18 @@ func (cfg *postgresConfig) URI() string {
 	)
 }
 
+// SafeURI возвращает строку подключения с замаскированным паролем для логирования
+func (cfg *postgresConfig) SafeURI() string {
+	return fmt.Sprintf(
+		"postgres://%s:***@%s:%s/%s?sslmode=%s",
+		cfg.raw.User,
+		cfg.raw.Host,
+		cfg.raw.Port,
+		cfg.raw.Database,
+		cfg.raw.SslMode,
+	)
+}
+
 func (cfg *postgresConfig) MigrationsDir() string {
 	return cfg.raw.MigrationsDir
 }

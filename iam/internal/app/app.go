@@ -5,17 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/config"
+	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/middleware"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/grpc/health"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	iamV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1"
+	jwtV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/jwt/v1"
 )
 
 type App struct {
@@ -194,7 +198,35 @@ func (a *App) initListener(_ context.Context) error {
 }
 
 func (a *App) initGRPCServer(ctx context.Context) error {
-	a.grpcServer = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
+	grpcConfig := config.AppConfig().GRPC
+
+	var opts []grpc.ServerOption
+
+	// Добавляем rate limiting middleware (5 попыток входа в минуту)
+	rateLimiter := middleware.NewRateLimiter(5, time.Minute)
+	opts = append(opts, grpc.UnaryInterceptor(rateLimiter.UnaryServerInterceptor()))
+	logger.Info(ctx, "✅ Rate limiting активирован: 5 попыток входа в минуту")
+
+	if grpcConfig.IsInsecure() {
+		// Режим разработки - использовать insecure соединения
+		logger.Warn(ctx, "⚠️ gRPC сервер работает в небезопасном режиме. НЕ используйте в продакшене!")
+		opts = append(opts, grpc.Creds(insecure.NewCredentials()))
+	} else {
+		// Продакшен - использовать TLS
+		if grpcConfig.TLSCertFile() == "" || grpcConfig.TLSKeyFile() == "" {
+			return fmt.Errorf("для продакшен-режима необходимы GRPC_TLS_CERT_FILE и GRPC_TLS_KEY_FILE")
+		}
+
+		creds, err := credentials.NewServerTLSFromFile(grpcConfig.TLSCertFile(), grpcConfig.TLSKeyFile())
+		if err != nil {
+			return fmt.Errorf("не удалось создать TLS credentials: %w", err)
+		}
+
+		opts = append(opts, grpc.Creds(creds))
+		logger.Info(ctx, "✅ gRPC сервер использует TLS шифрование")
+	}
+
+	a.grpcServer = grpc.NewServer(opts...)
 	closer.AddNamed("gRPC server", func(ctx context.Context) error {
 		a.grpcServer.GracefulStop()
 		return nil
@@ -207,6 +239,7 @@ func (a *App) initGRPCServer(ctx context.Context) error {
 
 	iamV1.RegisterAuthServiceServer(a.grpcServer, a.diContainer.AuthV1API(ctx))
 	iamV1.RegisterUserServiceServer(a.grpcServer, a.diContainer.UserV1API(ctx))
+	jwtV1.RegisterJWTServiceServer(a.grpcServer, a.diContainer.JWTV1API(ctx))
 
 	return nil
 }

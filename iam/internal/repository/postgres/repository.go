@@ -1,12 +1,16 @@
 package postgres
 
 import (
+	"context"
 	"log"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose"
 
+	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/model"
 	def "github.com/kont1n/MSA_Rocket_Factory/iam/internal/repository"
 )
 
@@ -14,11 +18,6 @@ var _ def.IAMRepository = (*repository)(nil)
 
 type repository struct {
 	db *pgxpool.Pool
-}
-
-func (r *repository) Set() {
-	//TODO implement me
-	panic("implement me")
 }
 
 func NewRepository(pool *pgxpool.Pool, migrationsDir string) *repository {
@@ -46,4 +45,20 @@ func (r *repository) Migrate(migrationsDir string) error {
 
 	log.Println("✅ Миграции IAM сервиса успешно применены.")
 	return nil
+}
+
+// Заглушки для SessionCache методов (не используются в PostgreSQL, только в Redis)
+func (r *repository) Set(ctx context.Context, sessionUUID uuid.UUID, session *model.Session, ttl time.Duration) error {
+	// Не реализован для PostgreSQL
+	return model.ErrFailedToCreateSession
+}
+
+func (r *repository) Delete(ctx context.Context, sessionUUID uuid.UUID) error {
+	// Используем реализованный метод DeleteSession
+	return r.DeleteSession(ctx, sessionUUID)
+}
+
+func (r *repository) GetSessionFromCache(ctx context.Context, sessionUUID uuid.UUID) (*model.Session, error) {
+	// Не реализован для PostgreSQL
+	return nil, model.ErrSessionNotFound
 }

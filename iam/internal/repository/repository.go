@@ -14,6 +14,9 @@ type IAMRepository interface {
 	UserRepository
 	SessionRepository
 	SessionCache
+
+	// Дополнительный метод для явного разделения кеша и основной БД
+	GetSessionFromCache(ctx context.Context, sessionUUID uuid.UUID) (*model.Session, error)
 }
 
 // UserRepository интерфейс для работы с пользователями
@@ -35,6 +38,6 @@ type SessionRepository interface {
 
 type SessionCache interface {
 	GetSessionByUUID(ctx context.Context, sessionUUID uuid.UUID) (*model.Session, error)
-	Set(ctx context.Context, sessionUUID uuid.UUID, *model.Session, ttl time.Duration) error
+	Set(ctx context.Context, sessionUUID uuid.UUID, session *model.Session, ttl time.Duration) error
 	Delete(ctx context.Context, sessionUUID uuid.UUID) error
 }

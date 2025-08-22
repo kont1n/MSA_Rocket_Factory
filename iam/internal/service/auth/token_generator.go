@@ -5,7 +5,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/olezhek28/microservices-course-examples/week_6/jwt/internal/model"
+	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/model"
 )
 
 // generateTokenPair - генерирует пару токенов
@@ -30,18 +30,20 @@ func (s *JWTService) generateTokenPair(user model.User) (*model.TokenPair, error
 
 // generateAccessToken - генерирует access токен
 func (s *JWTService) generateAccessToken(user model.User) (string, time.Time, error) {
-	expiresAt := time.Now().Add(accessTokenTTL)
+	expiresAt := time.Now().Add(s.jwtConfig.AccessTokenTTL())
 
 	claims := jwt.MapClaims{
-		"user_id":  user.ID,
-		"username": user.Username,
-		"exp":      expiresAt.Unix(),
-		"iat":      time.Now().Unix(),
-		"type":     "access",
+		"user_id":   user.ID,
+		"user_uuid": user.UUID.String(),
+		"username":  user.Username,
+		"login":     user.Login,
+		"exp":       expiresAt.Unix(),
+		"iat":       time.Now().Unix(),
+		"type":      "access",
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(accessTokenSecret))
+	tokenString, err := token.SignedString([]byte(s.jwtConfig.AccessTokenSecret()))
 	if err != nil {
 		return "", time.Time{}, err
 	}
@@ -51,18 +53,20 @@ func (s *JWTService) generateAccessToken(user model.User) (string, time.Time, er
 
 // generateRefreshToken - генерирует refresh токен
 func (s *JWTService) generateRefreshToken(user model.User) (string, time.Time, error) {
-	expiresAt := time.Now().Add(refreshTokenTTL)
+	expiresAt := time.Now().Add(s.jwtConfig.RefreshTokenTTL())
 
 	claims := jwt.MapClaims{
-		"user_id":  user.ID,
-		"username": user.Username,
-		"exp":      expiresAt.Unix(),
-		"iat":      time.Now().Unix(),
-		"type":     "refresh",
+		"user_id":   user.ID,
+		"user_uuid": user.UUID.String(),
+		"username":  user.Username,
+		"login":     user.Login,
+		"exp":       expiresAt.Unix(),
+		"iat":       time.Now().Unix(),
+		"type":      "refresh",
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(refreshTokenSecret))
+	tokenString, err := token.SignedString([]byte(s.jwtConfig.RefreshTokenSecret()))
 	if err != nil {
 		return "", time.Time{}, err
 	}

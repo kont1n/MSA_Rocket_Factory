@@ -6,6 +6,7 @@ import (
 	"time"
 
 	redigo "github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
 	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/model"
@@ -28,41 +29,48 @@ func NewRepository(cache cache.RedisClient) *repository {
 	}
 }
 
-// api -> service -> cache repo -> redis client (обертка наша) -> redis
-func (r *repository) getCacheKey(uuid string) string {
-	return fmt.Sprintf("%s%s", cacheKeyPrefix, uuid)
+// getCacheKey формирует ключ для кеширования сессии в Redis
+func (r *repository) getCacheKey(sessionUUID uuid.UUID) string {
+	return fmt.Sprintf("%s%s", cacheKeyPrefix, sessionUUID.String())
 }
 
-func (r *repository) Get(ctx context.Context, uuid string) (model.Sighting, error) {
-	cacheKey := r.getCacheKey(uuid)
+// GetSessionByUUID получает сессию из кеша Redis по UUID
+func (r *repository) GetSessionByUUID(ctx context.Context, sessionUUID uuid.UUID) (*model.Session, error) {
+	cacheKey := r.getCacheKey(sessionUUID)
 
 	values, err := r.cache.HGetAll(ctx, cacheKey)
 	if err != nil {
 		if errors.Is(err, redigo.ErrNil) {
-			return model.Sighting{}, model.ErrSightingNotFound
+			return nil, model.ErrSessionNotFound
 		}
-		return model.Sighting{}, err
+		return nil, err
 	}
 
 	if len(values) == 0 {
-		return model.Sighting{}, model.ErrSightingNotFound
+		return nil, model.ErrSessionNotFound
 	}
 
-	var sightingRedisView repoModel.SightingRedisView
-	err = redigo.ScanStruct(values, &sightingRedisView)
+	var sessionRedis repoModel.SessionRedis
+	err = redigo.ScanStruct(values, &sessionRedis)
 	if err != nil {
-		return model.Sighting{}, err
+		return nil, err
 	}
 
-	return repoConverter.SightingFromRedisView(sightingRedisView), nil
+	session, err := repoConverter.ToModelSessionFromRedis(&sessionRedis)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
 }
 
-func (r *repository) Set(ctx context.Context, uuid string, sighting model.Sighting, ttl time.Duration) error {
-	cacheKey := r.getCacheKey(uuid)
+// Set сохраняет сессию в кеше Redis с указанным TTL
+func (r *repository) Set(ctx context.Context, sessionUUID uuid.UUID, session *model.Session, ttl time.Duration) error {
+	cacheKey := r.getCacheKey(sessionUUID)
 
-	redisView := repoConverter.SightingToRedisView(sighting)
+	redisSession := repoConverter.ToRepoSessionRedis(session)
 
-	err := r.cache.HashSet(ctx, cacheKey, redisView)
+	err := r.cache.HashSet(ctx, cacheKey, redisSession)
 	if err != nil {
 		return err
 	}
@@ -70,7 +78,8 @@ func (r *repository) Set(ctx context.Context, uuid string, sighting model.Sighti
 	return r.cache.Expire(ctx, cacheKey, ttl)
 }
 
-func (r *repository) Delete(ctx context.Context, uuid string) error {
-	cacheKey := r.getCacheKey(uuid)
+// Delete удаляет сессию из кеша Redis
+func (r *repository) Delete(ctx context.Context, sessionUUID uuid.UUID) error {
+	cacheKey := r.getCacheKey(sessionUUID)
 	return r.cache.Del(ctx, cacheKey)
 }

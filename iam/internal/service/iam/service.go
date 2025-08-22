@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/config/env"
 	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/model"
 	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/repository"
 	def "github.com/kont1n/MSA_Rocket_Factory/iam/internal/service"
@@ -19,9 +20,9 @@ type service struct {
 	userService def.UserService
 }
 
-func NewService(iamRepository repository.IAMRepository) *service {
+func NewService(iamRepository repository.IAMRepository, jwtConfig env.JWTConfig) *service {
 	return &service{
-		authService: authService.NewService(iamRepository),
+		authService: authService.NewService(iamRepository, jwtConfig),
 		userService: userService.NewService(iamRepository),
 	}
 }
@@ -37,6 +38,19 @@ func (s *service) Whoami(ctx context.Context, sessionUUID uuid.UUID) (*model.Ses
 
 func (s *service) Logout(ctx context.Context, sessionUUID uuid.UUID) error {
 	return s.authService.Logout(ctx, sessionUUID)
+}
+
+// JWT AuthService методы
+func (s *service) JWTLogin(ctx context.Context, login, password string) (*model.TokenPair, error) {
+	return s.authService.JWTLogin(ctx, login, password)
+}
+
+func (s *service) GetAccessToken(ctx context.Context, refreshToken string) (*model.TokenPair, error) {
+	return s.authService.GetAccessToken(ctx, refreshToken)
+}
+
+func (s *service) GetRefreshToken(ctx context.Context, refreshToken string) (*model.TokenPair, error) {
+	return s.authService.GetRefreshToken(ctx, refreshToken)
 }
 
 // UserService методы
