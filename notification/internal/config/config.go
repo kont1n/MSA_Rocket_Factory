@@ -16,6 +16,7 @@ type config struct {
 	OrderPaidConsumer     OrderPaidConsumerConfig
 	ShipAssembledConsumer ShipAssemblyConsumerConfig
 	Telegram              TelegramConfig
+	IAM                   IAMConfig
 }
 
 func Load(path ...string) error {
@@ -49,12 +50,18 @@ func Load(path ...string) error {
 		return err
 	}
 
+	iamCfg, err := env.NewIAMConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
 		Logger:                loggerCfg,
 		Kafka:                 kafkaCfg,
 		OrderPaidConsumer:     orderPaidConsumerCfg,
 		ShipAssembledConsumer: shipAssembledConsumerCfg,
 		Telegram:              telegramCfg,
+		IAM:                   iamCfg,
 	}
 
 	return nil

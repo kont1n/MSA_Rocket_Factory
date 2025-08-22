@@ -2,6 +2,7 @@ package composite
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,4 +76,12 @@ func (r *compositeRepository) Set(ctx context.Context, sessionUUID uuid.UUID, se
 
 func (r *compositeRepository) Delete(ctx context.Context, sessionUUID uuid.UUID) error {
 	return r.cache.Delete(ctx, sessionUUID)
+}
+
+// Migrate выполняет миграции базы данных (делегируется PostgreSQL)
+func (r *compositeRepository) Migrate(migrationsDir string) error {
+	if postgresRepo, ok := r.postgres.(interface{ Migrate(string) error }); ok {
+		return postgresRepo.Migrate(migrationsDir)
+	}
+	return fmt.Errorf("PostgreSQL репозиторий не поддерживает миграции")
 }

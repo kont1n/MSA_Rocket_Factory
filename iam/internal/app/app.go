@@ -149,6 +149,7 @@ func (a *App) initDeps(ctx context.Context) error {
 		a.initCloser,
 		a.initListener,
 		a.initGRPCServer,
+		a.runMigrations, // Выполняем миграции после инициализации DI
 	}
 
 	for _, f := range inits {
@@ -252,5 +253,25 @@ func (a *App) runGRPCServer(ctx context.Context) error {
 		return err
 	}
 
+	return nil
+}
+
+// runMigrations выполняет миграции базы данных
+func (a *App) runMigrations(ctx context.Context) error {
+	logger.Info(ctx, "🔄 Начинаем выполнение миграций...")
+
+	// Получаем репозиторий для выполнения миграций
+	repo := a.diContainer.IAMRepository(ctx)
+
+	// Выполняем миграции
+	migrationsDir := config.AppConfig().DB.MigrationsDir()
+	logger.Info(ctx, fmt.Sprintf("📁 Директория миграций: %s", migrationsDir))
+
+	err := repo.Migrate(migrationsDir)
+	if err != nil {
+		return fmt.Errorf("ошибка при выполнении миграций: %w", err)
+	}
+
+	logger.Info(ctx, "✅ Миграции успешно выполнены")
 	return nil
 }

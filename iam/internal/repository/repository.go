@@ -17,6 +17,9 @@ type IAMRepository interface {
 
 	// Дополнительный метод для явного разделения кеша и основной БД
 	GetSessionFromCache(ctx context.Context, sessionUUID uuid.UUID) (*model.Session, error)
+
+	// Метод для выполнения миграций
+	Migrate(migrationsDir string) error
 }
 
 // UserRepository интерфейс для работы с пользователями

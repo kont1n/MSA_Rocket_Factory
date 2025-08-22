@@ -20,7 +20,6 @@ const configPath = "../deploy/compose/notification/.env"
 func init() {
 	err := config.Load(configPath)
 	if err != nil {
-		// В контейнере .env файла может не быть, используем переменные окружения
 		err = config.Load()
 		if err != nil {
 			panic(fmt.Errorf("failed to load config: %w", err))

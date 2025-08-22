@@ -62,13 +62,6 @@ func (d *diContainer) UserV1API(ctx context.Context) iamV1.UserServiceServer {
 	return d.userAPIv1
 }
 
-func (d *diContainer) IAMService(ctx context.Context) service.IAMService {
-	if d.iamService == nil {
-		d.iamService = iamService.NewService(d.IAMRepository(ctx), config.AppConfig().Token)
-	}
-	return d.iamService
-}
-
 func (d *diContainer) IAMRepository(ctx context.Context) repository.IAMRepository {
 	if d.iamRepository == nil {
 		// Создаем PostgreSQL репозиторий
@@ -84,6 +77,16 @@ func (d *diContainer) IAMRepository(ctx context.Context) repository.IAMRepositor
 		d.iamRepository = composite.NewRepository(pgRepo, redisRepo)
 	}
 	return d.iamRepository
+}
+
+func (d *diContainer) IAMService(ctx context.Context) service.IAMService {
+	if d.iamService == nil {
+		// Убеждаемся что репозиторий создан перед сервисом
+		d.IAMRepository(ctx)
+
+		d.iamService = iamService.NewService(d.IAMRepository(ctx), config.AppConfig().Token)
+	}
+	return d.iamService
 }
 
 func (d *diContainer) DBPool(ctx context.Context) *pgxpool.Pool {
