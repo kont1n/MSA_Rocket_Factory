@@ -1,40 +1,32 @@
 package env
 
 import (
-	"fmt"
+	"net"
 	"os"
 )
 
-// iamConfig конфигурация для подключения к IAM сервису
-type iamConfig struct {
-	iamAddress string // адрес IAM сервиса (например: localhost:50051)
+type grpcClientConfig struct {
+	iamAddress string
 }
 
-// NewIAMConfig создает конфигурацию IAM из переменных окружения
-func NewIAMConfig() (*iamConfig, error) {
-	host := os.Getenv("IAM_GRPC_HOST")
-	if host == "" {
-		host = "localhost" // дефолтный хост
+func NewGRPCClientConfig() (*grpcClientConfig, error) {
+	iamHost := os.Getenv("IAM_GRPC_HOST")
+	if iamHost == "" {
+		iamHost = "localhost"
 	}
 
-	port := os.Getenv("IAM_GRPC_PORT")
-	if port == "" {
-		port = "50051" // дефолтный порт
+	iamPort := os.Getenv("IAM_GRPC_PORT")
+	if iamPort == "" {
+		iamPort = "50051"
 	}
 
-	target := fmt.Sprintf("%s:%s", host, port)
+	iamAddress := net.JoinHostPort(iamHost, iamPort)
 
-	return &iamConfig{
-		iamAddress: target,
+	return &grpcClientConfig{
+		iamAddress: iamAddress,
 	}, nil
 }
 
-// Target возвращает адрес IAM сервиса
-func (c *iamConfig) IAMAddress() string {
+func (c *grpcClientConfig) IAMAddress() string {
 	return c.iamAddress
-}
-
-// String возвращает строковое представление конфигурации
-func (c *iamConfig) String() string {
-	return fmt.Sprintf("IAM Service Target: %s", c.iamAddress)
 }

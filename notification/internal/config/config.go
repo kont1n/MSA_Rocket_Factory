@@ -16,7 +16,7 @@ type config struct {
 	OrderPaidConsumer     OrderPaidConsumerConfig
 	ShipAssembledConsumer ShipAssemblyConsumerConfig
 	Telegram              TelegramConfig
-	IAM                   IAMConfig
+	GRPCClient            GRPCClientConfig
 }
 
 func Load(path ...string) error {
@@ -50,7 +50,7 @@ func Load(path ...string) error {
 		return err
 	}
 
-	iamCfg, err := env.NewIAMConfig()
+	grpcClientCfg, err := env.NewGRPCClientConfig()
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func Load(path ...string) error {
 		OrderPaidConsumer:     orderPaidConsumerCfg,
 		ShipAssembledConsumer: shipAssembledConsumerCfg,
 		Telegram:              telegramCfg,
-		IAM:                   iamCfg,
+		GRPCClient:            grpcClientCfg,
 	}
 
 	return nil

@@ -112,7 +112,7 @@ func (d *diContainer) IAMClient(ctx context.Context) iamClient.Client {
 		if grpcClient != nil {
 			d.iamClient = iamClient.NewClientWithGRPCClient(grpcClient)
 		} else {
-			client, err := iamClient.NewClient(ctx, config.AppConfig().IAM.IAMAddress())
+			client, err := iamClient.NewClient(ctx, config.AppConfig().GRPCClient.IAMAddress())
 			if err != nil {
 				logger.Error(ctx, "Failed to create IAM client", zap.Error(err))
 				panic(fmt.Sprintf("failed to create IAM client: %s\n", err.Error()))
@@ -137,7 +137,7 @@ func (d *diContainer) IAMGRPCConn(ctx context.Context) *grpc.ClientConn {
 		}
 
 		conn, err := grpc.NewClient(
-			config.AppConfig().IAM.IAMAddress(),
+			config.AppConfig().GRPCClient.IAMAddress(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		if err != nil {

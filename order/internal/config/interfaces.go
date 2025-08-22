@@ -25,6 +25,7 @@ type DBConfig interface {
 type GRPCClientConfig interface {
 	InventoryAddress() string
 	PaymentAddress() string
+	IAMAddress() string
 }
 
 // KafkaConfig интерфейс для конфигурации Kafka

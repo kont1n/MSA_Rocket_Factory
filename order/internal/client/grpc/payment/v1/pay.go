@@ -7,10 +7,14 @@ import (
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/client/converter"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	grpcAuth "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/grpc"
 	generaredPaymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
 func (p paymentClient) CreatePayment(ctx context.Context, order *model.Order) (*model.Order, error) {
+	// Передаем session UUID в gRPC metadata
+	ctx = grpcAuth.ForwardSessionUUIDToGRPC(ctx)
+
 	// Оплачиваем заказ с помощью gRPC клиента
 	response, err := p.generatedClient.PayOrder(ctx, &generaredPaymentV1.PayOrderRequest{
 		OrderUuid:     order.OrderUUID.String(),

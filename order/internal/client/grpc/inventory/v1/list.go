@@ -6,10 +6,14 @@ import (
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/client/converter"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	grpcAuth "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/grpc"
 	generaredInventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
 func (c inventoryClient) ListParts(ctx context.Context, filter *model.Filter) (*[]model.Part, error) {
+	// Передаем session UUID в gRPC metadata
+	ctx = grpcAuth.ForwardSessionUUIDToGRPC(ctx)
+
 	parts, err := c.generatedClient.ListParts(ctx, &generaredInventoryV1.ListPartsRequest{
 		Filter: converter.ToProtoFilter(filter),
 	})

@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
+	"github.com/kont1n/MSA_Rocket_Factory/order/internal/api/health"
 	customMiddleware "github.com/kont1n/MSA_Rocket_Factory/order/internal/api/middleware"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
@@ -197,6 +198,15 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
 	r.Use(customMiddleware.RequestLogger)
+
+	// Health check endpoint без аутентификации
+	healthHandler := health.NewHealthHandler()
+	r.Get("/health", healthHandler.Handle)
+
+	// Добавляем middleware аутентификации для всех API роутов
+	authMiddleware := a.diContainer.AuthMiddleware(ctx)
+	r.Use(authMiddleware.Handle)
+
 	r.Mount("/", orderServer)
 
 	// Создаем HTTP сервер

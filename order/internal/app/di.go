@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	customMiddleware "github.com/kont1n/MSA_Rocket_Factory/order/internal/api/middleware"
 	orderV1API "github.com/kont1n/MSA_Rocket_Factory/order/internal/api/order/v1"
 	grpcClients "github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc"
 	invClient "github.com/kont1n/MSA_Rocket_Factory/order/internal/client/grpc/inventory/v1"
@@ -29,6 +30,7 @@ import (
 	wrappedKafkaProducer "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/kafka/producer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
+	iamV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
@@ -51,6 +53,9 @@ type diContainer struct {
 	consumerGroup              sarama.ConsumerGroup
 	shipAssembledKafkaConsumer wrappedKafka.Consumer
 	shipAssembledDecoder       kafkaConverter.ShipAssembledDecoder
+	iamGRPCConn                *grpc.ClientConn
+	iamGRPCClient              iamV1.AuthServiceClient
+	authMiddleware             *customMiddleware.AuthMiddleware
 }
 
 func NewDiContainer() *diContainer {
@@ -286,4 +291,47 @@ func (d *diContainer) ShipAssembledDecoder(ctx context.Context) kafkaConverter.S
 	}
 
 	return d.shipAssembledDecoder
+}
+
+func (d *diContainer) IAMGRPCConn(ctx context.Context) *grpc.ClientConn {
+	if d.iamGRPCConn == nil {
+		// Для интеграционных тестов пропускаем подключение к реальному gRPC сервису
+		if os.Getenv("SKIP_GRPC_CONNECTIONS") == "true" {
+			// Возвращаем nil - клиенты должны обрабатывать этот случай
+			return nil
+		}
+
+		conn, err := grpc.NewClient(
+			config.AppConfig().GRPCClient.IAMAddress(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			panic(fmt.Sprintf("failed to connect to IAM service: %v", err))
+		}
+
+		closer.AddNamed("IAM gRPC connection", func(ctx context.Context) error {
+			return conn.Close()
+		})
+
+		d.iamGRPCConn = conn
+	}
+	return d.iamGRPCConn
+}
+
+func (d *diContainer) IAMGRPCClient(ctx context.Context) iamV1.AuthServiceClient {
+	if d.iamGRPCClient == nil {
+		conn := d.IAMGRPCConn(ctx)
+		if conn != nil {
+			d.iamGRPCClient = iamV1.NewAuthServiceClient(conn)
+		}
+		// Для интеграционных тестов возвращаем nil - клиенты должны обрабатывать этот случай
+	}
+	return d.iamGRPCClient
+}
+
+func (d *diContainer) AuthMiddleware(ctx context.Context) *customMiddleware.AuthMiddleware {
+	if d.authMiddleware == nil {
+		d.authMiddleware = customMiddleware.NewAuthMiddleware(d.IAMGRPCClient(ctx))
+	}
+	return d.authMiddleware
 }

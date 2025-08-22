@@ -94,6 +94,11 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		testcontainers.MongoUsernameKey: generatedMongo.Config().Username,
 		testcontainers.MongoPasswordKey: generatedMongo.Config().Password,
 		"MONGO_AUTH_DB":                 "admin",
+
+		// Настройки IAM - пропускаем подключение в тестах
+		"IAM_GRPC_HOST":       "localhost",
+		"IAM_GRPC_PORT":       "50051",
+		"SKIP_IAM_CONNECTION": "true",
 	}
 
 	// Создаем настраиваемую стратегию ожидания с увеличенным таймаутом

@@ -28,6 +28,6 @@ type TelegramConfig interface {
 	SkipAPICheck() bool
 }
 
-type IAMConfig interface {
+type GRPCClientConfig interface {
 	IAMAddress() string
 }
