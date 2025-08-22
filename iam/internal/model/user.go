@@ -30,3 +30,17 @@ type UserRegistrationInfo struct {
 	Password            string
 	NotificationMethods []NotificationMethod
 }
+
+// TokenPair - пара токенов
+type TokenPair struct {
+	AccessToken           string    `json:"access_token"`
+	RefreshToken          string    `json:"refresh_token"`
+	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at"`
+	RefreshTokenExpiresAt time.Time `json:"refresh_token_expires_at"`
+}
+
+// Claims - кастомные claims для JWT
+type Claims struct {
+	UserID   int64  `json:"user_id"`
+	Username string `json:"username"`
+}

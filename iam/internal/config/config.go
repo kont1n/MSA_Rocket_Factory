@@ -14,6 +14,7 @@ type config struct {
 	Logger LoggerConfig
 	GRPC   GRPCConfig
 	DB     DBConfig
+	Redis  RedisConfig
 }
 
 func Load(path ...string) error {
@@ -37,10 +38,16 @@ func Load(path ...string) error {
 		return err
 	}
 
+	redisCfg, err := env.NewRedisConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
 		Logger: loggerCfg,
 		GRPC:   GRPCCfg,
 		DB:     dbCfg,
+		Redis:  redisCfg,
 	}
 
 	return nil

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	redigo "github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/cache/redis"
 
 	authV1API "github.com/kont1n/MSA_Rocket_Factory/iam/internal/api/auth/v1"
 	userV1API "github.com/kont1n/MSA_Rocket_Factory/iam/internal/api/user/v1"
@@ -13,7 +15,9 @@ import (
 	iamRepository "github.com/kont1n/MSA_Rocket_Factory/iam/internal/repository/postgres"
 	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/service"
 	iamService "github.com/kont1n/MSA_Rocket_Factory/iam/internal/service/iam"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/cache"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	iamV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1"
 )
 
@@ -23,6 +27,8 @@ type diContainer struct {
 	iamService    service.IAMService
 	iamRepository repository.IAMRepository
 	dbPool        *pgxpool.Pool
+	redisPool     *redigo.Pool
+	redisClient   cache.RedisClient
 }
 
 func NewDiContainer() *diContainer {
@@ -75,4 +81,26 @@ func (d *diContainer) DBPool(ctx context.Context) *pgxpool.Pool {
 		d.dbPool = pool
 	}
 	return d.dbPool
+}
+
+func (d *diContainer) RedisPool() *redigo.Pool {
+	if d.redisPool == nil {
+		d.redisPool = &redigo.Pool{
+			MaxIdle:     config.AppConfig().Redis.MaxIdle(),
+			IdleTimeout: config.AppConfig().Redis.IdleTimeout(),
+			DialContext: func(ctx context.Context) (redigo.Conn, error) {
+				return redigo.DialContext(ctx, "tcp", config.AppConfig().Redis.Address())
+			},
+		}
+	}
+
+	return d.redisPool
+}
+
+func (d *diContainer) RedisClient() cache.RedisClient {
+	if d.redisClient == nil {
+		d.redisClient = redis.NewClient(d.RedisPool(), logger.Logger(), config.AppConfig().Redis.ConnectionTimeout())
+	}
+
+	return d.redisClient
 }

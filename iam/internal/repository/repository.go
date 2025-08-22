@@ -2,11 +2,19 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/model"
 )
+
+// IAMRepository объединенный интерфейс для всех репозиториев IAM
+type IAMRepository interface {
+	UserRepository
+	SessionRepository
+	SessionCache
+}
 
 // UserRepository интерфейс для работы с пользователями
 type UserRepository interface {
@@ -25,8 +33,8 @@ type SessionRepository interface {
 	CleanupExpiredSessions(ctx context.Context) error
 }
 
-// IAMRepository объединенный интерфейс для всех репозиториев IAM
-type IAMRepository interface {
-	UserRepository
-	SessionRepository
+type SessionCache interface {
+	GetSessionByUUID(ctx context.Context, sessionUUID uuid.UUID) (*model.Session, error)
+	Set(ctx context.Context, sessionUUID uuid.UUID, *model.Session, ttl time.Duration) error
+	Delete(ctx context.Context, sessionUUID uuid.UUID) error
 }

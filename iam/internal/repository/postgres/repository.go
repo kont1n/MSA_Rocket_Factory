@@ -16,6 +16,11 @@ type repository struct {
 	db *pgxpool.Pool
 }
 
+func (r *repository) Set() {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewRepository(pool *pgxpool.Pool, migrationsDir string) *repository {
 	repo := repository{
 		db: pool,

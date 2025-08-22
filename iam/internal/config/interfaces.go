@@ -1,18 +1,25 @@
 package config
 
-// LoggerConfig интерфейс для конфигурации логгера
+import "time"
+
 type LoggerConfig interface {
 	Level() string
 	AsJson() bool
 }
 
-// GRPCConfig интерфейс для конфигурации gRPC сервера
 type GRPCConfig interface {
 	Address() string
 }
 
-// DBConfig интерфейс для конфигурации базы данных
 type DBConfig interface {
 	URI() string
 	MigrationsDir() string
+}
+
+type RedisConfig interface {
+	Address() string
+	ConnectionTimeout() time.Duration
+	MaxIdle() int
+	IdleTimeout() time.Duration
+	CacheTTL() time.Duration
 }
