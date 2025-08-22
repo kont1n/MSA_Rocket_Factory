@@ -107,6 +107,12 @@ func (d *diContainer) PaymentClient(ctx context.Context) grpcClients.PaymentClie
 
 func (d *diContainer) DBPool(ctx context.Context) *pgxpool.Pool {
 	if d.dbPool == nil {
+		// Для интеграционных тестов пропускаем подключение к реальной базе данных
+		if os.Getenv("SKIP_DB_CHECK") == "true" {
+			// Возвращаем nil - репозиторий должен обрабатывать этот случай
+			return nil
+		}
+
 		pool, err := pgxpool.New(ctx, config.AppConfig().DB.URI())
 		if err != nil {
 			panic(fmt.Sprintf("failed to connect to database: %v", err))

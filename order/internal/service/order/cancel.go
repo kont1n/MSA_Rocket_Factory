@@ -8,6 +8,14 @@ import (
 )
 
 func (s service) CancelOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
+	// Валидация входных параметров
+	if order == nil {
+		return nil, fmt.Errorf("order cannot be nil")
+	}
+	if order.OrderUUID == [16]byte{} {
+		return nil, fmt.Errorf("order UUID cannot be nil")
+	}
+
 	// Получаем заказ по UUID
 	order, err := s.orderRepository.GetOrder(ctx, order.OrderUUID)
 	if err != nil {
