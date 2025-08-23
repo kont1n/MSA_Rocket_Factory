@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -114,6 +115,11 @@ func (d *diContainer) IAMGRPCConn(ctx context.Context) *grpcClient.ClientConn {
 
 func (d *diContainer) IAMClient(ctx context.Context) iamV1.AuthServiceClient {
 	if d.iamClient == nil {
+		// Для интеграционных тестов пропускаем подключение к IAM
+		if config.AppConfig().GRPCClient.IAMAddress() == "" || os.Getenv("SKIP_IAM_CONNECTION") == "true" {
+			return nil
+		}
+
 		d.iamClient = iamV1.NewAuthServiceClient(d.IAMGRPCConn(ctx))
 	}
 	return d.iamClient
@@ -121,6 +127,11 @@ func (d *diContainer) IAMClient(ctx context.Context) iamV1.AuthServiceClient {
 
 func (d *diContainer) AuthInterceptor(ctx context.Context) *grpcMiddleware.AuthInterceptor {
 	if d.authInterceptor == nil {
+		// Для интеграционных тестов пропускаем создание AuthInterceptor
+		if config.AppConfig().GRPCClient.IAMAddress() == "" || os.Getenv("SKIP_IAM_CONNECTION") == "true" {
+			return nil
+		}
+
 		d.authInterceptor = grpcMiddleware.NewAuthInterceptor(d.IAMClient(ctx))
 	}
 	return d.authInterceptor

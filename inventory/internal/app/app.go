@@ -94,13 +94,18 @@ func (a *App) initListener(_ context.Context) error {
 }
 
 func (a *App) initGRPCServer(ctx context.Context) error {
-	// Создаем gRPC сервер с аутентификационным интерцептором
+	// Создаем gRPC сервер с аутентификационным интерцептором (если доступен)
 	authInterceptor := a.diContainer.AuthInterceptor(ctx)
 
-	a.grpcServer = grpc.NewServer(
-		grpc.Creds(insecure.NewCredentials()),
-		grpc.UnaryInterceptor(authInterceptor.Unary()),
-	)
+	var opts []grpc.ServerOption
+	opts = append(opts, grpc.Creds(insecure.NewCredentials()))
+
+	// Добавляем AuthInterceptor только если он создан
+	if authInterceptor != nil {
+		opts = append(opts, grpc.UnaryInterceptor(authInterceptor.Unary()))
+	}
+
+	a.grpcServer = grpc.NewServer(opts...)
 
 	closer.AddNamed("gRPC server", func(ctx context.Context) error {
 		a.grpcServer.GracefulStop()
