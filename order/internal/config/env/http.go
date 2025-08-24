@@ -12,10 +12,17 @@ type httpConfig struct {
 }
 
 func NewHTTPConfig() (*httpConfig, error) {
-	address := os.Getenv("HTTP_ADDRESS")
-	if address == "" {
-		address = "localhost:8080"
+	host := os.Getenv("HTTP_HOST")
+	if host == "" {
+		host = "localhost"
 	}
+
+	port := os.Getenv("HTTP_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	address := host + ":" + port
 
 	readHeaderTimeoutStr := os.Getenv("HTTP_READ_HEADER_TIMEOUT")
 	readHeaderTimeout, err := strconv.Atoi(readHeaderTimeoutStr)

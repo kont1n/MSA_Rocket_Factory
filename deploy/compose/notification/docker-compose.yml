@@ -1,0 +1,20 @@
+services: # Раздел, описывающий контейнеры, которые требуются для работы Notification-сервиса
+
+  notification-service: # Notification микросервис - обрабатывает события и отправляет уведомления в Telegram
+    build:
+      context: ../../../
+      dockerfile: deploy/docker/notification/Dockerfile
+
+    container_name: notification-service
+
+    env_file:
+      - .env
+
+    restart: unless-stopped
+
+    networks:
+      - microservices-net
+
+networks:
+  microservices-net:
+    external: true

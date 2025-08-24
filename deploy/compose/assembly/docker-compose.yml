@@ -1,0 +1,20 @@
+services: # Раздел, описывающий контейнеры, которые требуются для работы Assembly-сервиса
+
+  assembly-service: # Assembly микросервис - обрабатывает события "Заказ оплачен" и производит события "Корабль собран"
+    build:
+      context: ../../../
+      dockerfile: deploy/docker/assembly/Dockerfile
+
+    container_name: assembly-service
+
+    env_file:
+      - .env
+
+    restart: unless-stopped
+
+    networks:
+      - microservices-net
+
+networks:
+  microservices-net:
+    external: true

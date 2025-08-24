@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/client/converter"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
@@ -13,7 +14,7 @@ func (c inventoryClient) ListParts(ctx context.Context, filter *model.Filter) (*
 		Filter: converter.ToProtoFilter(filter),
 	})
 	if err != nil {
-		return nil, model.ErrInventoryClient
+		return nil, fmt.Errorf("gRPC call failed: %w", err)
 	}
 
 	modelParts, err := converter.ToModelPartsList(parts.Parts)

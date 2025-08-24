@@ -19,7 +19,8 @@ func (s *ConfigSuite) SetupTest() {
 	envVars := []string{
 		"LOGGER_LEVEL",
 		"LOGGER_AS_JSON",
-		"HTTP_ADDRESS",
+		"HTTP_HOST",
+		"HTTP_PORT",
 		"HTTP_READ_HEADER_TIMEOUT",
 		"HTTP_SHUTDOWN_TIMEOUT",
 		"POSTGRES_HOST",
@@ -29,8 +30,14 @@ func (s *ConfigSuite) SetupTest() {
 		"POSTGRES_USER",
 		"POSTGRES_PASSWORD",
 		"POSTGRES_MIGRATIONS_DIR",
-		"INVENTORY_GRPC_ADDRESS",
-		"PAYMENT_GRPC_ADDRESS",
+		"INVENTORY_GRPC_HOST",
+		"INVENTORY_GRPC_PORT",
+		"PAYMENT_GRPC_HOST",
+		"PAYMENT_GRPC_PORT",
+		"KAFKA_BROKERS",
+		"PRODUCER_TOPIC_NAME",
+		"CONSUMER_TOPIC_NAME",
+		"CONSUMER_GROUP_ID",
 	}
 
 	for _, envVar := range envVars {
@@ -54,7 +61,8 @@ func (s *ConfigSuite) TearDownTest() {
 	envVars := []string{
 		"LOGGER_LEVEL",
 		"LOGGER_AS_JSON",
-		"HTTP_ADDRESS",
+		"HTTP_HOST",
+		"HTTP_PORT",
 		"HTTP_READ_HEADER_TIMEOUT",
 		"HTTP_SHUTDOWN_TIMEOUT",
 		"POSTGRES_HOST",
@@ -64,8 +72,14 @@ func (s *ConfigSuite) TearDownTest() {
 		"POSTGRES_USER",
 		"POSTGRES_PASSWORD",
 		"POSTGRES_MIGRATIONS_DIR",
-		"INVENTORY_GRPC_ADDRESS",
-		"PAYMENT_GRPC_ADDRESS",
+		"INVENTORY_GRPC_HOST",
+		"INVENTORY_GRPC_PORT",
+		"PAYMENT_GRPC_HOST",
+		"PAYMENT_GRPC_PORT",
+		"KAFKA_BROKERS",
+		"PRODUCER_TOPIC_NAME",
+		"CONSUMER_TOPIC_NAME",
+		"CONSUMER_GROUP_ID",
 	}
 
 	for _, envVar := range envVars {
@@ -82,7 +96,8 @@ func (s *ConfigSuite) TestLoad_Success() {
 	// Устанавливаем валидные переменные окружения
 	_ = os.Setenv("LOGGER_LEVEL", "info")
 	_ = os.Setenv("LOGGER_AS_JSON", "true")
-	_ = os.Setenv("HTTP_ADDRESS", "localhost:8080")
+	_ = os.Setenv("HTTP_HOST", "localhost")
+	_ = os.Setenv("HTTP_PORT", "8080")
 	_ = os.Setenv("HTTP_READ_HEADER_TIMEOUT", "10")
 	_ = os.Setenv("HTTP_SHUTDOWN_TIMEOUT", "15")
 	_ = os.Setenv("POSTGRES_HOST", "localhost")
@@ -94,6 +109,10 @@ func (s *ConfigSuite) TestLoad_Success() {
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
 	_ = os.Setenv("INVENTORY_GRPC_ADDRESS", "localhost:50051")
 	_ = os.Setenv("PAYMENT_GRPC_ADDRESS", "localhost:50052")
+	_ = os.Setenv("KAFKA_BROKERS", "localhost:9092")
+	_ = os.Setenv("PRODUCER_TOPIC_NAME", "order-paid")
+	_ = os.Setenv("CONSUMER_TOPIC_NAME", "ship-assembled")
+	_ = os.Setenv("CONSUMER_GROUP_ID", "order-service")
 
 	err := Load()
 	s.NoError(err)
@@ -124,6 +143,10 @@ func (s *ConfigSuite) TestLoad_HTTPConfigDefaults() {
 	_ = os.Setenv("POSTGRES_USER", "user")
 	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
+	_ = os.Setenv("KAFKA_BROKERS", "localhost:9092")
+	_ = os.Setenv("PRODUCER_TOPIC_NAME", "order-paid")
+	_ = os.Setenv("CONSUMER_TOPIC_NAME", "ship-assembled")
+	_ = os.Setenv("CONSUMER_GROUP_ID", "order-service")
 
 	err := Load()
 	s.NoError(err)
@@ -149,6 +172,10 @@ func (s *ConfigSuite) TestLoad_MissingLoggerLevel() {
 	_ = os.Setenv("POSTGRES_USER", "user")
 	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
+	_ = os.Setenv("KAFKA_BROKERS", "localhost:9092")
+	_ = os.Setenv("PRODUCER_TOPIC_NAME", "order-paid")
+	_ = os.Setenv("CONSUMER_TOPIC_NAME", "ship-assembled")
+	_ = os.Setenv("CONSUMER_GROUP_ID", "order-service")
 
 	err := Load()
 	s.Error(err)
@@ -165,6 +192,10 @@ func (s *ConfigSuite) TestLoad_MissingPostgresHost() {
 	_ = os.Setenv("POSTGRES_USER", "user")
 	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
+	_ = os.Setenv("KAFKA_BROKERS", "localhost:9092")
+	_ = os.Setenv("PRODUCER_TOPIC_NAME", "order-paid")
+	_ = os.Setenv("CONSUMER_TOPIC_NAME", "ship-assembled")
+	_ = os.Setenv("CONSUMER_GROUP_ID", "order-service")
 
 	err := Load()
 	s.Error(err)
@@ -181,6 +212,10 @@ func (s *ConfigSuite) TestLoad_MissingPostgresPassword() {
 	_ = os.Setenv("POSTGRES_DATABASE", "orders")
 	_ = os.Setenv("POSTGRES_USER", "user")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
+	_ = os.Setenv("KAFKA_BROKERS", "localhost:9092")
+	_ = os.Setenv("PRODUCER_TOPIC_NAME", "order-paid")
+	_ = os.Setenv("CONSUMER_TOPIC_NAME", "ship-assembled")
+	_ = os.Setenv("CONSUMER_GROUP_ID", "order-service")
 
 	err := Load()
 	s.Error(err)
@@ -194,7 +229,8 @@ func (s *ConfigSuite) TestLoad_FromEnvFile() {
 
 	envContent := `LOGGER_LEVEL=debug
 LOGGER_AS_JSON=false
-HTTP_ADDRESS=0.0.0.0:9090
+HTTP_HOST=0.0.0.0
+HTTP_PORT=9090
 HTTP_READ_HEADER_TIMEOUT=20
 HTTP_SHUTDOWN_TIMEOUT=30
 POSTGRES_HOST=db-host
@@ -204,8 +240,14 @@ POSTGRES_DATABASE=test_orders
 POSTGRES_USER=testuser
 POSTGRES_PASSWORD=testpass
 POSTGRES_MIGRATIONS_DIR=/migrations
-INVENTORY_GRPC_ADDRESS=inventory:50051
-PAYMENT_GRPC_ADDRESS=payment:50052`
+INVENTORY_GRPC_HOST=inventory
+INVENTORY_GRPC_PORT=50051
+PAYMENT_GRPC_HOST=payment
+PAYMENT_GRPC_PORT=50052
+KAFKA_BROKERS=localhost:9092
+PRODUCER_TOPIC_NAME=order-paid
+CONSUMER_TOPIC_NAME=ship-assembled
+CONSUMER_GROUP_ID=order-service`
 
 	err := os.WriteFile(envFile, []byte(envContent), 0o644)
 	s.NoError(err)
@@ -238,6 +280,10 @@ func (s *ConfigSuite) TestLoad_NonExistentEnvFile() {
 	_ = os.Setenv("POSTGRES_USER", "user")
 	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
+	_ = os.Setenv("KAFKA_BROKERS", "localhost:9092")
+	_ = os.Setenv("PRODUCER_TOPIC_NAME", "order-paid")
+	_ = os.Setenv("CONSUMER_TOPIC_NAME", "ship-assembled")
+	_ = os.Setenv("CONSUMER_GROUP_ID", "order-service")
 
 	err := Load("/non/existent/file.env")
 	s.NoError(err)
@@ -264,6 +310,10 @@ func (s *ConfigSuite) TestLoad_InvalidHTTPTimeout() {
 	_ = os.Setenv("POSTGRES_USER", "user")
 	_ = os.Setenv("POSTGRES_PASSWORD", "password")
 	_ = os.Setenv("POSTGRES_MIGRATIONS_DIR", "./migrations")
+	_ = os.Setenv("KAFKA_BROKERS", "localhost:9092")
+	_ = os.Setenv("PRODUCER_TOPIC_NAME", "order-paid")
+	_ = os.Setenv("CONSUMER_TOPIC_NAME", "ship-assembled")
+	_ = os.Setenv("CONSUMER_GROUP_ID", "order-service")
 
 	err := Load()
 	s.NoError(err) // Невалидные значения заменяются на значения по умолчанию
@@ -280,14 +330,19 @@ func (s *ConfigSuite) TestLoad_OverrideEnvFileWithEnvVars() {
 
 	envContent := `LOGGER_LEVEL=debug
 LOGGER_AS_JSON=false
-HTTP_ADDRESS=0.0.0.0:9090
+HTTP_HOST=localhost
+HTTP_PORT=8080
 POSTGRES_HOST=db-host
 POSTGRES_PORT=5433
 POSTGRES_SSLMODE=require
 POSTGRES_DATABASE=test_orders
 POSTGRES_USER=testuser
 POSTGRES_PASSWORD=testpass
-POSTGRES_MIGRATIONS_DIR=/migrations`
+POSTGRES_MIGRATIONS_DIR=/migrations
+KAFKA_BROKERS=localhost:9092
+PRODUCER_TOPIC_NAME=order-paid
+CONSUMER_TOPIC_NAME=ship-assembled
+CONSUMER_GROUP_ID=order-service`
 
 	err := os.WriteFile(envFile, []byte(envContent), 0o644)
 	s.NoError(err)
@@ -295,7 +350,8 @@ POSTGRES_MIGRATIONS_DIR=/migrations`
 	// Устанавливаем переменные окружения, которые должны переопределить значения из файла
 	_ = os.Setenv("LOGGER_LEVEL", "error")
 	_ = os.Setenv("POSTGRES_HOST", "override-host")
-	_ = os.Setenv("HTTP_ADDRESS", "localhost:3000")
+	_ = os.Setenv("HTTP_HOST", "override-host")
+	_ = os.Setenv("HTTP_PORT", "3000")
 
 	err = Load(envFile)
 	s.NoError(err)
@@ -304,13 +360,13 @@ POSTGRES_MIGRATIONS_DIR=/migrations`
 	s.NotNil(cfg)
 	// Переменные окружения должны иметь приоритет над файлом
 	s.Equal("error", cfg.Logger.Level())
-	s.Equal("localhost:3000", cfg.HTTP.Address())
+	s.Equal("override-host:3000", cfg.HTTP.Address())
 	s.Contains(cfg.DB.URI(), "override-host")
 	// Остальные значения должны быть из файла
 	s.False(cfg.Logger.AsJson())
 	s.Equal("/migrations", cfg.DB.MigrationsDir())
 }
 
-func TestConfigIntegration(t *testing.T) {
+func TestConfig(t *testing.T) {
 	suite.Run(t, new(ConfigSuite))
 }

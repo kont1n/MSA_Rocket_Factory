@@ -59,7 +59,7 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	postgresDatabase := getEnvWithDefault(ctx, testcontainers.PostgresDatabaseKey, testcontainers.PostgresDatabase)
 
 	// Получаем порт HTTP для waitStrategy
-	httpPort := getEnvWithDefault(ctx, httpPortKey, "8081")
+	httpPort := getEnvWithDefault(ctx, httpPortKey, "8080")
 
 	// Шаг 2: Запускаем контейнер с PostgreSQL
 	generatedPostgres, err := postgres.NewContainer(ctx,
@@ -82,7 +82,8 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	// Создаем полный набор переменных окружения для приложения
 	appEnv := map[string]string{
 		// Настройки HTTP
-		"HTTP_ADDRESS": "0.0.0.0:" + httpPort,
+		"HTTP_HOST": "0.0.0.0",
+		"HTTP_PORT": httpPort,
 
 		// Настройки логгера
 		"LOGGER_LEVEL":   "debug",
@@ -96,6 +97,24 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		testcontainers.PostgresPasswordKey: generatedPostgres.Config().Password,
 		"POSTGRES_SSLMODE":                 "disable",
 		"POSTGRES_MIGRATIONS_DIR":          "migrations",
+
+		// Настройки Kafka (фиктивные значения для интеграционных тестов)
+		"KAFKA_BROKERS":       "localhost:9092",
+		"CONSUMER_TOPIC_NAME": "ship.assembled",
+		"CONSUMER_GROUP_ID":   "order-service",
+		"PRODUCER_TOPIC_NAME": "order.paid",
+
+		// Настройки gRPC клиентов (фиктивные значения для интеграционных тестов)
+		"INVENTORY_GRPC_HOST": "localhost",
+		"INVENTORY_GRPC_PORT": "50051",
+		"PAYMENT_GRPC_HOST":   "localhost",
+		"PAYMENT_GRPC_PORT":   "50052",
+
+		// Отключаем Kafka Consumer для интеграционных тестов
+		"SKIP_KAFKA_CONSUMER": "true",
+
+		// Отключаем gRPC подключения для интеграционных тестов
+		"SKIP_GRPC_CONNECTIONS": "true",
 	}
 
 	// Создаем настраиваемую стратегию ожидания с увеличенным таймаутом

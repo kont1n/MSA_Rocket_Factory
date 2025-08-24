@@ -22,6 +22,7 @@ func (a *api) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params
 	if err != nil {
 		logger.Error(ctx, "Pay order error",
 			zap.String("order_uuid", params.OrderUUID.String()),
+			zap.String("payment_method", string(req.PaymentMethod)),
 			zap.Error(err),
 		)
 
@@ -55,6 +56,13 @@ func (a *api) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params
 
 		return nil, err
 	}
+
+	// Логируем успешную оплату
+	logger.Info(ctx, "Order paid successfully",
+		zap.String("order_uuid", order.OrderUUID.String()),
+		zap.String("payment_method", order.PaymentMethod),
+		zap.String("transaction_uuid", order.TransactionUUID.String()),
+	)
 
 	return &orderV1.PayOrderResponse{
 		TransactionUUID: orderV1.TransactionUUID(order.TransactionUUID),
