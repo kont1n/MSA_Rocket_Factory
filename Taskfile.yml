@@ -496,6 +496,20 @@ tasks:
       - echo "[task] 📦 Поднимаем Notification с зависимостями"
       - docker compose up --build --detach
 
+  up-iam:
+    desc: Поднять IAM сервис и все его зависимости
+    dir: deploy/compose/iam
+    cmds:
+      - echo "[task] 📦 Поднимаем IAM с зависимостями"
+      - docker compose up --build --detach
+
+  down-iam:
+    desc: Остановить и удалить IAM сервис и все его зависимости
+    dir: deploy/compose/iam
+    cmds:
+      - echo "[task] 🛑 Останавливаем IAM с зависимостями"
+      - docker compose down --volumes
+
   down-payment:
     desc: Остановить и удалить Payment сервис и все его зависимости
     dir: deploy/compose/payment
@@ -547,6 +561,7 @@ tasks:
       - task up-order
       - task up-assembly
       - task up-notification
+      - task up-iam
 
   down-all:
     desc: Остановить и удалить все сервисы по очереди вместе с зависимостями
@@ -556,6 +571,7 @@ tasks:
       - task down-inventory
       - task down-assembly
       - task down-notification
+      - task down-iam
       - task down-core      
 
   grpcurl:install:
@@ -616,7 +632,7 @@ tasks:
         echo
         echo "👤 Тест 3: Создание пользователя для тестов"
         # Генерируем уникальный UUID для пользователя
-        USER_UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+        USER_UUID=124df92b-39ff-474f-8eb9-79d41dd7fc93
         echo "✅ Сгенерирован UUID пользователя: $USER_UUID"
         
         echo

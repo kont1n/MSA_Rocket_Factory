@@ -3,6 +3,7 @@ package decoder
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/model"
@@ -22,22 +23,22 @@ func (d *OrderPaidDecoder) Decode(data []byte) (*model.OrderPaidEvent, error) {
 		return nil, fmt.Errorf("failed to unmarshal protobuf: %w", err)
 	}
 
-	eventUUID, err := parseUUID(protoEvent.EventUuid)
+	eventUUID, err := uuid.Parse(protoEvent.EventUuid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse event UUID: %w", err)
 	}
 
-	orderUUID, err := parseUUID(protoEvent.OrderUuid)
+	orderUUID, err := uuid.Parse(protoEvent.OrderUuid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse order UUID: %w", err)
 	}
 
-	userUUID, err := parseUUID(protoEvent.UserUuid)
+	userUUID, err := uuid.Parse(protoEvent.UserUuid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse user UUID: %w", err)
 	}
 
-	transactionUUID, err := parseUUID(protoEvent.TransactionUuid)
+	transactionUUID, err := uuid.Parse(protoEvent.TransactionUuid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse transaction UUID: %w", err)
 	}

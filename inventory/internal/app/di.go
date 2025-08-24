@@ -3,10 +3,13 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	grpcClient "google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	inventoryV1API "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/api/v1"
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/config"
@@ -15,6 +18,8 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/service"
 	inventoryService "github.com/kont1n/MSA_Rocket_Factory/inventory/internal/service/part"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
+	grpcMiddleware "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/grpc"
+	iamV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
@@ -24,6 +29,9 @@ type diContainer struct {
 	inventoryRepository repository.InventoryRepository
 	mongoDBClient       *mongo.Client
 	mongoDBHandle       *mongo.Database
+	iamGRPCConn         *grpcClient.ClientConn
+	iamClient           iamV1.AuthServiceClient
+	authInterceptor     *grpcMiddleware.AuthInterceptor
 }
 
 func NewDiContainer() *diContainer {
@@ -78,4 +86,53 @@ func (d *diContainer) MongoDBHandle(ctx context.Context) *mongo.Database {
 		d.mongoDBHandle = d.MongoDBClient(ctx).Database(config.AppConfig().Mongo.DatabaseName())
 	}
 	return d.mongoDBHandle
+}
+
+func (d *diContainer) IAMGRPCConn(ctx context.Context) *grpcClient.ClientConn {
+	if d.iamGRPCConn == nil {
+		// Для интеграционных тестов пропускаем подключение к реальному gRPC сервису
+		if config.AppConfig().GRPCClient.IAMAddress() == "" {
+			// Возвращаем nil - клиенты должны обрабатывать этот случай
+			return nil
+		}
+
+		conn, err := grpcClient.NewClient(
+			config.AppConfig().GRPCClient.IAMAddress(),
+			grpcClient.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			panic(fmt.Sprintf("failed to connect to IAM service: %v", err))
+		}
+
+		closer.AddNamed("IAM gRPC connection", func(ctx context.Context) error {
+			return conn.Close()
+		})
+
+		d.iamGRPCConn = conn
+	}
+	return d.iamGRPCConn
+}
+
+func (d *diContainer) IAMClient(ctx context.Context) iamV1.AuthServiceClient {
+	if d.iamClient == nil {
+		// Для интеграционных тестов пропускаем подключение к IAM
+		if config.AppConfig().GRPCClient.IAMAddress() == "" || os.Getenv("SKIP_IAM_CONNECTION") == "true" {
+			return nil
+		}
+
+		d.iamClient = iamV1.NewAuthServiceClient(d.IAMGRPCConn(ctx))
+	}
+	return d.iamClient
+}
+
+func (d *diContainer) AuthInterceptor(ctx context.Context) *grpcMiddleware.AuthInterceptor {
+	if d.authInterceptor == nil {
+		// Для интеграционных тестов пропускаем создание AuthInterceptor
+		if config.AppConfig().GRPCClient.IAMAddress() == "" || os.Getenv("SKIP_IAM_CONNECTION") == "true" {
+			return nil
+		}
+
+		d.authInterceptor = grpcMiddleware.NewAuthInterceptor(d.IAMClient(ctx))
+	}
+	return d.authInterceptor
 }

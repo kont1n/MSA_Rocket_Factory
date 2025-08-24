@@ -25,6 +25,9 @@ type ShipAssemblyConsumerConfig interface {
 
 type TelegramConfig interface {
 	BotToken() string
-	ChatID() string
 	SkipAPICheck() bool
+}
+
+type GRPCClientConfig interface {
+	IAMAddress() string
 }

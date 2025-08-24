@@ -67,6 +67,29 @@ func (_m *TelegramClient) Start(ctx context.Context) error {
 	return r0
 }
 
+// SetUserRegistrationCallback provides a mock function with given fields: callback
+func (_m *TelegramClient) SetUserRegistrationCallback(callback func(ctx context.Context, username string, chatID int64) error) {
+	_m.Called(callback)
+}
+
+// HandleStartCommand provides a mock function with given fields: ctx, username, chatID
+func (_m *TelegramClient) HandleStartCommand(ctx context.Context, username string, chatID int64) error {
+	ret := _m.Called(ctx, username, chatID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HandleStartCommand")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64) error); ok {
+		r0 = rf(ctx, username, chatID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewTelegramClient creates a new instance of TelegramClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewTelegramClient(t interface {

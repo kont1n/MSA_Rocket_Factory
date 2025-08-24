@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package iam.v1;
+
+import "iam/v1/common.proto";
+
+option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1;iam_v1";
+
+// AuthService - Сервис аутентификации пользователей
+service AuthService {
+  // Login - Аутентификация пользователя
+  rpc Login(LoginRequest) returns (LoginResponse);
+  // Whoami - Получение информации о текущей сессии
+  rpc Whoami(WhoamiRequest) returns (WhoamiResponse);
+}
+
+// LoginRequest - Запрос на аутентификацию
+message LoginRequest {
+  // login - Логин пользователя
+  string login = 1;
+  // password - Пароль пользователя
+  string password = 2;
+}
+
+// LoginResponse - Ответ на аутентификацию
+message LoginResponse {
+  // session_uuid - UUID активной сессии
+  string session_uuid = 1;
+}
+
+// WhoamiRequest - Запрос информации о текущей сессии
+message WhoamiRequest {
+  // session_uuid - UUID активной сессии
+  string session_uuid = 1;
+}
+
+// WhoamiResponse - Ответ с информацией о сессии
+message WhoamiResponse {
+  // session - Информация о текущей сессии
+  Session session = 1;
+  // user - Владелец текущей сессии
+  User user = 2;
+} 

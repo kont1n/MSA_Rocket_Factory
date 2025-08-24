@@ -4,7 +4,6 @@ import "github.com/caarlos0/env/v11"
 
 type telegramEnvConfig struct {
 	BotToken     string `env:"TELEGRAM_BOT_TOKEN,required"`
-	ChatID       string `env:"TELEGRAM_CHAT_ID,required"`
 	SkipAPICheck bool   `env:"TELEGRAM_SKIP_API_CHECK"`
 }
 
@@ -23,10 +22,6 @@ func NewTelegramConfig() (*TelegramConfig, error) {
 
 func (cfg *TelegramConfig) BotToken() string {
 	return cfg.raw.BotToken
-}
-
-func (cfg *TelegramConfig) ChatID() string {
-	return cfg.raw.ChatID
 }
 
 func (cfg *TelegramConfig) SkipAPICheck() bool {
