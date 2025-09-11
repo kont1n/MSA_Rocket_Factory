@@ -1,5 +1,113 @@
 services:
 
+  otel-collector: # Сервис OpenTelemetry Collector для сбора и обработки телеметрии
+    image: otel/opentelemetry-collector-contrib:0.123.0 # Используем официальный образ OpenTelemetry Collector Contrib
+    container_name: otel-collector # Явное имя контейнера
+    command: ["--config=/etc/otel-collector-config.yaml"] # Указываем путь к файлу конфигурации
+    volumes:
+      - ./otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml # Монтируем конфигурацию коллектора
+    ports:
+      - "${OTEL_GRPC_PORT}:4317" # Порт для протокола OTLP gRPC
+      - "${OTEL_COLLECTOR_METRICS_PORT}:8888" # Prometheus метрики для мониторинга и healthcheck
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети микросервисов
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:8888/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+      # Проверяем готовность коллектора через Prometheus метрики
+    depends_on:
+      jaeger:
+        condition: service_healthy
+      # Коллектор зависит от jaeger, так как экспортирует туда данные
+
+  jaeger: # Сервис Jaeger для распределенной трассировки
+    image: jaegertracing/jaeger:2.6.0 # Последняя стабильная версия Jaeger v2
+    container_name: jaeger # Имя контейнера для удобного обращения
+    ports:
+      - "${JAEGER_UI_PORT}:16686" # Порт для веб-интерфейса Jaeger UI
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true # Включаем поддержку протокола OpenTelemetry
+      - STORAGE_TYPE=badger # Используем Badger как хранилище данных (встроенная key-value БД)
+      - BADGER_EPHEMERAL=false # Сохраняем данные на диск между перезапусками
+      - BADGER_DIRECTORY_VALUE=/badger/data # Директория для хранения значений (спаны, теги, логи)
+      - BADGER_DIRECTORY_KEY=/badger/key # Директория для хранения индексов (для быстрого поиска)
+    volumes:
+      - jaeger_data:/badger/data # Том для хранения данных трейсов
+      - jaeger_key:/badger/key # Том для хранения индексов
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:${JAEGER_UI_PORT}"] # Проверка доступности UI
+      interval: 5s # Интервал проверки
+      timeout: 3s # Таймаут проверки
+      retries: 3 # Количество попыток
+      start_period: 5s # Время ожидания перед началом проверок
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети микросервисов
+
+  prometheus: # Сервис Prometheus для сбора и хранения метрик
+    image: prom/prometheus:v3.3.1 # Используем официальный образ Prometheus последней стабильной версии
+    container_name: prometheus # Явное имя контейнера
+    ports:
+      - "${PROMETHEUS_PORT}:9090" # Пробрасываем порт Prometheus на хост-машину
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml # Монтируем конфигурацию Prometheus
+      - prometheus_data:/prometheus # Подключаем volume для хранения данных Prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml' # Указываем путь к файлу конфигурации
+      - '--storage.tsdb.path=/prometheus' # Директория для хранения временных рядов
+      - '--web.enable-lifecycle' # Включает HTTP API для управления Prometheus
+      - '--web.enable-remote-write-receiver' # Включает поддержку remote write API для приема метрик
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--spider", "http://localhost:9090/-/healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+      # Проверяем готовность Prometheus по endpoint /-/healthy
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети микросервисов
+
+  grafana: # Сервис Grafana для визуализации метрик
+    image: grafana/grafana:12.0.0 # Используем официальный образ Grafana последней стабильной версии
+    container_name: grafana # Явное имя контейнера
+    ports:
+      - "${GRAFANA_PORT}:3000" # Пробрасываем порт Grafana на хост-машину
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin} # Имя пользователя администратора
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin} # Пароль администратора
+      - GF_USERS_ALLOW_SIGN_UP=false # Запрещаем регистрацию новых пользователей
+    volumes:
+      - grafana_data:/var/lib/grafana # Подключаем volume для хранения данных Grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning # Монтируем директорию с настройками для автоматического провижининга
+      - ./grafana/dashboards:/var/lib/grafana/dashboards # Монтируем директорию с дашбордами
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      # Гарантируем, что Grafana стартует только после того, как Prometheus станет healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--spider", "http://localhost:3000/api/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+      # Проверяем готовность Grafana по endpoint /api/health
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети микросервисов
+
   kafka: # Сервис Kafka
     image: confluentinc/cp-kafka:7.9.0 # Образ Kafka от компании Confluent, версия 7.9.0 (современная, с поддержкой KRaft)
     container_name: kafka # Явное имя контейнера, чтобы легче обращаться к нему
@@ -129,6 +237,13 @@ services:
       # Подключаем контейнер к общей сети, в которой живут все сервисы микросервисной архитектуры
 
 volumes: # Раздел с определением томов
+  jaeger_data: # Именованный том для хранения данных Jaeger
+  # Хранит данные трассировки
+  jaeger_key: # Именованный том для хранения ключей Jaeger
+  prometheus_data: # Именованный том для хранения данных Prometheus
+  # Хранит временные ряды с метриками
+  grafana_data: # Именованный том для хранения данных Grafana
+  # Хранит настройки, пользователей и другие данные Grafana
   kafka_data: # Именованный том для хранения данных Kafka
   # Docker сам управляет этим хранилищем, данные сохраняются между перезапусками контейнеров.
 
