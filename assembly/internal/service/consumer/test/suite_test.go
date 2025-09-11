@@ -56,7 +56,7 @@ func (m *MockAssemblyService) Assemble(ctx context.Context, event model.OrderPai
 
 func (s *ConsumerServiceSuite) SetupSuite() {
 	// Инициализируем logger для тестов
-	if err := logger.Init("debug", false); err != nil {
+	if err := logger.Init(context.Background(), "debug", false, "stdout", "", "assembly-test", "test"); err != nil {
 		panic(err)
 	}
 

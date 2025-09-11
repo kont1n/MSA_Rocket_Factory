@@ -30,7 +30,7 @@ func (m *MockProducer) Send(ctx context.Context, key, value []byte) error {
 
 func (s *ProducerServiceSuite) SetupSuite() {
 	// Инициализируем logger для тестов
-	if err := logger.Init("debug", false); err != nil {
+	if err := logger.Init(context.Background(), "debug", false, "stdout", "", "assembly-test", "test"); err != nil {
 		panic(err)
 	}
 

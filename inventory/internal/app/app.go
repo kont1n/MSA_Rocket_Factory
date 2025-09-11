@@ -62,10 +62,15 @@ func (a *App) initDI(_ context.Context) error {
 	return nil
 }
 
-func (a *App) initLogger(_ context.Context) error {
+func (a *App) initLogger(ctx context.Context) error {
 	return logger.Init(
+		ctx,
 		config.AppConfig().Logger.Level(),
 		config.AppConfig().Logger.AsJson(),
+		config.AppConfig().Logger.Outputs(),
+		config.AppConfig().Logger.OtelEndpoint(),
+		config.AppConfig().Logger.ServiceName(),
+		"dev", // serviceEnvironment - хардкод для обратной совместимости
 	)
 }
 

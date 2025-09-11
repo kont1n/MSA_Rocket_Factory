@@ -6,6 +6,9 @@ import "github.com/IBM/sarama"
 type LoggerConfig interface {
 	Level() string
 	AsJson() bool
+	Outputs() string
+	OtelEndpoint() string
+	ServiceName() string
 }
 
 // HTTPConfig интерфейс для конфигурации HTTP сервера

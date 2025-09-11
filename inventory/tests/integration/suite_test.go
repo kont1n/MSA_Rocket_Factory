@@ -33,7 +33,7 @@ func TestIntegration(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	err := logger.Init(loggerLevelValue, true)
+	err := logger.Init(context.Background(), loggerLevelValue, true, "stdout", "", "inventory-test", "test")
 	if err != nil {
 		panic(fmt.Sprintf("не удалось инициализировать логгер: %v", err))
 	}
