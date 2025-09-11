@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -10,6 +11,8 @@ import (
 )
 
 func (s service) PayOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
+	startTime := time.Now()
+
 	// Получаем заказ по UUID
 	dbOrder, err := s.orderRepository.GetOrder(ctx, order.OrderUUID)
 	if err != nil {
@@ -43,6 +46,12 @@ func (s service) PayOrder(ctx context.Context, order *model.Order) (*model.Order
 	err = s.orderPaidProducer.ProduceOrderPaid(ctx, event)
 	if err != nil {
 		return nil, fmt.Errorf("service: failed to produce OrderPaid event: %w", err)
+	}
+
+	// Записываем метрики при успешной оплате заказа
+	if s.metrics != nil {
+		s.metrics.recordOrderPaid(ctx, float64(updatedOrder.TotalPrice), "USD") // По умолчанию USD
+		s.metrics.recordOrderDuration(ctx, time.Since(startTime), "pay")
 	}
 
 	return updatedOrder, nil

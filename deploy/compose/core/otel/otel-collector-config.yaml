@@ -77,6 +77,18 @@ exporters:
     # Уровень детализации логов
     verbosity: detailed
 
+  # Экспорт метрик в Prometheus
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: "ufo_factory"
+    const_labels:
+      environment: "dev"
+    send_timestamps: true
+    metric_relabeling:
+      - source_labels: [__name__]
+        regex: 'orders_.*|assembly_.*|rockets_.*'
+        action: keep
+
 # Секция extensions - дополнительные компоненты
 extensions:
   # HEALTH CHECK: эндпоинт для проверки здоровья коллектора
@@ -116,3 +128,12 @@ service:
       processors: [resource, batch]
       # Куда отправлять обработанные логи
       exporters: [elasticsearch, debug]
+
+    # Пайплайн для метрик
+    metrics:
+      # Используемые приемники данных
+      receivers: [otlp]
+      # Последовательность обработчиков для трансформации данных
+      processors: [resource, batch]
+      # Куда отправлять обработанные метрики
+      exporters: [prometheus, debug]

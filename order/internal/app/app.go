@@ -18,6 +18,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/metrics"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 )
 
@@ -152,6 +153,7 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initLogger,
+		a.initMetrics,
 	}
 
 	// Проверяем и создаем БД перед инициализацией DI только если не отключено для тестов
@@ -192,8 +194,16 @@ func (a *App) initLogger(ctx context.Context) error {
 	)
 }
 
+func (a *App) initMetrics(ctx context.Context) error {
+	return metrics.InitProvider(ctx, config.AppConfig().Metrics)
+}
+
 func (a *App) initCloser(_ context.Context) error {
 	closer.SetLogger(logger.Logger())
+
+	// Добавляем graceful shutdown для метрик
+	closer.AddNamed("Metrics provider", metrics.Shutdown)
+
 	return nil
 }
 

@@ -1,6 +1,10 @@
 package config
 
-import "github.com/IBM/sarama"
+import (
+	"time"
+
+	"github.com/IBM/sarama"
+)
 
 // LoggerConfig интерфейс для конфигурации логгера
 type LoggerConfig interface {
@@ -47,4 +51,10 @@ type ShipAssemblyConsumerConfig interface {
 	Topic() string
 	GroupID() string
 	Config() *sarama.Config
+}
+
+// MetricsConfig интерфейс для конфигурации метрик
+type MetricsConfig interface {
+	CollectorEndpoint() string
+	CollectorInterval() time.Duration
 }

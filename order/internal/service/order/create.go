@@ -3,11 +3,14 @@ package order
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
 )
 
 func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
+	startTime := time.Now()
+
 	// Валидация входных параметров
 	if order == nil {
 		return nil, fmt.Errorf("order cannot be nil")
@@ -51,5 +54,12 @@ func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Or
 	if err != nil {
 		return nil, fmt.Errorf("service: failed to create order in repository: %w", err)
 	}
+
+	// Записываем метрики при успешном создании заказа
+	if s.metrics != nil {
+		s.metrics.recordOrderCreated(ctx, totalPrice, "USD") // По умолчанию USD
+		s.metrics.recordOrderDuration(ctx, time.Since(startTime), "create")
+	}
+
 	return order, nil
 }

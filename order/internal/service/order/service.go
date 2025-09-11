@@ -19,6 +19,7 @@ type service struct {
 	inventoryClient   grpc.InventoryClient
 	paymentClient     grpc.PaymentClient
 	orderPaidProducer def.OrderPaidProducer
+	metrics           *orderMetrics
 }
 
 func NewService(
@@ -27,11 +28,19 @@ func NewService(
 	paymentClient grpc.PaymentClient,
 	orderPaidProducer def.OrderPaidProducer,
 ) *service {
+	// Инициализируем метрики
+	metrics, err := newOrderMetrics()
+	if err != nil {
+		// В случае ошибки создаем nil метрики - сервис должен работать без них
+		metrics = nil
+	}
+
 	return &service{
 		orderRepository:   orderRepository,
 		inventoryClient:   inventoryClient,
 		paymentClient:     paymentClient,
 		orderPaidProducer: orderPaidProducer,
+		metrics:           metrics,
 	}
 }
 

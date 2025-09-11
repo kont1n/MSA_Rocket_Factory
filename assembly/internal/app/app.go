@@ -9,6 +9,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/assembly/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/metrics"
 )
 
 type App struct {
@@ -59,8 +60,9 @@ func (a *App) Run(ctx context.Context) error {
 
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
-		a.initDI,
 		a.initLogger,
+		a.initMetrics,
+		a.initDI,
 		a.initCloser,
 	}
 
@@ -91,8 +93,16 @@ func (a *App) initLogger(ctx context.Context) error {
 	)
 }
 
+func (a *App) initMetrics(ctx context.Context) error {
+	return metrics.InitProvider(ctx, config.AppConfig().Metrics)
+}
+
 func (a *App) initCloser(_ context.Context) error {
 	closer.SetLogger(logger.Logger())
+
+	// Добавляем graceful shutdown для метрик
+	closer.AddNamed("Metrics provider", metrics.Shutdown)
+
 	return nil
 }
 
