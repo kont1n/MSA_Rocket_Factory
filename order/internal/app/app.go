@@ -19,6 +19,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/metrics"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 )
 
@@ -153,6 +154,7 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initLogger,
+		a.initTracing,
 		a.initMetrics,
 	}
 
@@ -194,6 +196,10 @@ func (a *App) initLogger(ctx context.Context) error {
 	)
 }
 
+func (a *App) initTracing(ctx context.Context) error {
+	return tracing.InitTracer(ctx, config.AppConfig().Tracing)
+}
+
 func (a *App) initMetrics(ctx context.Context) error {
 	return metrics.InitProvider(ctx, config.AppConfig().Metrics)
 }
@@ -203,6 +209,9 @@ func (a *App) initCloser(_ context.Context) error {
 
 	// Добавляем graceful shutdown для метрик
 	closer.AddNamed("Metrics provider", metrics.Shutdown)
+
+	// Добавляем graceful shutdown для tracing
+	closer.AddNamed("Tracing provider", tracing.ShutdownTracer)
 
 	return nil
 }

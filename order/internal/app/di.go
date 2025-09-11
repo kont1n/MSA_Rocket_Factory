@@ -29,6 +29,7 @@ import (
 	wrappedKafkaConsumer "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/kafka/consumer"
 	wrappedKafkaProducer "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/kafka/producer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 	iamV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
@@ -164,6 +165,7 @@ func (d *diContainer) PaymentGRPCConn(ctx context.Context) *grpc.ClientConn {
 		conn, err := grpc.NewClient(
 			config.AppConfig().GRPCClient.PaymentAddress(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithUnaryInterceptor(tracing.UnaryClientInterceptor("order")),
 		)
 		if err != nil {
 			panic(fmt.Sprintf("failed to connect to payment service: %v", err))

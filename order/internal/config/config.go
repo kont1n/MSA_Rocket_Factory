@@ -19,6 +19,7 @@ type config struct {
 	OrderPaidProducer     OrderPaidProducerConfig
 	ShipAssembledConsumer ShipAssemblyConsumerConfig
 	Metrics               MetricsConfig
+	Tracing               TracingConfig
 }
 
 func Load(path ...string) error {
@@ -67,6 +68,11 @@ func Load(path ...string) error {
 		return err
 	}
 
+	tracingCfg, err := env.NewTracingConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
 		Logger:                loggerCfg,
 		HTTP:                  httpCfg,
@@ -76,6 +82,7 @@ func Load(path ...string) error {
 		OrderPaidProducer:     orderPaidProducerCfg,
 		ShipAssembledConsumer: shipAssembledConsumerCfg,
 		Metrics:               metricsCfg,
+		Tracing:               tracingCfg,
 	}
 
 	return nil

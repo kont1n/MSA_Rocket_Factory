@@ -6,16 +6,29 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/model"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 )
 
 func (s service) PayOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
 	startTime := time.Now()
 
+	// Создаем span для операции оплаты в сервисе
+	ctx, span := tracing.StartSpan(ctx, "order.service.pay_order",
+		trace.WithAttributes(
+			attribute.String("order_uuid", order.OrderUUID.String()),
+			attribute.String("payment_method", order.PaymentMethod),
+		),
+	)
+	defer span.End()
+
 	// Получаем заказ по UUID
 	dbOrder, err := s.orderRepository.GetOrder(ctx, order.OrderUUID)
 	if err != nil {
+		span.RecordError(err)
 		return nil, fmt.Errorf("service: failed to get order from repository: %w", err)
 	}
 
@@ -25,12 +38,14 @@ func (s service) PayOrder(ctx context.Context, order *model.Order) (*model.Order
 	// Выполняем запрос к API для оплаты заказа
 	paidOrder, err := s.paymentClient.CreatePayment(ctx, dbOrder)
 	if err != nil {
+		span.RecordError(err)
 		return nil, fmt.Errorf("service: failed to create payment in payment client: %w", err)
 	}
 
 	// Обновляем заказ в хранилище
 	updatedOrder, err := s.orderRepository.UpdateOrder(ctx, paidOrder)
 	if err != nil {
+		span.RecordError(err)
 		return nil, fmt.Errorf("service: failed to update order in repository: %w", err)
 	}
 

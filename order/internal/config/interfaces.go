@@ -58,3 +58,11 @@ type MetricsConfig interface {
 	CollectorEndpoint() string
 	CollectorInterval() time.Duration
 }
+
+// TracingConfig интерфейс для конфигурации трассировки
+type TracingConfig interface {
+	CollectorEndpoint() string
+	ServiceName() string
+	Environment() string
+	ServiceVersion() string
+}

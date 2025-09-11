@@ -11,9 +11,10 @@ import (
 var appConfig *config
 
 type config struct {
-	Logger LoggerConfig
-	GRPC   GRPCConfig
-	Http   HttpConfig
+	Logger  LoggerConfig
+	GRPC    GRPCConfig
+	Http    HttpConfig
+	Tracing TracingConfig
 }
 
 func Load(path ...string) error {
@@ -37,10 +38,16 @@ func Load(path ...string) error {
 		return err
 	}
 
+	tracingCfg, err := env.NewTracingConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
-		Logger: loggerCfg,
-		GRPC:   GRPCCfg,
-		Http:   HttpCfg,
+		Logger:  loggerCfg,
+		GRPC:    GRPCCfg,
+		Http:    HttpCfg,
+		Tracing: tracingCfg,
 	}
 
 	return nil
