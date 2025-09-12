@@ -1207,7 +1207,7 @@
           "axisPlacement": "auto",
           "axisSoftMax": 30,
           "axisSoftMin": 0
-        },
+        }
       },
       "pluginVersion": "12.0.0",
       "targets": [

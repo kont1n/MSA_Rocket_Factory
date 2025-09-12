@@ -75,6 +75,8 @@ Application → OpenTelemetry Meter → OTLP Exporter → OTLP Collector → Pro
 | `http_server_request_duration` | Histogram | Длительность HTTP запросов | ms | method, route, status_code |
 | `http_server_request_count` | Counter | Количество HTTP запросов | 1 | method, route, status_code |
 | `http_server_errors_count` | Counter | Количество ошибок HTTP запросов | 1 | method, route, status_code |
+| `otelogen_server_request_count` | Counter | Количество HTTP запросов (OpenAPI) | 1 | http_route |
+| `otelogen_server_errors_count` | Counter | Количество ошибок HTTP запросов (OpenAPI) | 1 | http_route, http_response_status_code |
 
 #### Клиентские метрики:
 
@@ -84,12 +86,51 @@ Application → OpenTelemetry Meter → OTLP Exporter → OTLP Collector → Pro
 | `http_client_request_count` | Counter | Количество HTTP запросов клиента | 1 | method, route, status_code |
 | `http_client_errors_count` | Counter | Количество ошибок HTTP запросов клиента | 1 | method, route, status_code |
 
-### Метки HTTP метрик:
+### gRPC метрики
 
+Метрики для межсервисного взаимодействия через gRPC:
+
+| Метрика | Тип | Описание | Единицы | Метки |
+|---------|-----|----------|---------|-------|
+| `grpc_client_requests_total` | Counter | Количество gRPC запросов клиента | 1 | service |
+| `grpc_client_request_errors_total` | Counter | Количество ошибок gRPC запросов | 1 | service, grpc_code |
+
+### Kafka метрики
+
+Метрики для асинхронного взаимодействия через Kafka:
+
+#### Producer метрики:
+
+| Метрика | Тип | Описание | Единицы | Метки |
+|---------|-----|----------|---------|-------|
+| `kafka_producer_messages_total` | Counter | Количество отправленных сообщений | 1 | topic |
+| `kafka_producer_messages_failed_total` | Counter | Количество неудачных отправок | 1 | topic |
+
+#### Consumer метрики:
+
+| Метрика | Тип | Описание | Единицы | Метки |
+|---------|-----|----------|---------|-------|
+| `kafka_consumer_messages_total` | Counter | Количество обработанных сообщений | 1 | topic, group_id |
+| `kafka_consumer_messages_failed_total` | Counter | Количество неудачных обработок | 1 | topic, group_id |
+| `kafka_consumer_offset_lag` | Gauge | Отставание consumer от producer | 1 | topic, group_id, partition |
+| `kafka_consumer_rebalancing_total` | Counter | Количество ребалансировок | 1 | group_id |
+
+### Метки метрик:
+
+#### HTTP метки:
 - `http.request.method` - HTTP метод (GET, POST, PUT, DELETE)
 - `http.route` - маршрут API (например, `/api/v1/orders`)
 - `http.response.status_code` - код ответа (200, 400, 500)
 - `otelogen.operation_id` - ID операции (CreateOrder, PayOrder)
+
+#### gRPC метки:
+- `service` - имя gRPC сервиса
+- `grpc_code` - код ответа gRPC (OK, UNAVAILABLE, DEADLINE_EXCEEDED)
+
+#### Kafka метки:
+- `topic` - название топика Kafka
+- `group_id` - ID группы consumer'ов
+- `partition` - номер партиции
 
 ## Дашборды Grafana
 
@@ -99,123 +140,169 @@ Application → OpenTelemetry Meter → OTLP Exporter → OTLP Collector → Pro
 
 Дашборд для бизнес-команды и руководства, отображает ключевые бизнес-показатели и KPI.
 
+#### Основные показатели (Stat Panels):
+
+1. **Total Revenue** - общая выручка от всех заказов
+   - Запрос: `sum(orders_revenue_total)`
+   - Единицы: USD
+   - Пороги: зеленый (норма), красный при >80
+
+2. **Total Orders** - общее количество созданных заказов
+   - Запрос: `sum(orders_total)`
+   - Единицы: штуки
+
+3. **Total Rockets Assembled** - общее количество собранных ракет
+   - Запрос: `sum(rockets_assembled_total)`
+   - Единицы: штуки
+
+4. **Total Orders Paid** - общее количество оплаченных заказов
+   - Запрос: `sum(orders_paid_total)`
+   - Единицы: штуки
+
+5. **Total Orders Cancelled** - общее количество отмененных заказов
+   - Запрос: `sum(orders_cancelled_total)`
+   - Единицы: штуки
+
+6. **Order Conversion Rate** - процент конверсии заказов (оплаченные/созданные)
+   - Запрос: `sum(rate(orders_paid_total[5m])) / sum(rate(orders_created_total[5m])) * 100`
+   - Единицы: проценты
+   - Пороги: красный <50%, желтый 50-80%, зеленый >80%
+
+7. **Assembly Duration Distribution** - среднее время сборки ракеты
+   - Запрос: `assembly_duration_seconds_sum / assembly_duration_seconds_count`
+   - Единицы: секунды
+
+8. **Assembly In Progress** - количество ракет в процессе сборки
+   - Запрос: `sum(assembly_in_progress)`
+   - Единицы: штуки
+   - Пороги: зеленый (норма), желтый >5, красный >10
+
 #### Скорости (Rates) - Мониторинг активности:
 
-1. **Orders Created** - скорость создания заказов (заказов/минуту)
+9. **Orders Created Rate** - скорость создания заказов (заказов/минуту)
    - Запрос: `sum(rate(orders_created_total[5m]))`
+   - Пороги: красный (низкая активность), желтый 0.1-1, зеленый >1
 
-2. **Orders Paid** - скорость оплаты заказов (заказов/минуту)
-   - Запрос: `sum(rate(orders_paid_total[5m]))`
+10. **Orders Paid Rate** - скорость оплаты заказов (заказов/минуту)
+    - Запрос: `sum(rate(orders_paid_total[5m]))`
+    - Пороги: красный (низкая активность), желтый 0.05-0.5, зеленый >0.5
 
-3. **Orders Cancelled** - скорость отмены заказов (заказов/минуту)
-   - Запрос: `sum(rate(orders_cancelled_total[5m]))`
+11. **Orders Cancelled Rate** - скорость отмены заказов (заказов/минуту)
+    - Запрос: `sum(rate(orders_cancelled_total[5m]))`
+    - Пороги: зеленый (норма), желтый 0.1-0.5, красный >0.5
 
-4. **Total Revenue** - скорость получения выручки (валюта/минуту)
-   - Запрос: `sum(rate(orders_revenue_total[5m]))`
+12. **Rockets Assembled Rate** - скорость сборки ракет (ракет/минуту)
+    - Запрос: `sum(rate(rockets_assembled_total[5m]))`
+    - Пороги: красный (низкая активность), желтый 0.1-0.5, зеленый >0.5
 
-5. **Order Conversion Rate** - конверсия заказов (%)
-   - Запрос: `sum(rate(orders_paid_total[5m])) / sum(rate(orders_created_total[5m])) * 100`
+#### Распределения и аналитика:
 
-6. **Assembly In Progress** - текущее количество ракет в сборке
-   - Запрос: `sum(assembly_in_progress)`
+13. **Orders Status Distribution** - распределение заказов по статусам (круговая диаграмма)
+    - Запросы: 
+      - `sum(orders_created_total) by (status)`
+      - `sum(orders_paid_total) by (status)`
+      - `sum(orders_cancelled_total) by (status)`
 
-7. **Rockets Assembled** - скорость сборки ракет (ракет/минуту)
-   - Запрос: `sum(rate(rockets_assembled_total[5m]))`
+14. **Order Value Distribution** - распределение стоимости заказов по перцентилям
+    - Запросы:
+      - `histogram_quantile(0.50, sum(order_value_bucket) by (le))` - 50-й перцентиль
+      - `histogram_quantile(0.95, sum(order_value_bucket) by (le))` - 95-й перцентиль
+      - `histogram_quantile(0.99, sum(order_value_bucket) by (le))` - 99-й перцентиль
+    - Единицы: USD
 
-8. **Assembly Errors** - скорость ошибок сборки (ошибок/минуту)
-   - Запрос: `sum(rate(assembly_errors_total[5m]))`
+15. **Revenue by Currency** - выручка по валютам во времени
+    - Запрос: `sum(orders_revenue_total) by (currency)`
+    - Единицы: USD
 
-#### Распределения и тренды:
-
-9. **Order Value Distribution** - распределение стоимости заказов (p50, p95, p99)
-   - Запросы: `histogram_quantile(0.50/0.95/0.99, rate(order_value_bucket[5m]))`
-
-10. **Revenue by Currency** - выручка по валютам
-    - Запрос: `sum(rate(orders_revenue_total[5m])) by (currency)`
-
-11. **Assembly by Rocket Type** - сборка по типам ракет
-    - Запрос: `sum(rate(rockets_assembled_total[5m])) by (rocket_type)`
-
-12. **Assembly Errors by Type** - ошибки сборки по типам
-    - Запрос: `sum(rate(assembly_errors_total[5m])) by (error_type, rocket_type)`
-
-#### Общие количества (Totals) - Итоговая статистика:
-
-13. **Total Orders Created** - общее количество созданных заказов
-    - Запрос: `sum(orders_created_total)`
-
-14. **Total Orders Paid** - общее количество оплаченных заказов
-    - Запрос: `sum(orders_paid_total)`
-
-15. **Total Orders Cancelled** - общее количество отмененных заказов
-    - Запрос: `sum(orders_cancelled_total)`
-
-16. **Total Revenue** - общая сумма выручки
-    - Запрос: `sum(orders_revenue_total)`
-
-17. **Total Rockets Assembled** - общее количество собранных ракет
-    - Запрос: `sum(rockets_assembled_total)`
-
-18. **Total Assembly Errors** - общее количество ошибок сборки
-    - Запрос: `sum(assembly_errors_total)`
-
-#### Круговые диаграммы:
-
-19. **Orders Status Distribution** - распределение заказов по статусам
-    - Запросы: `sum(orders_created_total/orders_paid_total/orders_cancelled_total) by (status)`
-
-20. **Rockets by Type Distribution** - распределение ракет по типам
-    - Запрос: `sum(rockets_assembled_total) by (rocket_type)`
+16. **Assembly Duration Distribution** - распределение длительности сборки ракет по временным интервалам
+    - Запрос: `count(assembly_duration_seconds_bucket) by (le)`
+    - Тип: гистограмма
+    - Диапазон: 0-30 секунд
 
 ### 2. Technical Metrics Dashboard (`technical_metrics.json`)
 
 Дашборд для технических команд, отображает производительность и технические показатели.
 
-#### HTTP Server метрики:
+#### HTTP API метрики:
 
-1. **HTTP Server Requests** - запросы к серверу по методам и маршрутам
-   - Запрос: `sum(rate(http_server_request_count[5m])) by (http_request_method, http_route)`
+1. **HTTP Requests Rate by Endpoint** - общее количество HTTP запросов в секунду с детализацией по endpoint
+   - Запрос: `sum(rate(http_server_request_count[5m])) by (http_route) or sum(rate(otelogen_server_request_count[5m])) by (http_route)`
+   - Единицы: запросов/сек
+   - Тип: временной ряд
 
-2. **HTTP Server Errors** - ошибки сервера с кодами ответов
-   - Запрос: `sum(rate(http_server_errors_count[5m])) by (http_request_method, http_route, http_response_status_code)`
+2. **HTTP Errors Rate by Endpoint** - общее количество ошибок HTTP запросов в секунду с детализацией по endpoint и HTTP кодам ошибок
+   - Запрос: `sum(rate(http_server_errors_count[5m])) by (http_route, http_response_status_code) or sum(rate(otelogen_server_errors_count[5m])) by (http_route, http_response_status_code)`
+   - Единицы: ошибок/сек
+   - Пороги: зеленый (норма), красный >0.1
 
-3. **HTTP Server Response Time** - время ответа сервера (p50, p95, p99)
-   - Запросы: `histogram_quantile(0.50/0.95/0.99, rate(http_server_request_duration_bucket[5m])) by (http_request_method, http_route)`
+#### gRPC метрики:
 
-#### HTTP Client метрики:
+3. **gRPC Requests Rate by Service** - общее количество gRPC запросов в секунду с детализацией по клиентам
+   - Запрос: `sum(rate(grpc_client_requests_total[5m])) by (service)`
+   - Единицы: запросов/сек
+   - Тип: временной ряд
 
-4. **HTTP Client Requests** - запросы клиентов
-   - Запрос: `sum(rate(http_client_request_count[5m])) by (http_request_method, http_route)`
+4. **gRPC Errors Rate by Service** - общее количество ошибок gRPC запросов в секунду с детализацией по сервисам и gRPC кодам ошибок
+   - Запрос: `sum(rate(grpc_client_request_errors_total[5m])) by (service, grpc_code)`
+   - Единицы: ошибок/сек
+   - Пороги: зеленый (норма), красный >0.1
 
-5. **HTTP Client Errors** - ошибки клиентов
-   - Запрос: `sum(rate(http_client_errors_count[5m])) by (http_request_method, http_route, http_response_status_code)`
+#### Kafka Producer метрики:
 
-6. **HTTP Client Response Time** - время ответа клиентов (p50, p95, p99)
-   - Запросы: `histogram_quantile(0.50/0.95/0.99, rate(http_client_request_duration_bucket[5m])) by (http_request_method, http_route)`
+5. **Kafka Producer Messages Rate by Topic** - общее количество запросов в секунду в Kafka producer
+   - Запрос: `sum(rate(kafka_producer_messages_total[5m])) by (topic)`
+   - Единицы: сообщений/сек
+   - Тип: временной ряд
 
-#### Метрики производительности:
+6. **Kafka Producer Errors Rate by Topic** - общее количество ошибок в Kafka producer
+   - Запрос: `sum(rate(kafka_producer_messages_failed_total[5m])) by (topic)`
+   - Единицы: ошибок/сек
+   - Пороги: зеленый (норма), красный >0.1
 
-7. **Order Processing Duration** - время обработки заказов (p50, p95, p99)
-   - Запросы: `histogram_quantile(0.50/0.95/0.99, rate(order_duration_seconds_bucket[5m]))`
+#### Kafka Consumer метрики:
 
-8. **Assembly Duration** - длительность сборки (p50, p95, p99)
-   - Запросы: `histogram_quantile(0.50/0.95/0.99, rate(assembly_duration_seconds_bucket[5m]))`
+7. **Kafka Consumer Messages Rate by Topic** - общее количество запросов в секунду в Kafka consumer
+   - Запрос: `sum(rate(kafka_consumer_messages_total[5m])) by (topic, group_id)`
+   - Единицы: сообщений/сек
+   - Тип: временной ряд
 
-#### Аналитические метрики:
+8. **Kafka Consumer Errors Rate by Topic** - общее количество ошибок в Kafka consumer
+   - Запрос: `sum(rate(kafka_consumer_messages_failed_total[5m])) by (topic, group_id)`
+   - Единицы: ошибок/сек
+   - Пороги: зеленый (норма), красный >0.1
 
-9. **Error Rate by Endpoint** - процент ошибок по endpoint'ам
-   - Запрос: `sum(rate(http_server_errors_count[5m])) by (http_route) / sum(rate(http_server_request_count[5m])) by (http_route) * 100`
+#### Kafka Consumer Lag и ребалансировки:
 
-10. **Request Rate by Status Code** - запросы по статус кодам
-    - Запрос: `sum(rate(http_server_request_count[5m])) by (http_response_status_code)`
+9. **Kafka Consumer Lag** - график роста consumer lag
+   - Запрос: `kafka_consumer_offset_lag`
+   - Единицы: сообщений
+   - Пороги: зеленый (норма), желтый >100, красный >1000
+   - Детализация: по топикам, группам и партициям
 
-11. **Average Response Time by Operation** - среднее время ответа по операциям
-    - Запрос: `histogram_quantile(0.50, rate(http_server_request_duration_bucket[5m])) by (otelogen_operation_id)`
+10. **Kafka Consumer Rebalancing Count** - количество ребалансировок в consumer
+    - Запрос: `sum(kafka_consumer_rebalancing_total) by (group_id)`
+    - Единицы: количество
+    - Пороги: зеленый (норма), желтый >1, красный >5
 
 #### Настройки дашбордов:
 
+**Business Metrics Dashboard:**
 - **Обновление**: каждые 5 секунд
 - **Временной диапазон**: последний час
+- **Теги**: business, orders, assembly, revenue
+- **UID**: business-metrics
+- **Версия**: 40
+
+**Technical Metrics Dashboard:**
+- **Обновление**: каждые 5 секунд
+- **Временной диапазон**: последний час
+- **Теги**: technical, http, grpc, kafka, metrics
+- **UID**: technical-metrics
+- **Версия**: 1
+
+**Общие настройки:**
 - **Цветовая схема**: зелено-желто-красная (зеленый = норма, желтый = предупреждение, красный = аномалия)
 - **Пороги предупреждений**: настроены индивидуально для каждого типа метрик
+- **Datasource**: Prometheus (UID: prometheus-uid)
+- **Timezone**: browser (локальное время пользователя)
 
