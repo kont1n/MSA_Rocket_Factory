@@ -164,12 +164,20 @@ func (d *diContainer) InventoryGRPCConn(ctx context.Context) *grpc.ClientConn {
 		// Настраиваем опции для gRPC клиента
 		opts := []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithUnaryInterceptor(tracing.UnaryClientInterceptor("order")),
 		}
+
+		// Создаем цепочку интерцепторов
+		var interceptors []grpc.UnaryClientInterceptor
+		interceptors = append(interceptors, tracing.UnaryClientInterceptor("order"))
 
 		// Добавляем interceptor для метрик, если доступен
 		if grpcMetricsInterceptor != nil {
-			opts = append(opts, grpc.WithUnaryInterceptor(grpcMetricsInterceptor))
+			interceptors = append(interceptors, grpcMetricsInterceptor)
+		}
+
+		// Применяем цепочку интерцепторов
+		if len(interceptors) > 0 {
+			opts = append(opts, grpc.WithChainUnaryInterceptor(interceptors...))
 		}
 
 		conn, err := grpc.NewClient(
@@ -205,10 +213,18 @@ func (d *diContainer) PaymentGRPCConn(ctx context.Context) *grpc.ClientConn {
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		}
 
-		// Добавляем interceptors в правильном порядке
-		opts = append(opts, grpc.WithUnaryInterceptor(tracing.UnaryClientInterceptor("order")))
+		// Создаем цепочку интерцепторов
+		var interceptors []grpc.UnaryClientInterceptor
+		interceptors = append(interceptors, tracing.UnaryClientInterceptor("order"))
+
+		// Добавляем interceptor для метрик, если доступен
 		if grpcMetricsInterceptor != nil {
-			opts = append(opts, grpc.WithUnaryInterceptor(grpcMetricsInterceptor))
+			interceptors = append(interceptors, grpcMetricsInterceptor)
+		}
+
+		// Применяем цепочку интерцепторов
+		if len(interceptors) > 0 {
+			opts = append(opts, grpc.WithChainUnaryInterceptor(interceptors...))
 		}
 
 		conn, err := grpc.NewClient(
@@ -437,10 +453,18 @@ func (d *diContainer) IAMGRPCConn(ctx context.Context) *grpc.ClientConn {
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		}
 
-		// Добавляем interceptors в правильном порядке
-		opts = append(opts, grpc.WithUnaryInterceptor(tracing.UnaryClientInterceptor("order")))
+		// Создаем цепочку интерцепторов
+		var interceptors []grpc.UnaryClientInterceptor
+		interceptors = append(interceptors, tracing.UnaryClientInterceptor("order"))
+
+		// Добавляем interceptor для метрик, если доступен
 		if grpcMetricsInterceptor != nil {
-			opts = append(opts, grpc.WithUnaryInterceptor(grpcMetricsInterceptor))
+			interceptors = append(interceptors, grpcMetricsInterceptor)
+		}
+
+		// Применяем цепочку интерцепторов
+		if len(interceptors) > 0 {
+			opts = append(opts, grpc.WithChainUnaryInterceptor(interceptors...))
 		}
 
 		conn, err := grpc.NewClient(
