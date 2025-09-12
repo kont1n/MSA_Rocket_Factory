@@ -26,6 +26,7 @@ func newAssemblyMetrics() (*assemblyMetrics, error) {
 		"assembly_duration_seconds",
 		metric.WithDescription("Длительность сборки ракет"),
 		metric.WithUnit("s"),
+		metric.WithExplicitBucketBoundaries(0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0),
 	)
 	if err != nil {
 		return nil, err

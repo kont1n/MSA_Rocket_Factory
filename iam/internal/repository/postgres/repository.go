@@ -20,13 +20,9 @@ type repository struct {
 	db *pgxpool.Pool
 }
 
-func NewRepository(pool *pgxpool.Pool, migrationsDir string) *repository {
+func NewRepository(pool *pgxpool.Pool) *repository {
 	repo := repository{
 		db: pool,
-	}
-	err := repo.Migrate(migrationsDir)
-	if err != nil {
-		log.Fatalf("Failed to migrate: %v", err)
 	}
 
 	return &repo

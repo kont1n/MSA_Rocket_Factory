@@ -67,7 +67,6 @@ func (d *diContainer) IAMRepository(ctx context.Context) repository.IAMRepositor
 		// Создаем PostgreSQL репозиторий
 		pgRepo := postgresRepository.NewRepository(
 			d.DBPool(ctx),
-			config.AppConfig().DB.MigrationsDir(),
 		)
 
 		// Создаем Redis репозиторий для кеширования
