@@ -24,11 +24,19 @@ func (a *api) ListParts(ctx context.Context, req *inventoryV1.ListPartsRequest) 
 	filter := converter.ToModelPart(req)
 
 	// Добавляем атрибуты к спану
-	span.SetAttributes(
-		attribute.Int("inventory.filter.uuids_count", len(filter.Uuids)),
-		attribute.Int("inventory.filter.names_count", len(filter.Names)),
-		attribute.Int("inventory.filter.categories_count", len(filter.Categories)),
-	)
+	if filter != nil {
+		span.SetAttributes(
+			attribute.Int("inventory.filter.uuids_count", len(filter.Uuids)),
+			attribute.Int("inventory.filter.names_count", len(filter.Names)),
+			attribute.Int("inventory.filter.categories_count", len(filter.Categories)),
+		)
+	} else {
+		span.SetAttributes(
+			attribute.Int("inventory.filter.uuids_count", 0),
+			attribute.Int("inventory.filter.names_count", 0),
+			attribute.Int("inventory.filter.categories_count", 0),
+		)
+	}
 
 	parts, err := a.inventoryService.ListParts(ctx, filter)
 	if err != nil {
