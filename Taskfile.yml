@@ -538,10 +538,25 @@ tasks:
       - echo "[task] 🛑 Останавливаем Order с зависимостями"
       - docker compose down --volumes
 
+  up-iam:
+    desc: Поднять IAM сервис и все его зависимости
+    dir: deploy/compose/iam
+    cmds:
+      - echo "[task] 📦 Поднимаем IAM с зависимостями"
+      - docker compose up --build --detach
+
+  down-iam:
+    desc: Остановить и удалить IAM сервис и все его зависимости
+    dir: deploy/compose/iam
+    cmds:
+      - echo "[task] 🛑 Останавливаем IAM с зависимостями"
+      - docker compose down --volumes
+
   up-all:
     desc: Поднять все сервисы по очереди вместе с зависимостями
     cmds:
       - task up-core
+      - task up-iam
       - task up-inventory
       - task up-payment
       - task up-order
@@ -556,6 +571,7 @@ tasks:
       - task down-inventory
       - task down-assembly
       - task down-notification
+      - task down-iam
       - task down-core
 
   grpcurl:install:
@@ -576,8 +592,43 @@ tasks:
       - |
         echo "🧪 Тестирование API микросервисов через gRPC и REST"
         
-        echo "📦 Тест 1: Получение списка деталей из Inventory"
-        PARTS_RESPONSE=$({{.GRPCURL}} -plaintext -d '{"filter":{}}' localhost:50051 inventory.v1.InventoryService/ListParts)
+        echo "🔐 Этап 1: Создание тестового пользователя и получение сессии"
+        # Генерируем уникальные данные для тестового пользователя
+        TEST_LOGIN="testuser_$(date +%s)"
+        TEST_EMAIL="test_$(date +%s)@example.com"
+        TEST_PASSWORD="TestP@ss123!"
+        
+        echo "📝 Регистрация тестового пользователя: $TEST_LOGIN"
+        REGISTER_RESPONSE=$({{.GRPCURL}} -plaintext -d "{\"info\":{\"info\":{\"login\":\"$TEST_LOGIN\",\"email\":\"$TEST_EMAIL\",\"notificationMethods\":[]},\"password\":\"$TEST_PASSWORD\"}}" localhost:50053 iam.v1.UserService/Register)
+        
+        if [[ -z "$REGISTER_RESPONSE" || "$REGISTER_RESPONSE" == *"error"* ]]; then
+          echo "❌ Не удалось зарегистрировать тестового пользователя."
+          echo "🔍 Ответ сервера: $REGISTER_RESPONSE"
+          exit 1
+        fi
+        echo "✅ Тестовый пользователь зарегистрирован"
+        
+        echo "🔑 Вход в систему"
+        LOGIN_RESPONSE=$({{.GRPCURL}} -plaintext -d "{\"login\":\"$TEST_LOGIN\",\"password\":\"$TEST_PASSWORD\"}" localhost:50053 iam.v1.AuthService/Login)
+        
+        if [[ -z "$LOGIN_RESPONSE" || "$LOGIN_RESPONSE" == *"error"* ]]; then
+          echo "❌ Не удалось войти в систему."
+          echo "🔍 Ответ сервера: $LOGIN_RESPONSE"
+          exit 1
+        fi
+        
+        # Извлекаем session UUID из ответа
+        SESSION_UUID=$(echo $LOGIN_RESPONSE | grep -o '"sessionUuid": "[^"]*' | cut -d'"' -f4)
+        if [ -z "$SESSION_UUID" ]; then
+          echo "❌ Не удалось извлечь session UUID из ответа."
+          echo "🔍 Ответ сервера: $LOGIN_RESPONSE"
+          exit 1
+        fi
+        echo "✅ Успешно получен session UUID: $SESSION_UUID"
+        
+        echo
+        echo "📦 Тест 2: Получение списка деталей из Inventory"
+        PARTS_RESPONSE=$({{.GRPCURL}} -plaintext -H "session-uuid: $SESSION_UUID" -d '{"filter":{}}' localhost:50051 inventory.v1.InventoryService/ListParts)
         
         if [[ -z "$PARTS_RESPONSE" || "$PARTS_RESPONSE" == *"error"* ]]; then
           echo "❌ Не удалось получить список деталей."
@@ -595,8 +646,8 @@ tasks:
         echo "✅ Успешно получен список деталей, первая UUID: $PART_UUID"
         
         echo
-        echo "🔍 Тест 2: Получение информации о детали по UUID"
-        PART_RESPONSE=$({{.GRPCURL}} -plaintext -d "{\"partUuid\":\"$PART_UUID\"}" localhost:50051 inventory.v1.InventoryService/GetPart)
+        echo "🔍 Тест 3: Получение информации о детали по UUID"
+        PART_RESPONSE=$({{.GRPCURL}} -plaintext -H "session-uuid: $SESSION_UUID" -d "{\"partUuid\":\"$PART_UUID\"}" localhost:50051 inventory.v1.InventoryService/GetPart)
         
         if [[ -z "$PART_RESPONSE" || "$PART_RESPONSE" == *"error"* ]]; then
           echo "❌ Не удалось получить информацию о детали."
@@ -614,15 +665,16 @@ tasks:
         echo "✅ Успешно получена деталь: $PART_NAME"
         
         echo
-        echo "👤 Тест 3: Создание пользователя для тестов"
+        echo "👤 Тест 4: Создание пользователя для тестов"
         # Генерируем уникальный UUID для пользователя
         USER_UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
         echo "✅ Сгенерирован UUID пользователя: $USER_UUID"
         
         echo
-        echo "📝 Тест 4: Создание заказа (REST API)"
+        echo "📝 Тест 5: Создание заказа (REST API)"
         ORDER_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders" \
           -H "Content-Type: application/json" \
+          -H "X-Session-Uuid: $SESSION_UUID" \
           -d "{\"user_uuid\":\"$USER_UUID\",\"part_uuids\":[\"$PART_UUID\"]}")
         
         if [[ -z "$ORDER_RESPONSE" || "$ORDER_RESPONSE" == *"error"* ]]; then
@@ -644,8 +696,9 @@ tasks:
         echo "✅ Успешно создан заказ с UUID: $ORDER_UUID"
         
         echo
-        echo "📊 Тест 5: Проверка начального статуса заказа (должен быть PENDING_PAYMENT)"
-        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID")
+        echo "📊 Тест 6: Проверка начального статуса заказа (должен быть PENDING_PAYMENT)"
+        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID" \
+          -H "X-Session-Uuid: $SESSION_UUID")
         
         if [[ -z "$ORDER_INFO_RESPONSE" || "$ORDER_INFO_RESPONSE" == *"error"* ]]; then
           echo "❌ Не удалось получить информацию о заказе."
@@ -672,9 +725,10 @@ tasks:
         echo "✅ Начальный статус заказа корректный: $ORDER_STATUS"
         
         echo
-        echo "💰 Тест 6: Оплата заказа (REST API)"
+        echo "💰 Тест 7: Оплата заказа (REST API)"
         PAY_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER_UUID/pay" \
           -H "Content-Type: application/json" \
+          -H "X-Session-Uuid: $SESSION_UUID" \
           -d "{\"payment_method\":\"CARD\"}")
         
         if [[ "$PAY_RESPONSE" == *"error"* ]]; then
@@ -685,8 +739,9 @@ tasks:
         echo "✅ Заказ успешно оплачен"
         
         echo
-        echo "📊 Тест 7: Проверка статуса после оплаты (должен быть PAID)"
-        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID")
+        echo "📊 Тест 8: Проверка статуса после оплаты (должен быть PAID)"
+        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID" \
+          -H "X-Session-Uuid: $SESSION_UUID")
         
         # Извлекаем статус заказа
         ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status":"[^"]*' | cut -d'"' -f4)
@@ -702,9 +757,10 @@ tasks:
         echo "✅ Статус заказа после оплаты: $ORDER_STATUS"
         
         echo
-        echo "📝 Тест 8: Создание второго заказа для отмены (REST API)"
+        echo "📝 Тест 9: Создание второго заказа для отмены (REST API)"
         ORDER2_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders" \
           -H "Content-Type: application/json" \
+          -H "X-Session-Uuid: $SESSION_UUID" \
           -d "{\"user_uuid\":\"$USER_UUID\",\"part_uuids\":[\"$PART_UUID\"]}")
         
         if [[ -z "$ORDER2_RESPONSE" || "$ORDER2_RESPONSE" == *"error"* ]]; then
@@ -726,7 +782,8 @@ tasks:
         echo "✅ Успешно создан второй заказ с UUID: $ORDER2_UUID"
         
         # Проверяем его начальный статус
-        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID")
+        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID" \
+          -H "X-Session-Uuid: $SESSION_UUID")
         ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status":"[^"]*' | cut -d'"' -f4)
         if [ -z "$ORDER2_STATUS" ]; then
           ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status": "[^"]*' | cut -d'"' -f4)
@@ -739,15 +796,17 @@ tasks:
         echo "✅ Начальный статус второго заказа: $ORDER2_STATUS"
         
         echo
-        echo "❌ Тест 9: Отмена второго заказа (REST API)"
+        echo "❌ Тест 10: Отмена второго заказа (REST API)"
         echo "Ожидаем 2 секунды перед отменой..."
         sleep 2
         
-        curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER2_UUID/cancel"
+        curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER2_UUID/cancel" \
+          -H "X-Session-Uuid: $SESSION_UUID"
         
         echo "Проверяем статус после отмены..."
         
-        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID")
+        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID" \
+          -H "X-Session-Uuid: $SESSION_UUID")
         ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status":"[^"]*' | cut -d'"' -f4)
         if [ -z "$ORDER2_STATUS" ]; then
           ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status": "[^"]*' | cut -d'"' -f4)
@@ -814,3 +873,8 @@ tasks:
           fi
         done
         exit $ERR
+
+  generate-test-metrics:
+    desc: "📊 Генерация тестовых данных для метрик"
+    cmds:
+      - ./scripts/generate_test_metrics.sh

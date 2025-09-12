@@ -10,13 +10,20 @@ import (
 type BaseConsumer struct {
 	consumer kafka.Consumer
 	handler  MessageHandler
+	metrics  KafkaMetrics
+}
+
+// KafkaMetrics интерфейс для метрик Kafka
+type KafkaMetrics interface {
+	RecordConsumerMessage(ctx context.Context, topic string, partition int32, groupID string, success bool)
 }
 
 // NewBaseConsumer создает новый базовый consumer
-func NewBaseConsumer(consumer kafka.Consumer, handler MessageHandler) *BaseConsumer {
+func NewBaseConsumer(consumer kafka.Consumer, handler MessageHandler, metrics KafkaMetrics) *BaseConsumer {
 	return &BaseConsumer{
 		consumer: consumer,
 		handler:  handler,
+		metrics:  metrics,
 	}
 }
 

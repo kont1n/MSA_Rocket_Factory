@@ -8,6 +8,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 )
 
 type App struct {
@@ -56,6 +57,7 @@ func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initDI,
 		a.initLogger,
+		a.initTracing,
 		a.initCloser,
 	}
 
@@ -86,8 +88,16 @@ func (a *App) initLogger(ctx context.Context) error {
 	)
 }
 
+func (a *App) initTracing(ctx context.Context) error {
+	return tracing.InitTracer(ctx, config.AppConfig().Tracing)
+}
+
 func (a *App) initCloser(_ context.Context) error {
 	closer.SetLogger(logger.Logger())
+
+	// Добавляем graceful shutdown для tracing
+	closer.AddNamed("Tracing provider", tracing.ShutdownTracer)
+
 	return nil
 }
 

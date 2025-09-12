@@ -7,10 +7,12 @@ import (
 	"net"
 	"sync"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 
+	paymentMiddleware "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/middleware"
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/grpc/health"
@@ -162,6 +164,21 @@ func (a *App) runServers(ctx context.Context) error {
 	go func() {
 		defer wg.Done()
 		gateway := a.diContainer.Gateway(ctx)
+		httpMetrics := a.diContainer.HTTPMetrics(ctx)
+
+		// Настраиваем HTTP метрики middleware
+		if httpMetrics != nil {
+			// Получаем существующий mux из gateway
+			existingMux := gateway.GetMux()
+			if existingMux == nil {
+				// Если mux не инициализирован, создаем новый
+				existingMux = runtime.NewServeMux()
+			}
+
+			// Применяем middleware для метрик к существующему mux
+			handler := paymentMiddleware.MetricsMiddleware(httpMetrics)(existingMux)
+			gateway.SetHandler(handler)
+		}
 
 		err := gateway.Start(ctx)
 		if err != nil {

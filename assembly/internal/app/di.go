@@ -38,17 +38,30 @@ func NewDiContainer() *diContainer {
 	return &diContainer{}
 }
 
+// getKafkaMetrics создает Kafka метрики
+func (d *diContainer) getKafkaMetrics(ctx context.Context) *kafkaMiddleware.KafkaMetrics {
+	metrics, err := kafkaMiddleware.NewKafkaMetrics()
+	if err != nil {
+		logger.Error(ctx, "Failed to create Kafka metrics")
+		return nil
+	}
+	return metrics
+}
+
 func (d *diContainer) AssemblyService(ctx context.Context) service.AssemblyService {
 	if d.assemblyService == nil {
-		d.assemblyService = assemblyService.NewService(d.AssemblyProducerService())
+		d.assemblyService = assemblyService.NewService(d.AssemblyProducerService(ctx))
 	}
 
 	return d.assemblyService
 }
 
-func (d *diContainer) AssemblyProducerService() service.ProducerService {
+func (d *diContainer) AssemblyProducerService(ctx context.Context) service.ProducerService {
 	if d.assemblyProducerService == nil {
-		d.assemblyProducerService = assemblyProducer.NewService(d.AssemblyRecordedProducer())
+		// Получаем Kafka метрики
+		kafkaMetrics := d.getKafkaMetrics(ctx)
+
+		d.assemblyProducerService = assemblyProducer.NewService(d.AssemblyRecordedProducer(), kafkaMetrics)
 	}
 
 	return d.assemblyProducerService
@@ -56,7 +69,10 @@ func (d *diContainer) AssemblyProducerService() service.ProducerService {
 
 func (d *diContainer) AssemblyConsumerService(ctx context.Context) service.ConsumerService {
 	if d.assemblyConsumerService == nil {
-		d.assemblyConsumerService = assemblyConsumer.NewService(d.AssemblyRecordedConsumer(), d.AssemblyRecordedDecoder(), d.AssemblyService(ctx))
+		// Получаем Kafka метрики
+		kafkaMetrics := d.getKafkaMetrics(ctx)
+
+		d.assemblyConsumerService = assemblyConsumer.NewService(d.AssemblyRecordedConsumer(ctx), d.AssemblyRecordedDecoder(), d.AssemblyService(ctx), kafkaMetrics)
 	}
 
 	return d.assemblyConsumerService
@@ -82,15 +98,30 @@ func (d *diContainer) ConsumerGroup() sarama.ConsumerGroup {
 	return d.consumerGroup
 }
 
-func (d *diContainer) AssemblyRecordedConsumer() wrappedKafka.Consumer {
+func (d *diContainer) AssemblyRecordedConsumer(ctx context.Context) wrappedKafka.Consumer {
 	if d.assemblyRecordedConsumer == nil {
-		d.assemblyRecordedConsumer = wrappedKafkaConsumer.NewConsumer(
+		// Получаем Kafka метрики
+		kafkaMetrics := d.getKafkaMetrics(ctx)
+
+		// Создаем middleware для метрик
+		var middlewares []wrappedKafkaConsumer.Middleware
+		middlewares = append(middlewares, kafkaMiddleware.Logging(logger.Logger()))
+
+		// Создаем consumer group middleware для отслеживания ребалансировок
+		var consumerGroupMiddlewares []wrappedKafka.ConsumerGroupHandlerMiddleware
+		if kafkaMetrics != nil {
+			rebalancingMiddleware := kafkaMiddleware.RebalancingMiddleware(kafkaMetrics, "assembly-recorded-assembly-group")
+			consumerGroupMiddlewares = append(consumerGroupMiddlewares, rebalancingMiddleware)
+		}
+
+		d.assemblyRecordedConsumer = wrappedKafkaConsumer.NewConsumerWithConsumerGroupMiddleware(
 			d.ConsumerGroup(),
 			[]string{
 				config.AppConfig().AssemblyRecordedConsumer.Topic(),
 			},
 			logger.Logger(),
-			kafkaMiddleware.Logging(logger.Logger()),
+			middlewares,
+			consumerGroupMiddlewares,
 		)
 	}
 

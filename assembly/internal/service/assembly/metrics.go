@@ -70,9 +70,8 @@ func newAssemblyMetrics() (*assemblyMetrics, error) {
 }
 
 // recordAssemblyStart записывает метрики при начале сборки
-func (m *assemblyMetrics) recordAssemblyStart(ctx context.Context, rocketType string) {
+func (m *assemblyMetrics) recordAssemblyStart(ctx context.Context) {
 	attrs := []attribute.KeyValue{
-		attribute.String("rocket_type", rocketType),
 		attribute.String("status", "started"),
 	}
 
@@ -81,9 +80,8 @@ func (m *assemblyMetrics) recordAssemblyStart(ctx context.Context, rocketType st
 }
 
 // recordAssemblyComplete записывает метрики при завершении сборки
-func (m *assemblyMetrics) recordAssemblyComplete(ctx context.Context, rocketType string, duration time.Duration) {
+func (m *assemblyMetrics) recordAssemblyComplete(ctx context.Context, duration time.Duration) {
 	attrs := []attribute.KeyValue{
-		attribute.String("rocket_type", rocketType),
 		attribute.String("status", "completed"),
 	}
 
@@ -98,9 +96,8 @@ func (m *assemblyMetrics) recordAssemblyComplete(ctx context.Context, rocketType
 }
 
 // recordAssemblyError записывает метрики при ошибке сборки
-func (m *assemblyMetrics) recordAssemblyError(ctx context.Context, rocketType, errorType string) {
+func (m *assemblyMetrics) recordAssemblyError(ctx context.Context, errorType string) {
 	attrs := []attribute.KeyValue{
-		attribute.String("rocket_type", rocketType),
 		attribute.String("error_type", errorType),
 		attribute.String("status", "error"),
 	}

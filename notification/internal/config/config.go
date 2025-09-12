@@ -17,6 +17,7 @@ type config struct {
 	ShipAssembledConsumer ShipAssemblyConsumerConfig
 	Telegram              TelegramConfig
 	GRPCClient            GRPCClientConfig
+	Tracing               TracingConfig
 }
 
 func Load(path ...string) error {
@@ -55,6 +56,11 @@ func Load(path ...string) error {
 		return err
 	}
 
+	tracingCfg, err := env.NewTracingConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
 		Logger:                loggerCfg,
 		Kafka:                 kafkaCfg,
@@ -62,6 +68,7 @@ func Load(path ...string) error {
 		ShipAssembledConsumer: shipAssembledConsumerCfg,
 		Telegram:              telegramCfg,
 		GRPCClient:            grpcClientCfg,
+		Tracing:               tracingCfg,
 	}
 
 	return nil

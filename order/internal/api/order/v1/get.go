@@ -13,6 +13,13 @@ import (
 )
 
 func (a *api) GetOrderByUUID(ctx context.Context, params orderV1.GetOrderByUUIDParams) (orderV1.GetOrderByUUIDRes, error) {
+	if a.orderService == nil {
+		return &orderV1.InternalServerError{
+			Code:    http.StatusInternalServerError,
+			Message: "order service not available",
+		}, nil
+	}
+
 	order, err := a.orderService.GetOrder(ctx, params.OrderUUID)
 	if err != nil {
 		logger.Error(ctx, "Get order error",

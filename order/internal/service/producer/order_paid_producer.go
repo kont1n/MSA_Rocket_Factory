@@ -2,6 +2,7 @@ package producer
 
 import (
 	"context"
+	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -14,15 +15,24 @@ import (
 
 type service struct {
 	orderPaidProducer kafka.Producer
+	metrics           KafkaMetrics
 }
 
-func NewService(orderPaidProducer kafka.Producer) *service {
+// KafkaMetrics интерфейс для метрик Kafka
+type KafkaMetrics interface {
+	RecordProducerMessage(ctx context.Context, topic string, partition int32, success bool, duration time.Duration)
+}
+
+func NewService(orderPaidProducer kafka.Producer, metrics KafkaMetrics) *service {
 	return &service{
 		orderPaidProducer: orderPaidProducer,
+		metrics:           metrics,
 	}
 }
 
 func (p *service) ProduceOrderPaid(ctx context.Context, event model.OrderPaidEvent) error {
+	startTime := time.Now()
+
 	msg := &eventsV1.OrderPaid{
 		EventUuid:       event.EventUUID.String(),
 		OrderUuid:       event.OrderUUID.String(),
@@ -38,6 +48,15 @@ func (p *service) ProduceOrderPaid(ctx context.Context, event model.OrderPaidEve
 	}
 
 	err = p.orderPaidProducer.Send(ctx, []byte(event.EventUUID.String()), payload)
+	duration := time.Since(startTime)
+
+	// Записываем метрики
+	if p.metrics != nil {
+		// Для producer'а используем топик "order-paid" и партицию 0 как приблизительное значение
+		// В реальной реализации нужно получать реальные значения из SendMessage
+		p.metrics.RecordProducerMessage(ctx, "order-paid", 0, err == nil, duration)
+	}
+
 	if err != nil {
 		logger.Error(ctx, "Failed to send OrderPaid event to Kafka", zap.Error(err))
 		return err

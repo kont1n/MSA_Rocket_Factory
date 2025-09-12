@@ -28,16 +28,17 @@ type DBConfig interface {
 	MigrationsDir() string
 }
 
+// KafkaConfig интерфейс для конфигурации Kafka
+type KafkaConfig interface {
+	Brokers() []string
+	Config() *sarama.Config
+}
+
 // GRPCClientConfig интерфейс для конфигурации gRPC клиентов
 type GRPCClientConfig interface {
 	InventoryAddress() string
 	PaymentAddress() string
 	IAMAddress() string
-}
-
-// KafkaConfig интерфейс для конфигурации Kafka
-type KafkaConfig interface {
-	Brokers() []string
 }
 
 // OrderPaidProducerConfig интерфейс для конфигурации Kafka producer

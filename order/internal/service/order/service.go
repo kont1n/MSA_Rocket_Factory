@@ -39,7 +39,7 @@ func NewService(
 		orderRepository:   orderRepository,
 		inventoryClient:   inventoryClient,
 		paymentClient:     paymentClient,
-		orderPaidProducer: orderPaidProducer,
+		orderPaidProducer: orderPaidProducer, // Может быть nil
 		metrics:           metrics,
 	}
 }
@@ -63,4 +63,9 @@ func (s *service) UpdateOrderStatus(ctx context.Context, orderUUID string, statu
 	}
 
 	return nil
+}
+
+// SetOrderPaidProducer устанавливает producer для отправки событий OrderPaid
+func (s *service) SetOrderPaidProducer(producer def.OrderPaidProducer) {
+	s.orderPaidProducer = producer
 }

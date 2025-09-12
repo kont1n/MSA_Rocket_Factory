@@ -1,6 +1,7 @@
 package env
 
 import (
+	"github.com/IBM/sarama"
 	"github.com/caarlos0/env/v11"
 )
 
@@ -23,4 +24,12 @@ func NewKafkaConfig() (*KafkaConfig, error) {
 
 func (cfg *KafkaConfig) Brokers() []string {
 	return cfg.raw.Brokers
+}
+
+func (cfg *KafkaConfig) Config() *sarama.Config {
+	config := sarama.NewConfig()
+	config.Version = sarama.V2_8_0_0
+	config.Consumer.Return.Errors = true
+	config.Consumer.Offsets.Initial = sarama.OffsetNewest
+	return config
 }

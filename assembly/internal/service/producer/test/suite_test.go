@@ -3,6 +3,7 @@ package producer_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
@@ -14,6 +15,7 @@ import (
 type ProducerServiceSuite struct {
 	suite.Suite
 	assemblyProducer *MockProducer
+	mockMetrics      *MockKafkaMetrics
 	service          service.ProducerService
 }
 
@@ -28,6 +30,16 @@ func (m *MockProducer) Send(ctx context.Context, key, value []byte) error {
 	return nil
 }
 
+type MockKafkaMetrics struct {
+	RecordProducerMessageFunc func(ctx context.Context, topic string, partition int32, success bool, duration time.Duration)
+}
+
+func (m *MockKafkaMetrics) RecordProducerMessage(ctx context.Context, topic string, partition int32, success bool, duration time.Duration) {
+	if m.RecordProducerMessageFunc != nil {
+		m.RecordProducerMessageFunc(ctx, topic, partition, success, duration)
+	}
+}
+
 func (s *ProducerServiceSuite) SetupSuite() {
 	// Инициализируем logger для тестов
 	if err := logger.Init(context.Background(), "debug", false, "stdout", "", "assembly-test", "test"); err != nil {
@@ -35,12 +47,14 @@ func (s *ProducerServiceSuite) SetupSuite() {
 	}
 
 	s.assemblyProducer = &MockProducer{}
-	s.service = producer.NewService(s.assemblyProducer)
+	s.mockMetrics = &MockKafkaMetrics{}
+	s.service = producer.NewService(s.assemblyProducer, s.mockMetrics)
 }
 
 func (s *ProducerServiceSuite) SetupTest() {
 	// Сбрасываем моки перед каждым тестом
 	s.assemblyProducer.SendFunc = nil
+	s.mockMetrics.RecordProducerMessageFunc = nil
 }
 
 func (s *ProducerServiceSuite) TearDownSuite() {

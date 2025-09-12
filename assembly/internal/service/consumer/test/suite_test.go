@@ -18,6 +18,7 @@ type ConsumerServiceSuite struct {
 	assemblyRecordedConsumer *MockConsumer
 	assemblyRecordedDecoder  *MockAssemblyRecordedDecoder
 	assemblyService          *MockAssemblyService
+	mockMetrics              *MockKafkaMetrics
 	service                  service.ConsumerService
 }
 
@@ -54,6 +55,16 @@ func (m *MockAssemblyService) Assemble(ctx context.Context, event model.OrderPai
 	return nil
 }
 
+type MockKafkaMetrics struct {
+	RecordConsumerMessageFunc func(ctx context.Context, topic string, partition int32, groupID string, success bool)
+}
+
+func (m *MockKafkaMetrics) RecordConsumerMessage(ctx context.Context, topic string, partition int32, groupID string, success bool) {
+	if m.RecordConsumerMessageFunc != nil {
+		m.RecordConsumerMessageFunc(ctx, topic, partition, groupID, success)
+	}
+}
+
 func (s *ConsumerServiceSuite) SetupSuite() {
 	// Инициализируем logger для тестов
 	if err := logger.Init(context.Background(), "debug", false, "stdout", "", "assembly-test", "test"); err != nil {
@@ -63,7 +74,8 @@ func (s *ConsumerServiceSuite) SetupSuite() {
 	s.assemblyRecordedConsumer = &MockConsumer{}
 	s.assemblyRecordedDecoder = &MockAssemblyRecordedDecoder{}
 	s.assemblyService = &MockAssemblyService{}
-	s.service = consumerPkg.NewService(s.assemblyRecordedConsumer, s.assemblyRecordedDecoder, s.assemblyService)
+	s.mockMetrics = &MockKafkaMetrics{}
+	s.service = consumerPkg.NewService(s.assemblyRecordedConsumer, s.assemblyRecordedDecoder, s.assemblyService, s.mockMetrics)
 }
 
 func (s *ConsumerServiceSuite) SetupTest() {
@@ -71,6 +83,7 @@ func (s *ConsumerServiceSuite) SetupTest() {
 	s.assemblyRecordedConsumer.ConsumeFunc = nil
 	s.assemblyRecordedDecoder.DecodeFunc = nil
 	s.assemblyService.AssembleFunc = nil
+	s.mockMetrics.RecordConsumerMessageFunc = nil
 }
 
 func (s *ConsumerServiceSuite) TearDownSuite() {

@@ -44,6 +44,24 @@ processors:
     # В продакшене рекомендуется более низкий процент (1-10%) для снижения нагрузки
     sampling_percentage: 100
 
+  # Фильтр метрик - позволяет отфильтровать метрики по имени
+  filter:
+    metrics:
+      # Фильтр для включения только определенных метрик
+      include:
+        # Включаем только метрики, начинающиеся с orders_, assembly_, rockets_, http_, grpc_, kafka_
+        match_type: regexp
+        metric_names:
+          - "orders_.*"
+          - "order_.*"
+          - "assembly_.*"
+          - "rockets_.*"
+          - "http_.*"
+          - "otelogen_.*"
+          - "grpc_.*"
+          - "kafka_.*"
+          - "payment_.*"
+
 # Секция exporters (экспортеры) описывает, куда отправлять обработанные данные телеметрии
 exporters:
   # Экспорт трейсов в Jaeger
@@ -80,14 +98,12 @@ exporters:
   # Экспорт метрик в Prometheus
   prometheus:
     endpoint: "0.0.0.0:8889"
-    namespace: "ufo_factory"
     const_labels:
       environment: "dev"
     send_timestamps: true
-    metric_relabeling:
-      - source_labels: [__name__]
-        regex: 'orders_.*|assembly_.*|rockets_.*'
-        action: keep
+    # Настройки для правильного экспорта гистограмм
+    enable_open_metrics: true
+    add_metric_suffixes: false
 
 # Секция extensions - дополнительные компоненты
 extensions:
@@ -134,6 +150,7 @@ service:
       # Используемые приемники данных
       receivers: [otlp]
       # Последовательность обработчиков для трансформации данных
-      processors: [resource, batch]
+      # ВАЖНО: сначала фильтруем метрики, потом батчуем
+      processors: [resource, filter, batch]
       # Куда отправлять обработанные метрики
       exporters: [prometheus, debug]

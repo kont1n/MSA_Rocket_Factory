@@ -14,6 +14,19 @@ import (
 )
 
 func (a *api) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
+	logger.Info(ctx, "🔧 CreateOrder: проверяем orderService",
+		zap.Bool("orderService_is_nil", a.orderService == nil))
+
+	if a.orderService == nil {
+		logger.Error(ctx, "❌ CreateOrder: orderService is nil")
+		return &orderV1.InternalServerError{
+			Code:    http.StatusInternalServerError,
+			Message: "order service not available",
+		}, nil
+	}
+
+	logger.Info(ctx, "✅ CreateOrder: orderService доступен, продолжаем")
+
 	orderDraft := model.Order{
 		UserUUID:  uuid.UUID(req.UserUUID),
 		PartUUIDs: req.PartUuids,

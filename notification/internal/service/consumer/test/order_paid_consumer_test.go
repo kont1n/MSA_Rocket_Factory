@@ -38,6 +38,7 @@ func (s *OrderPaidConsumerTestSuite) SetupSuite() {
 		s.orderPaidConsumer,
 		s.orderPaidDecoder,
 		s.notificationService,
+		nil, // mock metrics
 	)
 }
 

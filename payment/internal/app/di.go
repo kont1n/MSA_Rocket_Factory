@@ -4,6 +4,7 @@ import (
 	"context"
 
 	gatewayV1 "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/gateway/v1"
+	paymentMiddleware "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/middleware"
 	paymentV1API "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/payment/v1"
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/service"
 	paymentService "github.com/kont1n/MSA_Rocket_Factory/payment/internal/service/payment"
@@ -14,6 +15,7 @@ type diContainer struct {
 	paymentAPIv1   paymentV1.PaymentServiceServer
 	paymentService service.PaymentService
 	gateway        *gatewayV1.Gateway
+	httpMetrics    *paymentMiddleware.HTTPMetrics
 }
 
 func NewDiContainer() *diContainer {
@@ -39,4 +41,16 @@ func (d *diContainer) Gateway(ctx context.Context) *gatewayV1.Gateway {
 		d.gateway = gatewayV1.NewGateway()
 	}
 	return d.gateway
+}
+
+func (d *diContainer) HTTPMetrics(ctx context.Context) *paymentMiddleware.HTTPMetrics {
+	if d.httpMetrics == nil {
+		metrics, err := paymentMiddleware.NewHTTPMetrics()
+		if err != nil {
+			// Логируем ошибку, но не падаем
+			return nil
+		}
+		d.httpMetrics = metrics
+	}
+	return d.httpMetrics
 }

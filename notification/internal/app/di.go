@@ -15,7 +15,7 @@ import (
 	iamClient "github.com/kont1n/MSA_Rocket_Factory/notification/internal/client/iam"
 	telegramClient "github.com/kont1n/MSA_Rocket_Factory/notification/internal/client/telegram"
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/config"
-	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/converter/kafka"
+	notificationKafka "github.com/kont1n/MSA_Rocket_Factory/notification/internal/converter/kafka"
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/converter/kafka/decoder"
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/service"
 	"github.com/kont1n/MSA_Rocket_Factory/notification/internal/service/consumer"
@@ -24,6 +24,9 @@ import (
 	wrappedKafka "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/kafka"
 	wrappedKafkaConsumer "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/kafka/consumer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	grpcMetrics "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/grpc"
+	kafkaMiddleware "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/kafka"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	iamV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1"
 )
 
@@ -41,12 +44,36 @@ type diContainer struct {
 	shipAssembledConsumerGroup sarama.ConsumerGroup
 	orderPaidKafkaConsumer     wrappedKafka.Consumer
 	shipAssembledKafkaConsumer wrappedKafka.Consumer
-	orderPaidDecoder           kafka.OrderPaidDecoder
-	shipAssembledDecoder       kafka.ShipAssembledDecoder
+	orderPaidDecoder           notificationKafka.OrderPaidDecoder
+	shipAssembledDecoder       notificationKafka.ShipAssembledDecoder
 }
 
 func NewDiContainer() *diContainer {
 	return &diContainer{}
+}
+
+// getGRPCMetricsInterceptor создает gRPC interceptor для метрик
+func (d *diContainer) getGRPCMetricsInterceptor(_ context.Context) grpc.UnaryClientInterceptor {
+	// Создаем временный экземпляр метрик напрямую
+	// чтобы избежать циклической зависимости
+	grpcMetrics, err := grpcMetrics.NewClientMetrics()
+	if err != nil {
+		// Если не удалось создать метрики, возвращаем nil
+		return nil
+	}
+	return grpcMetrics.UnaryClientInterceptor()
+}
+
+// getKafkaMetrics создает Kafka метрики
+func (d *diContainer) getKafkaMetrics(_ context.Context) *kafkaMiddleware.KafkaMetrics {
+	// Создаем временный экземпляр метрик напрямую
+	// чтобы избежать циклической зависимости
+	kafkaMetrics, err := kafkaMiddleware.NewKafkaMetrics()
+	if err != nil {
+		// Если не удалось создать метрики, возвращаем nil
+		return nil
+	}
+	return kafkaMetrics
 }
 
 func (d *diContainer) NotificationService(ctx context.Context) service.NotificationService {
@@ -78,11 +105,13 @@ func (d *diContainer) NotificationService(ctx context.Context) service.Notificat
 func (d *diContainer) OrderPaidConsumer(ctx context.Context) service.OrderPaidConsumerService {
 	if d.orderPaidConsumer == nil {
 		notificationServiceInstance := d.NotificationService(ctx)
+		kafkaMetrics := d.getKafkaMetrics(ctx)
 
 		d.orderPaidConsumer = consumer.NewOrderPaidService(
 			d.OrderPaidKafkaConsumer(ctx),
 			d.OrderPaidDecoder(ctx),
 			notificationServiceInstance,
+			kafkaMetrics,
 		)
 	}
 	return d.orderPaidConsumer
@@ -91,11 +120,13 @@ func (d *diContainer) OrderPaidConsumer(ctx context.Context) service.OrderPaidCo
 func (d *diContainer) ShipAssembledConsumer(ctx context.Context) service.ShipAssembledConsumerService {
 	if d.shipAssembledConsumer == nil {
 		notificationServiceInstance := d.NotificationService(ctx)
+		kafkaMetrics := d.getKafkaMetrics(ctx)
 
 		d.shipAssembledConsumer = consumer.NewShipAssembledService(
 			d.ShipAssembledKafkaConsumer(ctx),
 			d.ShipAssembledDecoder(ctx),
 			notificationServiceInstance,
+			kafkaMetrics,
 		)
 	}
 	return d.shipAssembledConsumer
@@ -136,9 +167,23 @@ func (d *diContainer) IAMGRPCConn(ctx context.Context) *grpc.ClientConn {
 			return nil
 		}
 
+		// Получаем interceptor для метрик
+		grpcMetricsInterceptor := d.getGRPCMetricsInterceptor(ctx)
+
+		// Настраиваем опции для gRPC клиента
+		opts := []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithUnaryInterceptor(tracing.UnaryClientInterceptor("notification")),
+		}
+
+		// Добавляем interceptor для метрик, если доступен
+		if grpcMetricsInterceptor != nil {
+			opts = append(opts, grpc.WithUnaryInterceptor(grpcMetricsInterceptor))
+		}
+
 		conn, err := grpc.NewClient(
 			config.AppConfig().GRPCClient.IAMAddress(),
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			opts...,
 		)
 		if err != nil {
 			logger.Error(ctx, "Failed to create IAM gRPC connection", zap.Error(err))
@@ -299,12 +344,37 @@ func (d *diContainer) ShipAssembledConsumerGroup(ctx context.Context) sarama.Con
 
 func (d *diContainer) OrderPaidKafkaConsumer(ctx context.Context) wrappedKafka.Consumer {
 	if d.orderPaidKafkaConsumer == nil {
-		d.orderPaidKafkaConsumer = wrappedKafkaConsumer.NewConsumer(
+		// Получаем Kafka метрики
+		kafkaMetrics := d.getKafkaMetrics(ctx)
+
+		// Создаем middleware для метрик
+		var middlewares []wrappedKafkaConsumer.Middleware
+
+		if kafkaMetrics != nil {
+			// Создаем адаптер для middleware
+			kafkaMetricsMiddleware := kafkaMiddleware.MetricsMiddleware(kafkaMetrics, "order-paid-notification-group")
+			middlewares = append(middlewares, func(next wrappedKafka.MessageHandler) wrappedKafka.MessageHandler {
+				return func(ctx context.Context, message wrappedKafka.Message) error {
+					return kafkaMetricsMiddleware(next)(ctx, message)
+				}
+			})
+		}
+
+		// Создаем consumer group middleware для отслеживания ребалансировок
+		var consumerGroupMiddlewares []wrappedKafka.ConsumerGroupHandlerMiddleware
+		if kafkaMetrics != nil {
+			rebalancingMiddleware := kafkaMiddleware.RebalancingMiddleware(kafkaMetrics, "order-paid-notification-group")
+			consumerGroupMiddlewares = append(consumerGroupMiddlewares, rebalancingMiddleware)
+		}
+
+		d.orderPaidKafkaConsumer = wrappedKafkaConsumer.NewConsumerWithConsumerGroupMiddleware(
 			d.OrderPaidConsumerGroup(ctx),
 			[]string{
 				config.AppConfig().OrderPaidConsumer.Topic(),
 			},
 			logger.Logger(),
+			middlewares,
+			consumerGroupMiddlewares,
 		)
 	}
 
@@ -313,19 +383,44 @@ func (d *diContainer) OrderPaidKafkaConsumer(ctx context.Context) wrappedKafka.C
 
 func (d *diContainer) ShipAssembledKafkaConsumer(ctx context.Context) wrappedKafka.Consumer {
 	if d.shipAssembledKafkaConsumer == nil {
-		d.shipAssembledKafkaConsumer = wrappedKafkaConsumer.NewConsumer(
+		// Получаем Kafka метрики
+		kafkaMetrics := d.getKafkaMetrics(ctx)
+
+		// Создаем middleware для метрик
+		var middlewares []wrappedKafkaConsumer.Middleware
+
+		if kafkaMetrics != nil {
+			// Создаем адаптер для middleware
+			kafkaMetricsMiddleware := kafkaMiddleware.MetricsMiddleware(kafkaMetrics, "ship-assembled-notification-group")
+			middlewares = append(middlewares, func(next wrappedKafka.MessageHandler) wrappedKafka.MessageHandler {
+				return func(ctx context.Context, message wrappedKafka.Message) error {
+					return kafkaMetricsMiddleware(next)(ctx, message)
+				}
+			})
+		}
+
+		// Создаем consumer group middleware для отслеживания ребалансировок
+		var consumerGroupMiddlewares []wrappedKafka.ConsumerGroupHandlerMiddleware
+		if kafkaMetrics != nil {
+			rebalancingMiddleware := kafkaMiddleware.RebalancingMiddleware(kafkaMetrics, "ship-assembled-notification-group")
+			consumerGroupMiddlewares = append(consumerGroupMiddlewares, rebalancingMiddleware)
+		}
+
+		d.shipAssembledKafkaConsumer = wrappedKafkaConsumer.NewConsumerWithConsumerGroupMiddleware(
 			d.ShipAssembledConsumerGroup(ctx),
 			[]string{
 				config.AppConfig().ShipAssembledConsumer.Topic(),
 			},
 			logger.Logger(),
+			middlewares,
+			consumerGroupMiddlewares,
 		)
 	}
 
 	return d.shipAssembledKafkaConsumer
 }
 
-func (d *diContainer) OrderPaidDecoder(ctx context.Context) kafka.OrderPaidDecoder {
+func (d *diContainer) OrderPaidDecoder(ctx context.Context) notificationKafka.OrderPaidDecoder {
 	if d.orderPaidDecoder == nil {
 		d.orderPaidDecoder = decoder.NewOrderPaidDecoder()
 	}
@@ -333,7 +428,7 @@ func (d *diContainer) OrderPaidDecoder(ctx context.Context) kafka.OrderPaidDecod
 	return d.orderPaidDecoder
 }
 
-func (d *diContainer) ShipAssembledDecoder(ctx context.Context) kafka.ShipAssembledDecoder {
+func (d *diContainer) ShipAssembledDecoder(ctx context.Context) notificationKafka.ShipAssembledDecoder {
 	if d.shipAssembledDecoder == nil {
 		d.shipAssembledDecoder = decoder.NewShipAssembledDecoder()
 	}

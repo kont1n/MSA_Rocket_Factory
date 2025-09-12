@@ -16,6 +16,13 @@ import (
 )
 
 func (a *api) PayOrder(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderParams) (orderV1.PayOrderRes, error) {
+	if a.orderService == nil {
+		return &orderV1.InternalServerError{
+			Code:    http.StatusInternalServerError,
+			Message: "order service not available",
+		}, nil
+	}
+
 	// Создаем root span для операции оплаты заказа
 	ctx, span := tracing.StartSpan(ctx, "order.pay_order",
 		trace.WithAttributes(

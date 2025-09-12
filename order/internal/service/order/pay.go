@@ -49,18 +49,20 @@ func (s service) PayOrder(ctx context.Context, order *model.Order) (*model.Order
 		return nil, fmt.Errorf("service: failed to update order in repository: %w", err)
 	}
 
-	// Отправляем событие OrderPaid
-	event := model.OrderPaidEvent{
-		EventUUID:       uuid.New(),
-		OrderUUID:       updatedOrder.OrderUUID,
-		UserUUID:        updatedOrder.UserUUID,
-		PaymentMethod:   updatedOrder.PaymentMethod,
-		TransactionUUID: updatedOrder.TransactionUUID,
-	}
+	// Отправляем событие OrderPaid (если producer доступен)
+	if s.orderPaidProducer != nil {
+		event := model.OrderPaidEvent{
+			EventUUID:       uuid.New(),
+			OrderUUID:       updatedOrder.OrderUUID,
+			UserUUID:        updatedOrder.UserUUID,
+			PaymentMethod:   updatedOrder.PaymentMethod,
+			TransactionUUID: updatedOrder.TransactionUUID,
+		}
 
-	err = s.orderPaidProducer.ProduceOrderPaid(ctx, event)
-	if err != nil {
-		return nil, fmt.Errorf("service: failed to produce OrderPaid event: %w", err)
+		err = s.orderPaidProducer.ProduceOrderPaid(ctx, event)
+		if err != nil {
+			return nil, fmt.Errorf("service: failed to produce OrderPaid event: %w", err)
+		}
 	}
 
 	// Записываем метрики при успешной оплате заказа

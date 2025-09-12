@@ -7,6 +7,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	grpcMetrics "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/grpc"
+	kafkaMiddleware "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/kafka"
 )
 
 // orderMetrics содержит бизнес метрики для заказов
@@ -18,6 +21,8 @@ type orderMetrics struct {
 	ordersCancelled metric.Int64Counter
 	orderValue      metric.Float64Histogram
 	orderDuration   metric.Float64Histogram
+	grpcMetrics     *grpcMetrics.ClientMetrics
+	kafkaMetrics    *kafkaMiddleware.KafkaMetrics
 }
 
 // newOrderMetrics создает новый экземпляр метрик для заказов
@@ -79,6 +84,7 @@ func newOrderMetrics() (*orderMetrics, error) {
 		"order_value",
 		metric.WithDescription("Стоимость заказов"),
 		metric.WithUnit("currency"),
+		metric.WithExplicitBucketBoundaries(0, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 50000000, 100000000, 500000000, 1000000000),
 	)
 	if err != nil {
 		return nil, err
@@ -89,7 +95,20 @@ func newOrderMetrics() (*orderMetrics, error) {
 		"order_duration_seconds",
 		metric.WithDescription("Время обработки заказов"),
 		metric.WithUnit("s"),
+		metric.WithExplicitBucketBoundaries(0, 0.1, 0.5, 1, 2, 5, 10, 30, 60, 300),
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Создаем gRPC метрики
+	grpcMetrics, err := grpcMetrics.NewClientMetrics()
+	if err != nil {
+		return nil, err
+	}
+
+	// Создаем Kafka метрики
+	kafkaMetrics, err := kafkaMiddleware.NewKafkaMetrics()
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +121,8 @@ func newOrderMetrics() (*orderMetrics, error) {
 		ordersCancelled: ordersCancelled,
 		orderValue:      orderValue,
 		orderDuration:   orderDuration,
+		grpcMetrics:     grpcMetrics,
+		kafkaMetrics:    kafkaMetrics,
 	}, nil
 }
 
@@ -132,6 +153,17 @@ func (m *orderMetrics) recordOrderPaid(ctx context.Context, value float64, curre
 	m.ordersPaid.Add(ctx, 1, metric.WithAttributes(attrs...))
 }
 
+// recordOrderCancelled записывает метрики при отмене заказа
+func (m *orderMetrics) recordOrderCancelled(ctx context.Context, value float64, currency string) {
+	attrs := []attribute.KeyValue{
+		attribute.String("currency", currency),
+		attribute.String("status", "cancelled"),
+	}
+
+	// Увеличиваем счетчик отмененных заказов
+	m.ordersCancelled.Add(ctx, 1, metric.WithAttributes(attrs...))
+}
+
 // recordOrderDuration записывает время обработки заказа
 func (m *orderMetrics) recordOrderDuration(ctx context.Context, duration time.Duration, operation string) {
 	attrs := []attribute.KeyValue{
@@ -140,4 +172,14 @@ func (m *orderMetrics) recordOrderDuration(ctx context.Context, duration time.Du
 
 	// Записываем время в гистограмму
 	m.orderDuration.Record(ctx, duration.Seconds(), metric.WithAttributes(attrs...))
+}
+
+// GetGRPCMetrics возвращает gRPC метрики для использования в middleware
+func (m *orderMetrics) GetGRPCMetrics() *grpcMetrics.ClientMetrics {
+	return m.grpcMetrics
+}
+
+// GetKafkaMetrics возвращает Kafka метрики для использования в producer/consumer
+func (m *orderMetrics) GetKafkaMetrics() *kafkaMiddleware.KafkaMetrics {
+	return m.kafkaMetrics
 }
