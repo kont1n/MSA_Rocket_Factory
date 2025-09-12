@@ -90,10 +90,9 @@ func InitTracer(ctx context.Context, cfg Config) error {
 		sdktrace.WithResource(attributeResource),
 		// Настраиваем семплирование трейсов:
 		// 1. ParentBased - учитываем решение о семплировании родительского спана
-		// 2. TraceIDRatioBased(1.0) - сохраняем 100% трейсов (1.0 = 100%)
-		// В продакшене рекомендуется использовать меньший процент (0.1 = 10%)
-		// для снижения нагрузки на систему трассировки
-		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(1.0))),
+		// 2. TraceIDRatioBased - процент сохраняемых трейсов
+		// В продакшене рекомендуется использовать меньший процент для снижения нагрузки
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(getSamplingRatio(cfg.Environment())))),
 	)
 
 	// Устанавливаем глобальный провайдер трейсов
@@ -190,4 +189,24 @@ func TraceIDFromContext(ctx context.Context) string {
 	}
 
 	return span.SpanContext().TraceID().String()
+}
+
+// getSamplingRatio возвращает коэффициент семплирования в зависимости от окружения.
+// Семплирование - это процесс выбора трейсов для сохранения и отправки в систему трассировки.
+// В продакшене рекомендуется сохранять только часть трейсов для снижения нагрузки.
+func getSamplingRatio(environment string) float64 {
+	switch environment {
+	case "production", "prod":
+		// В продакшене сохраняем 10% трейсов для снижения нагрузки
+		return 0.1
+	case "staging", "stage":
+		// В staging сохраняем 50% трейсов для баланса между детализацией и производительностью
+		return 0.5
+	case "development", "dev", "local":
+		// В разработке сохраняем 100% трейсов для полной детализации
+		return 1.0
+	default:
+		// По умолчанию используем консервативный подход
+		return 0.1
+	}
 }

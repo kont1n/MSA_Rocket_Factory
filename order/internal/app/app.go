@@ -20,6 +20,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/metrics"
+	platformHTTPMiddleware "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/http"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 )
@@ -276,6 +277,7 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
+	r.Use(platformHTTPMiddleware.TracingMiddleware("order")) // Добавляем трейсинг middleware
 	r.Use(customMiddleware.RequestLogger)
 	r.Use(customMiddleware.MetricsMiddleware(httpMetrics))
 

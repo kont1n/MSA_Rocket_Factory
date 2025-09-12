@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -17,6 +18,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/grpc/health"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	platformHTTPMiddleware "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/http"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
@@ -166,19 +168,25 @@ func (a *App) runServers(ctx context.Context) error {
 		gateway := a.diContainer.Gateway(ctx)
 		httpMetrics := a.diContainer.HTTPMetrics(ctx)
 
-		// Настраиваем HTTP метрики middleware
-		if httpMetrics != nil {
-			// Получаем существующий mux из gateway
-			existingMux := gateway.GetMux()
-			if existingMux == nil {
-				// Если mux не инициализирован, создаем новый
-				existingMux = runtime.NewServeMux()
-			}
-
-			// Применяем middleware для метрик к существующему mux
-			handler := paymentMiddleware.MetricsMiddleware(httpMetrics)(existingMux)
-			gateway.SetHandler(handler)
+		// Настраиваем HTTP middleware
+		existingMux := gateway.GetMux()
+		if existingMux == nil {
+			// Если mux не инициализирован, создаем новый
+			existingMux = runtime.NewServeMux()
 		}
+
+		// Применяем middleware в правильном порядке
+		handler := http.Handler(existingMux)
+
+		// Добавляем трейсинг middleware
+		handler = platformHTTPMiddleware.TracingMiddleware("payment")(handler)
+
+		// Добавляем метрики middleware, если доступен
+		if httpMetrics != nil {
+			handler = paymentMiddleware.MetricsMiddleware(httpMetrics)(handler)
+		}
+
+		gateway.SetHandler(handler)
 
 		err := gateway.Start(ctx)
 		if err != nil {

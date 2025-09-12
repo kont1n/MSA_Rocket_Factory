@@ -21,3 +21,10 @@ type MongoConfig interface {
 type GRPCClientConfig interface {
 	IAMAddress() string
 }
+
+type TracingConfig interface {
+	CollectorEndpoint() string
+	ServiceName() string
+	Environment() string
+	ServiceVersion() string
+}

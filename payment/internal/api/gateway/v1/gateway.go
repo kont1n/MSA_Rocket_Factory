@@ -12,6 +12,7 @@ import (
 
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
@@ -32,10 +33,11 @@ func NewGateway() *Gateway {
 }
 
 func (g *Gateway) RegisterHandlers(ctx context.Context) error {
-	// Создаем подключение к gRPC серверу
+	// Создаем подключение к gRPC серверу с трейсингом
 	conn, err := grpc.NewClient(
 		config.AppConfig().GRPC.Address(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(tracing.UnaryClientInterceptor("payment-gateway")),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to connect to gRPC server: %w", err)
