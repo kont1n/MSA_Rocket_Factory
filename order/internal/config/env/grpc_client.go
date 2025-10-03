@@ -1,12 +1,14 @@
 package env
 
 import (
+	"net"
 	"os"
 )
 
 type grpcClientConfig struct {
 	inventoryAddress string
 	paymentAddress   string
+	iamAddress       string
 }
 
 func NewGRPCClientConfig() (*grpcClientConfig, error) {
@@ -20,7 +22,7 @@ func NewGRPCClientConfig() (*grpcClientConfig, error) {
 		inventoryPort = "50051"
 	}
 
-	inventoryAddress := inventoryHost + ":" + inventoryPort
+	inventoryAddress := net.JoinHostPort(inventoryHost, inventoryPort)
 
 	paymentHost := os.Getenv("PAYMENT_GRPC_HOST")
 	if paymentHost == "" {
@@ -32,11 +34,24 @@ func NewGRPCClientConfig() (*grpcClientConfig, error) {
 		paymentPort = "50052"
 	}
 
-	paymentAddress := paymentHost + ":" + paymentPort
+	paymentAddress := net.JoinHostPort(paymentHost, paymentPort)
+
+	iamHost := os.Getenv("IAM_GRPC_HOST")
+	if iamHost == "" {
+		iamHost = "localhost"
+	}
+
+	iamPort := os.Getenv("IAM_GRPC_PORT")
+	if iamPort == "" {
+		iamPort = "50051"
+	}
+
+	iamAddress := net.JoinHostPort(iamHost, iamPort)
 
 	return &grpcClientConfig{
 		inventoryAddress: inventoryAddress,
 		paymentAddress:   paymentAddress,
+		iamAddress:       iamAddress,
 	}, nil
 }
 
@@ -46,4 +61,8 @@ func (c *grpcClientConfig) InventoryAddress() string {
 
 func (c *grpcClientConfig) PaymentAddress() string {
 	return c.paymentAddress
+}
+
+func (c *grpcClientConfig) IAMAddress() string {
+	return c.iamAddress
 }

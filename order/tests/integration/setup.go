@@ -4,11 +4,14 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/docker/go-connections/nat"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 
@@ -76,6 +79,44 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	}
 	logger.Info(ctx, "✅ Контейнер PostgreSQL успешно запущен")
 
+	// Дополнительная задержка для полной готовности PostgreSQL
+	logger.Info(ctx, "⏳ Ожидаем полной готовности PostgreSQL...")
+	time.Sleep(5 * time.Second)
+
+	// Дополнительная проверка готовности PostgreSQL
+	logger.Info(ctx, "🔍 Проверяем готовность PostgreSQL...")
+	testConnStr, err := generatedPostgres.ConnectionString(ctx)
+	if err != nil {
+		cleanupTestEnvironment(ctx, &TestEnvironment{Network: generatedNetwork, Postgres: generatedPostgres})
+		logger.Fatal(ctx, "не удалось получить строку подключения к PostgreSQL", zap.Error(err))
+	}
+
+	// Пытаемся подключиться и выполнить простой запрос
+	testPool, err := pgxpool.New(ctx, testConnStr)
+	if err != nil {
+		cleanupTestEnvironment(ctx, &TestEnvironment{Network: generatedNetwork, Postgres: generatedPostgres})
+		logger.Fatal(ctx, "не удалось подключиться к PostgreSQL для проверки готовности", zap.Error(err))
+	}
+	defer testPool.Close()
+
+	// Выполняем простой запрос для проверки готовности
+	var result int
+	err = testPool.QueryRow(ctx, "SELECT 1").Scan(&result)
+	if err != nil {
+		cleanupTestEnvironment(ctx, &TestEnvironment{Network: generatedNetwork, Postgres: generatedPostgres})
+		logger.Fatal(ctx, "PostgreSQL не готов к выполнению запросов", zap.Error(err))
+	}
+	logger.Info(ctx, "✅ PostgreSQL полностью готов к работе")
+
+	// Выполняем миграции базы данных
+	logger.Info(ctx, "🔄 Выполняем миграции базы данных...")
+	err = runMigrations(ctx, testConnStr)
+	if err != nil {
+		cleanupTestEnvironment(ctx, &TestEnvironment{Network: generatedNetwork, Postgres: generatedPostgres})
+		logger.Fatal(ctx, "не удалось выполнить миграции", zap.Error(err))
+	}
+	logger.Info(ctx, "✅ Миграции базы данных выполнены")
+
 	// Шаг 3: Запускаем контейнер с приложением
 	projectRoot := path.GetProjectRoot()
 
@@ -89,14 +130,14 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		"LOGGER_LEVEL":   "debug",
 		"LOGGER_AS_JSON": "false",
 
-		// Настройки PostgreSQL - используем значения из конфигурации PostgreSQL контейнера
-		testcontainers.PostgresHostKey:     generatedPostgres.Config().ContainerName,
-		testcontainers.PostgresPortKey:     "5432",
-		testcontainers.PostgresDatabaseKey: generatedPostgres.Config().Database,
-		testcontainers.PostgresUsernameKey: generatedPostgres.Config().Username,
-		testcontainers.PostgresPasswordKey: generatedPostgres.Config().Password,
-		"POSTGRES_SSLMODE":                 "disable",
-		"POSTGRES_MIGRATIONS_DIR":          "migrations",
+		// Настройки PostgreSQL - используем правильные ключи переменных окружения
+		"POSTGRES_HOST":           "postgres",
+		"POSTGRES_PORT":           "5432",
+		"POSTGRES_DATABASE":       generatedPostgres.Config().Database,
+		"POSTGRES_USER":           generatedPostgres.Config().Username,
+		"POSTGRES_PASSWORD":       generatedPostgres.Config().Password,
+		"POSTGRES_SSLMODE":        "disable",
+		"POSTGRES_MIGRATIONS_DIR": "migrations",
 
 		// Настройки Kafka (фиктивные значения для интеграционных тестов)
 		"KAFKA_BROKERS":       "localhost:9092",
@@ -115,9 +156,13 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 
 		// Отключаем gRPC подключения для интеграционных тестов
 		"SKIP_GRPC_CONNECTIONS": "true",
+
+		// Отключаем проверку базы данных для интеграционных тестов
+		"SKIP_DB_CHECK": "true",
 	}
 
 	// Создаем настраиваемую стратегию ожидания с увеличенным таймаутом
+	// Ждем, что контейнер слушает порт
 	waitStrategy := wait.ForListeningPort(nat.Port(httpPort + "/tcp")).
 		WithStartupTimeout(startupTimeout)
 
@@ -135,6 +180,10 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		logger.Fatal(ctx, "не удалось запустить контейнер приложения", zap.Error(err))
 	}
 	logger.Info(ctx, "✅ Контейнер приложения успешно запущен")
+
+	// Дополнительная задержка для полной инициализации приложения
+	logger.Info(ctx, "⏳ Ожидаем полной инициализации приложения...")
+	time.Sleep(3 * time.Second)
 
 	// Шаг 4: Создаем пул подключений к PostgreSQL
 	connStr, err := generatedPostgres.ConnectionString(ctx)
@@ -183,4 +232,29 @@ func getEnvWithDefault(ctx context.Context, key, defaultValue string) string {
 		zap.String("key", key),
 		zap.String("value", value))
 	return value
+}
+
+// runMigrations выполняет миграции базы данных
+func runMigrations(ctx context.Context, connStr string) error {
+	// Подключаемся к базе данных
+	pool, err := pgxpool.New(ctx, connStr)
+	if err != nil {
+		return fmt.Errorf("не удалось подключиться к PostgreSQL для миграций: %w", err)
+	}
+	defer pool.Close()
+
+	// Выполняем миграции с помощью goose
+	sqlDB := stdlib.OpenDBFromPool(pool)
+	defer sqlDB.Close()
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("не удалось установить диалект postgres: %w", err)
+	}
+
+	migrationsDir := path.GetProjectRoot() + "/order/migrations"
+	if err := goose.Up(sqlDB, migrationsDir); err != nil {
+		return fmt.Errorf("не удалось выполнить миграции: %w", err)
+	}
+
+	return nil
 }

@@ -8,9 +8,21 @@ import (
 )
 
 func (s service) CreateOrder(ctx context.Context, order *model.Order) (*model.Order, error) {
+	// Валидация входных параметров
+	if order == nil {
+		return nil, fmt.Errorf("order cannot be nil")
+	}
+	if order.UserUUID == [16]byte{} {
+		return nil, fmt.Errorf("user UUID cannot be nil")
+	}
+
 	// Проверяем что детали указаны и заполняем фильтр
 	if len(order.PartUUIDs) == 0 {
 		return nil, model.ErrPartsSpecified
+	}
+	// Проверяем лимит количества деталей
+	if len(order.PartUUIDs) > 1000 {
+		return nil, fmt.Errorf("too many parts in order: maximum 1000 allowed")
 	}
 	uuidFilter := model.Filter{
 		PartUUIDs: order.PartUUIDs,

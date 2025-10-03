@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
+	"github.com/kont1n/MSA_Rocket_Factory/order/internal/api/health"
 	customMiddleware "github.com/kont1n/MSA_Rocket_Factory/order/internal/api/middleware"
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
@@ -151,11 +152,18 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initLogger,
-		a.ensureDatabaseExists, // Проверяем и создаем БД перед инициализацией DI
+	}
+
+	// Проверяем и создаем БД перед инициализацией DI только если не отключено для тестов
+	if os.Getenv("SKIP_DB_CHECK") != "true" {
+		inits = append(inits, a.ensureDatabaseExists)
+	}
+
+	inits = append(inits, []func(context.Context) error{
 		a.initDI,
 		a.initCloser,
 		a.initHTTPServer,
-	}
+	}...)
 
 	for _, f := range inits {
 		err := f(ctx)
@@ -197,6 +205,15 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
 	r.Use(customMiddleware.RequestLogger)
+
+	// Добавляем middleware аутентификации для всех API роутов
+	authMiddleware := a.diContainer.AuthMiddleware(ctx)
+	r.Use(authMiddleware.Handle)
+
+	// Health check endpoint без аутентификации
+	healthHandler := health.NewHealthHandler()
+	r.Get("/health", healthHandler.Handle)
+
 	r.Mount("/", orderServer)
 
 	// Создаем HTTP сервер

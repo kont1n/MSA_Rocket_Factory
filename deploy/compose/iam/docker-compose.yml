@@ -1,0 +1,77 @@
+services: # Раздел, описывающий контейнеры, которые требуются для работы IAM-сервиса
+
+  iam-service: # IAM микросервис - обрабатывает события авторизации и управляет пользователями
+    build:
+      context: ../../../
+      dockerfile: deploy/docker/iam/Dockerfile
+
+    container_name: iam-service
+
+    env_file:
+      - .env
+
+    ports:
+      - "${GRPC_PORT}:50053"
+
+    depends_on:
+      postgres-iam:
+        condition: service_healthy
+      redis-iam:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    networks:
+      - microservices-net
+
+  postgres-iam: # Сервис с PostgreSQL, используемый IAM-сервисом для хранения данных пользователей
+    image: postgres:17.0-alpine3.20 
+    container_name: postgres-iam 
+
+    env_file:
+      - .env
+
+    volumes:
+      - postgres_iam_data:/var/lib/postgresql/data
+
+    ports:
+      - "${EXTERNAL_POSTGRES_PORT}:5432"
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s 
+      timeout: 5s 
+      retries: 5 
+
+    restart: unless-stopped
+
+    networks:
+      - microservices-net
+
+  redis-iam: # Redis — кэш и хранилище сессий для IAM
+    image: redis:7.2.5-alpine3.20  
+    container_name: redis-iam  
+
+    env_file:
+      - .env
+
+    ports:
+      - "${EXTERNAL_REDIS_PORT}:6379"
+
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s 
+      timeout: 5s 
+      retries: 5 
+
+    restart: unless-stopped
+
+    networks:
+      - microservices-net
+
+volumes: # Раздел томов — Docker сам создаст и будет управлять этим хранилищем данных
+  postgres_iam_data:
+
+networks:
+  microservices-net:
+    external: true

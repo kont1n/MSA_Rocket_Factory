@@ -12,29 +12,19 @@ import (
 )
 
 type orderPaidService struct {
-	orderPaidConsumer   wrappedKafka.Consumer
+	*BaseConsumer
 	orderPaidDecoder    kafkaConverter.OrderPaidDecoder
 	notificationService def.NotificationService
 }
 
 func NewOrderPaidService(orderPaidConsumer wrappedKafka.Consumer, orderPaidDecoder kafkaConverter.OrderPaidDecoder, notificationService def.NotificationService) *orderPaidService {
-	return &orderPaidService{
-		orderPaidConsumer:   orderPaidConsumer,
+	svc := &orderPaidService{
 		orderPaidDecoder:    orderPaidDecoder,
 		notificationService: notificationService,
 	}
-}
 
-func (s *orderPaidService) RunConsumer(ctx context.Context) error {
-	logger.Info(ctx, "Starting OrderPaid Consumer service")
-
-	err := s.orderPaidConsumer.Consume(ctx, s.OrderPaidHandler)
-	if err != nil {
-		logger.Error(ctx, "Consume from order.paid topic error", zap.Error(err))
-		return err
-	}
-
-	return nil
+	svc.BaseConsumer = NewBaseConsumer(orderPaidConsumer, svc.OrderPaidHandler)
+	return svc
 }
 
 func (s *orderPaidService) OrderPaidHandler(ctx context.Context, msg wrappedKafka.Message) error {
@@ -44,17 +34,6 @@ func (s *orderPaidService) OrderPaidHandler(ctx context.Context, msg wrappedKafk
 		return err
 	}
 
-	logger.Info(ctx, "Processing OrderPaid message",
-		zap.String("topic", msg.Topic),
-		zap.Any("partition", msg.Partition),
-		zap.Any("offset", msg.Offset),
-		zap.String("event_uuid", event.EventUUID.String()),
-		zap.String("order_uuid", event.OrderUUID.String()),
-		zap.String("payment_method", event.PaymentMethod),
-		zap.String("transaction_uuid", event.TransactionUUID.String()),
-	)
-
-	// Отправляем уведомление
 	err = s.notificationService.NotifyOrderPaid(ctx, event)
 	if err != nil {
 		logger.Error(ctx, "Failed to send OrderPaid notification", zap.Error(err))

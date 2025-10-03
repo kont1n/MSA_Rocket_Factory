@@ -11,9 +11,10 @@ import (
 var appConfig *config
 
 type config struct {
-	Logger LoggerConfig
-	GRPC   GRPCConfig
-	Mongo  MongoConfig
+	Logger     LoggerConfig
+	GRPC       GRPCConfig
+	Mongo      MongoConfig
+	GRPCClient GRPCClientConfig
 }
 
 func Load(path ...string) error {
@@ -37,10 +38,16 @@ func Load(path ...string) error {
 		return err
 	}
 
+	GRPCClientCfg, err := env.NewGRPCClientConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
-		Logger: loggerCfg,
-		GRPC:   GRPCCfg,
-		Mongo:  mongoCfg,
+		Logger:     loggerCfg,
+		GRPC:       GRPCCfg,
+		Mongo:      mongoCfg,
+		GRPCClient: GRPCClientCfg,
 	}
 
 	return nil

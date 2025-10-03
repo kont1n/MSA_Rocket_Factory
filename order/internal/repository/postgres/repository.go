@@ -20,9 +20,13 @@ func NewRepository(pool *pgxpool.Pool, migrationsDir string) *repository {
 	repo := repository{
 		db: pool,
 	}
-	err := repo.Migrate(migrationsDir)
-	if err != nil {
-		log.Fatalf("Failed to migrate: %v", err)
+
+	// Выполняем миграции только если пул подключений не nil (не в режиме тестирования)
+	if pool != nil {
+		err := repo.Migrate(migrationsDir)
+		if err != nil {
+			log.Fatalf("Failed to migrate: %v", err)
+		}
 	}
 
 	return &repo

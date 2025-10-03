@@ -16,6 +16,7 @@ type config struct {
 	OrderPaidConsumer     OrderPaidConsumerConfig
 	ShipAssembledConsumer ShipAssemblyConsumerConfig
 	Telegram              TelegramConfig
+	GRPCClient            GRPCClientConfig
 }
 
 func Load(path ...string) error {
@@ -49,12 +50,18 @@ func Load(path ...string) error {
 		return err
 	}
 
+	grpcClientCfg, err := env.NewGRPCClientConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
 		Logger:                loggerCfg,
 		Kafka:                 kafkaCfg,
 		OrderPaidConsumer:     orderPaidConsumerCfg,
 		ShipAssembledConsumer: shipAssembledConsumerCfg,
 		Telegram:              telegramCfg,
+		GRPCClient:            grpcClientCfg,
 	}
 
 	return nil

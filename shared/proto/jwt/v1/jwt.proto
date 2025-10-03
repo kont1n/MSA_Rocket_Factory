@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package jwt.v1;
+
+option go_package = "github.com/olezhek28/microservices-course-examples/week_6/jwt/api/jwt/v1;jwt_v1";
+
+import "google/protobuf/timestamp.proto";
+
+// JWT сервис для аутентификации
+service JWTService {
+  // Логин пользователя
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Получить новый access токен по refresh токену
+  rpc GetAccessToken(GetAccessTokenRequest) returns (GetAccessTokenResponse);
+
+  // Получить новый refresh токен
+  rpc GetRefreshToken(GetRefreshTokenRequest) returns (GetRefreshTokenResponse);
+}
+
+// Запрос на логин
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+// Ответ на логин
+message LoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  google.protobuf.Timestamp access_token_expires_at = 3;
+  google.protobuf.Timestamp refresh_token_expires_at = 4;
+}
+
+// Запрос на получение access токена
+message GetAccessTokenRequest {
+  string refresh_token = 1;
+}
+
+// Ответ с новым access токеном
+message GetAccessTokenResponse {
+  string access_token = 1;
+  google.protobuf.Timestamp access_token_expires_at = 2;
+}
+
+// Запрос на получение refresh токена
+message GetRefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+// Ответ с новым refresh токеном
+message GetRefreshTokenResponse {
+  string refresh_token = 1;
+  google.protobuf.Timestamp refresh_token_expires_at = 2;
+} 

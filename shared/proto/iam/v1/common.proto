@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package iam.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1;iam_v1";
+
+// Session - Информация о сессии пользователя
+message Session {
+  // uuid - UUID сессии
+  string uuid = 1;
+  // created_at - Время создания
+  google.protobuf.Timestamp created_at = 2;
+  // updated_at - Время последнего обновления
+  google.protobuf.Timestamp updated_at = 3;
+  // expires_at - Время истечения
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// NotificationMethod - Канал уведомлений пользователя
+message NotificationMethod {
+  // provider_name - Провайдер: telegram, email, push и т.д.
+  string provider_name = 1;
+  // target - Адрес/идентификатор назначения (email, чат-id)
+  string target = 2;
+}
+
+// UserInfo - Основная информация о пользователе
+message UserInfo {
+  // login - Логин пользователя
+  string login = 1;
+  // email - Email пользователя
+  string email = 2;
+  // notification_methods - Каналы уведомлений
+  repeated NotificationMethod notification_methods = 3;
+}
+
+// User - Полная информация о пользователе
+message User {
+  // uuid - UUID пользователя
+  string uuid = 1;
+  // info - Базовая информация
+  UserInfo info = 2;
+  // created_at - Дата создания
+  google.protobuf.Timestamp created_at = 3;
+  // updated_at - Дата обновления
+  google.protobuf.Timestamp updated_at = 4;
+}

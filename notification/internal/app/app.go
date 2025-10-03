@@ -26,15 +26,6 @@ func New(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	// Запускаем Telegram бота
-	go func() {
-		err := a.diContainer.TelegramClient(ctx).Start(ctx)
-		if err != nil {
-			logger.Error(ctx, "❌ Ошибка при запуске Telegram бота", zap.Error(err))
-		}
-	}()
-
-	// Запускаем оба Kafka Consumer в горутинах
 	go func() {
 		err := a.diContainer.OrderPaidConsumer(ctx).RunConsumer(ctx)
 		if err != nil {
@@ -49,7 +40,13 @@ func (a *App) Run(ctx context.Context) error {
 		}
 	}()
 
-	// Держим приложение запущенным
+	go func() {
+		err := a.diContainer.TelegramClient(ctx).Start(ctx)
+		if err != nil {
+			logger.Error(ctx, "❌ Ошибка при запуске Telegram бота", zap.Error(err))
+		}
+	}()
+
 	<-ctx.Done()
 	logger.Info(ctx, "🛑 Получен сигнал завершения работы")
 	return nil
@@ -87,4 +84,9 @@ func (a *App) initLogger(_ context.Context) error {
 func (a *App) initCloser(_ context.Context) error {
 	closer.SetLogger(logger.Logger())
 	return nil
+}
+
+// DiContainer возвращает DI контейнер для тестирования
+func (a *App) DiContainer() *diContainer {
+	return a.diContainer
 }

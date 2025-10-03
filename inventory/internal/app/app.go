@@ -10,9 +10,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/api/health"
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
-	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/grpc/health"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
@@ -94,7 +94,19 @@ func (a *App) initListener(_ context.Context) error {
 }
 
 func (a *App) initGRPCServer(ctx context.Context) error {
-	a.grpcServer = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
+	// Создаем gRPC сервер с аутентификационным интерцептором (если доступен)
+	authInterceptor := a.diContainer.AuthInterceptor(ctx)
+
+	var opts []grpc.ServerOption
+	opts = append(opts, grpc.Creds(insecure.NewCredentials()))
+
+	// Добавляем AuthInterceptor только если он создан
+	if authInterceptor != nil {
+		opts = append(opts, grpc.UnaryInterceptor(authInterceptor.Unary()))
+	}
+
+	a.grpcServer = grpc.NewServer(opts...)
+
 	closer.AddNamed("gRPC server", func(ctx context.Context) error {
 		a.grpcServer.GracefulStop()
 		return nil
@@ -102,9 +114,11 @@ func (a *App) initGRPCServer(ctx context.Context) error {
 
 	reflection.Register(a.grpcServer)
 
-	// Регистрируем health service для проверки работоспособности
+	// Регистрируем health service для проверки работоспособности (без аутентификации)
+	// Health endpoint доступен через reflection API
 	health.RegisterService(a.grpcServer)
 
+	// Регистрируем основные API с аутентификацией
 	inventoryV1.RegisterInventoryServiceServer(a.grpcServer, a.diContainer.InventoryV1API(ctx))
 
 	return nil
