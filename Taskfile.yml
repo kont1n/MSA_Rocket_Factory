@@ -278,7 +278,7 @@ tasks:
     cmds:
       - |
         echo '🧪 Генерация моков...'
-        {{.MOCKERY}}
+        {{.MOCKERY}} --config config/.mockery.yaml
 
 
   test-coverage:

@@ -144,6 +144,7 @@ func (m *orderMetrics) recordOrderCreated(ctx context.Context, value float64, cu
 
 // recordOrderPaid записывает метрики при оплате заказа
 func (m *orderMetrics) recordOrderPaid(ctx context.Context, value float64, currency string) {
+	_ = value // Параметр зарезервирован для будущего использования
 	attrs := []attribute.KeyValue{
 		attribute.String("currency", currency),
 		attribute.String("status", "paid"),
@@ -155,6 +156,7 @@ func (m *orderMetrics) recordOrderPaid(ctx context.Context, value float64, curre
 
 // recordOrderCancelled записывает метрики при отмене заказа
 func (m *orderMetrics) recordOrderCancelled(ctx context.Context, value float64, currency string) {
+	_ = value // Параметр зарезервирован для будущего использования
 	attrs := []attribute.KeyValue{
 		attribute.String("currency", currency),
 		attribute.String("status", "cancelled"),
