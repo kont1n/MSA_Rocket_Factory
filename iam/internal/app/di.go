@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
 	redigo "github.com/gomodule/redigo/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 
 	authV1API "github.com/kont1n/MSA_Rocket_Factory/iam/internal/api/auth/v1"
 	jwtV1API "github.com/kont1n/MSA_Rocket_Factory/iam/internal/api/jwt/v1"
@@ -22,19 +24,24 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/cache/redis"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/migrator"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/migrator/pg"
 	iamV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/iam/v1"
 	jwtV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/jwt/v1"
 )
 
 type diContainer struct {
-	authAPIv1     iamV1.AuthServiceServer
-	jwtAPIv1      jwtV1.JWTServiceServer
-	userAPIv1     iamV1.UserServiceServer
-	iamService    service.IAMService
-	iamRepository repository.IAMRepository
-	dbPool        *pgxpool.Pool
-	redisPool     *redigo.Pool
-	redisClient   cache.RedisClient
+	authAPIv1       iamV1.AuthServiceServer
+	jwtAPIv1        jwtV1.JWTServiceServer
+	userAPIv1       iamV1.UserServiceServer
+	iamService      service.IAMService
+	iamRepository   repository.IAMRepository
+	migrationRunner migrator.Migrator
+	dbPool          *pgxpool.Pool
+	pgPoolCfg       *pgxpool.Config
+	stdLibPgCon     *sql.DB
+	redisPool       *redigo.Pool
+	redisClient     cache.RedisClient
 }
 
 func NewDiContainer() *diContainer {
@@ -88,11 +95,24 @@ func (d *diContainer) IAMService(ctx context.Context) service.IAMService {
 	return d.iamService
 }
 
+func (d *diContainer) MigrationRunner() migrator.Migrator {
+	if d.migrationRunner == nil {
+		d.migrationRunner = pg.NewMigrator(d.StdLibPgClient(), config.AppConfig().DB.MigrationsDir())
+	}
+
+	return d.migrationRunner
+}
+
 func (d *diContainer) DBPool(ctx context.Context) *pgxpool.Pool {
 	if d.dbPool == nil {
-		pool, err := pgxpool.New(ctx, config.AppConfig().DB.URI())
+		pool, err := pgxpool.NewWithConfig(ctx, d.PgPoolConfig())
 		if err != nil {
-			panic(fmt.Sprintf("failed to connect to database: %v", err))
+			panic(fmt.Sprintf("failed to create pg pool: %v", err))
+		}
+
+		err = pool.Ping(ctx)
+		if err != nil {
+			panic(fmt.Sprintf("failed to ping pg client: %s", err.Error()))
 		}
 
 		closer.AddNamed("DB pool", func(ctx context.Context) error {
@@ -103,6 +123,27 @@ func (d *diContainer) DBPool(ctx context.Context) *pgxpool.Pool {
 		d.dbPool = pool
 	}
 	return d.dbPool
+}
+
+func (d *diContainer) PgPoolConfig() *pgxpool.Config {
+	if d.pgPoolCfg == nil {
+		pgPoolCfg, err := pgxpool.ParseConfig(config.AppConfig().DB.URI())
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse postgres config: %s", err.Error()))
+		}
+
+		d.pgPoolCfg = pgPoolCfg
+	}
+
+	return d.pgPoolCfg
+}
+
+func (d *diContainer) StdLibPgClient() *sql.DB {
+	if d.stdLibPgCon == nil {
+		d.stdLibPgCon = stdlib.OpenDB(*d.PgPoolConfig().ConnConfig)
+	}
+
+	return d.stdLibPgCon
 }
 
 func (d *diContainer) RedisPool() *redigo.Pool {

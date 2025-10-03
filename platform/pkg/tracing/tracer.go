@@ -2,10 +2,12 @@ package tracing
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -189,6 +191,34 @@ func TraceIDFromContext(ctx context.Context) string {
 	}
 
 	return span.SpanContext().TraceID().String()
+}
+
+// EndSpanWithStatus завершает спан с установкой статуса в зависимости от ошибки.
+// Если err == nil, устанавливается статус Ok, иначе Error.
+// Также записывает ошибку в спан, если она присутствует.
+func EndSpanWithStatus(span trace.Span, err error) {
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	} else {
+		span.SetStatus(codes.Ok, "success")
+	}
+	span.End()
+}
+
+// RecoverSpan восстанавливает после panic и корректно завершает спан.
+// Следует использовать с defer в начале функции со спаном.
+func RecoverSpan(span trace.Span) {
+	if r := recover(); r != nil {
+		err, ok := r.(error)
+		if !ok {
+			err = fmt.Errorf("panic: %v", r)
+		}
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		span.End()
+		panic(r) // Re-panic после записи в спан
+	}
 }
 
 // getSamplingRatio возвращает коэффициент семплирования в зависимости от окружения.

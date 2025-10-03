@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -62,9 +63,13 @@ func UnaryServerInterceptor(serviceName string) grpc.UnaryServerInterceptor {
 
 		// Вызываем обработчик с обогащенным контекстом
 		resp, err := handler(ctx, req)
-		// Если произошла ошибка, записываем её в спан
+
+		// Устанавливаем статус спана в зависимости от результата
 		if err != nil {
 			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		} else {
+			span.SetStatus(codes.Ok, "success")
 		}
 
 		return resp, err
@@ -107,9 +112,13 @@ func UnaryClientInterceptor(serviceName string) grpc.UnaryClientInterceptor {
 
 		// Вызываем следующий обработчик с обогащенным контекстом
 		err := invoker(ctx, method, req, reply, cc, opts...)
-		// Если произошла ошибка, записываем её в спан
+
+		// Устанавливаем статус спана в зависимости от результата
 		if err != nil {
-			trace.SpanFromContext(ctx).RecordError(err)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		} else {
+			span.SetStatus(codes.Ok, "success")
 		}
 
 		return err

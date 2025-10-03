@@ -16,8 +16,8 @@ service UserService {
 
 // UserRegistrationInfo - Информация для регистрации пользователя
 message UserRegistrationInfo {
-  // info - Основная информация пользователя
-  UserInfo info = 1;
+  // user_info - Основная информация пользователя
+  UserInfo user_info = 1;
   // password - Пароль пользователя
   string password = 2;
 }

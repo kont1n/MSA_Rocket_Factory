@@ -47,11 +47,11 @@ func NewService(iamRepository repository.IAMRepository, jwtConfig env.JWTConfig)
 func (s *service) Login(ctx context.Context, login, password string) (*model.Session, error) {
 	// Валидация входных данных
 	if login == "" {
-		logger.Warn(ctx, "🚫 Попытка входа с пустым логином")
+		logger.Error(ctx, "🚫 Попытка входа с пустым логином")
 		return nil, model.ErrEmptyLogin
 	}
 	if password == "" {
-		logger.Warn(ctx, "🚫 Попытка входа с пустым паролем", zap.String("login", login))
+		logger.Error(ctx, "🚫 Попытка входа с пустым паролем", zap.String("login", login))
 		return nil, model.ErrEmptyPassword
 	}
 
@@ -253,6 +253,12 @@ func (s *service) JWTLogin(ctx context.Context, login, password string) (*model.
 
 // GetAccessToken получает новый access токен по refresh токену
 func (s *service) GetAccessToken(ctx context.Context, refreshToken string) (*model.TokenPair, error) {
+	// Валидация входных данных
+	if refreshToken == "" {
+		logger.Warn(ctx, "🚫 JWT: Попытка получить access токен с пустым refresh токеном")
+		return nil, ErrInvalidToken
+	}
+
 	// Валидируем refresh токен
 	claims, err := s.jwtService.validateRefreshTokenWithContext(ctx, refreshToken)
 	if err != nil {
@@ -286,6 +292,12 @@ func (s *service) GetAccessToken(ctx context.Context, refreshToken string) (*mod
 
 // GetRefreshToken получает новый refresh токен
 func (s *service) GetRefreshToken(ctx context.Context, refreshToken string) (*model.TokenPair, error) {
+	// Валидация входных данных
+	if refreshToken == "" {
+		logger.Warn(ctx, "🚫 JWT: Попытка получить новый refresh токен с пустым токеном")
+		return nil, ErrInvalidToken
+	}
+
 	// Валидируем текущий refresh токен
 	claims, err := s.jwtService.validateRefreshTokenWithContext(ctx, refreshToken)
 	if err != nil {

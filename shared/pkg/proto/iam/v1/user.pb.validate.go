@@ -58,11 +58,11 @@ func (m *UserRegistrationInfo) validate(all bool) error {
 	var errors []error
 
 	if all {
-		switch v := interface{}(m.GetInfo()).(type) {
+		switch v := interface{}(m.GetUserInfo()).(type) {
 		case interface{ ValidateAll() error }:
 			if err := v.ValidateAll(); err != nil {
 				errors = append(errors, UserRegistrationInfoValidationError{
-					field:  "Info",
+					field:  "UserInfo",
 					reason: "embedded message failed validation",
 					cause:  err,
 				})
@@ -70,16 +70,16 @@ func (m *UserRegistrationInfo) validate(all bool) error {
 		case interface{ Validate() error }:
 			if err := v.Validate(); err != nil {
 				errors = append(errors, UserRegistrationInfoValidationError{
-					field:  "Info",
+					field:  "UserInfo",
 					reason: "embedded message failed validation",
 					cause:  err,
 				})
 			}
 		}
-	} else if v, ok := interface{}(m.GetInfo()).(interface{ Validate() error }); ok {
+	} else if v, ok := interface{}(m.GetUserInfo()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return UserRegistrationInfoValidationError{
-				field:  "Info",
+				field:  "UserInfo",
 				reason: "embedded message failed validation",
 				cause:  err,
 			}

@@ -51,7 +51,7 @@ func (c *client) RegisterUser(ctx context.Context, login, email, password string
 
 	req := &iamV1.RegisterRequest{
 		Info: &iamV1.UserRegistrationInfo{
-			Info: &iamV1.UserInfo{
+			UserInfo: &iamV1.UserInfo{
 				Login:               login,
 				Email:               email,
 				NotificationMethods: notificationMethods,

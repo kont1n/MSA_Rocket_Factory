@@ -24,8 +24,8 @@ const (
 // UserRegistrationInfo - Информация для регистрации пользователя
 type UserRegistrationInfo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// info - Основная информация пользователя
-	Info *UserInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+	// user_info - Основная информация пользователя
+	UserInfo *UserInfo `protobuf:"bytes,1,opt,name=user_info,json=userInfo,proto3" json:"user_info,omitempty"`
 	// password - Пароль пользователя
 	Password      string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -62,9 +62,9 @@ func (*UserRegistrationInfo) Descriptor() ([]byte, []int) {
 	return file_iam_v1_user_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *UserRegistrationInfo) GetInfo() *UserInfo {
+func (x *UserRegistrationInfo) GetUserInfo() *UserInfo {
 	if x != nil {
-		return x.Info
+		return x.UserInfo
 	}
 	return nil
 }
@@ -264,9 +264,9 @@ var File_iam_v1_user_proto protoreflect.FileDescriptor
 
 const file_iam_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x11iam/v1/user.proto\x12\x06iam.v1\x1a\x13iam/v1/common.proto\"X\n" +
-	"\x14UserRegistrationInfo\x12$\n" +
-	"\x04info\x18\x01 \x01(\v2\x10.iam.v1.UserInfoR\x04info\x12\x1a\n" +
+	"\x11iam/v1/user.proto\x12\x06iam.v1\x1a\x13iam/v1/common.proto\"a\n" +
+	"\x14UserRegistrationInfo\x12-\n" +
+	"\tuser_info\x18\x01 \x01(\v2\x10.iam.v1.UserInfoR\buserInfo\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"C\n" +
 	"\x0fRegisterRequest\x120\n" +
 	"\x04info\x18\x01 \x01(\v2\x1c.iam.v1.UserRegistrationInfoR\x04info\"/\n" +
@@ -303,7 +303,7 @@ var file_iam_v1_user_proto_goTypes = []any{
 	(*User)(nil),                 // 6: iam.v1.User
 }
 var file_iam_v1_user_proto_depIdxs = []int32{
-	5, // 0: iam.v1.UserRegistrationInfo.info:type_name -> iam.v1.UserInfo
+	5, // 0: iam.v1.UserRegistrationInfo.user_info:type_name -> iam.v1.UserInfo
 	0, // 1: iam.v1.RegisterRequest.info:type_name -> iam.v1.UserRegistrationInfo
 	6, // 2: iam.v1.GetUserResponse.user:type_name -> iam.v1.User
 	1, // 3: iam.v1.UserService.Register:input_type -> iam.v1.RegisterRequest

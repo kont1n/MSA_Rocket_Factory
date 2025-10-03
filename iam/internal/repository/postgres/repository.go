@@ -2,13 +2,10 @@ package postgres
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose"
 
 	"github.com/kont1n/MSA_Rocket_Factory/iam/internal/model"
 	def "github.com/kont1n/MSA_Rocket_Factory/iam/internal/repository"
@@ -26,21 +23,6 @@ func NewRepository(pool *pgxpool.Pool) *repository {
 	}
 
 	return &repo
-}
-
-// Migrate выполняет миграции базы данных
-func (r *repository) Migrate(migrationsDir string) error {
-	sqlDB := stdlib.OpenDBFromPool(r.db)
-
-	if err := goose.SetDialect("postgres"); err != nil {
-		return err
-	}
-	if err := goose.Up(sqlDB, migrationsDir); err != nil {
-		return err
-	}
-
-	log.Println("✅ Миграции IAM сервиса успешно применены.")
-	return nil
 }
 
 // Заглушки для SessionCache методов (не используются в PostgreSQL, только в Redis)
