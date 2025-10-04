@@ -1,6 +1,6 @@
 # MSA_Rocket_Factory
 
-![Coverage](https://img.shields.io/badge/Coverage-0.0%25-red)
+![Coverage](https://img.shields.io/badge/Coverage-46.2%25-yellow)
 [![CI](https://github.com/kont1n/MSA_Rocket_Factory/actions/workflows/ci.yml/badge.svg)](https://github.com/kont1n/MSA_Rocket_Factory/actions/workflows/ci.yml)
 
 📊 **Отчеты о качестве кода:** 
