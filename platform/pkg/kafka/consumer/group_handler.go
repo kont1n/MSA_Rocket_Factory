@@ -16,6 +16,9 @@ type groupHandler struct {
 	logger  Logger
 }
 
+// Реализуем интерфейс kafka.ConsumerGroupHandler
+var _ kafka.ConsumerGroupHandler = (*groupHandler)(nil)
+
 // NewGroupHandler создаёт новый groupHandler с middleware цепочкой.
 func NewGroupHandler(handler kafka.MessageHandler, logger Logger, middlewares ...Middleware) *groupHandler {
 	// Применяем middleware цепочку
@@ -27,6 +30,28 @@ func NewGroupHandler(handler kafka.MessageHandler, logger Logger, middlewares ..
 		handler: handler,
 		logger:  logger,
 	}
+}
+
+// NewGroupHandlerWithConsumerGroupMiddleware создаёт новый groupHandler с middleware цепочкой и consumer group middleware.
+func NewGroupHandlerWithConsumerGroupMiddleware(handler kafka.MessageHandler, logger Logger, messageMiddlewares []Middleware, consumerGroupMiddlewares []kafka.ConsumerGroupHandlerMiddleware) kafka.ConsumerGroupHandler {
+	// Применяем middleware цепочку для сообщений
+	for i := len(messageMiddlewares) - 1; i >= 0; i-- {
+		handler = messageMiddlewares[i](handler)
+	}
+
+	// Создаем базовый handler
+	baseHandler := &groupHandler{
+		handler: handler,
+		logger:  logger,
+	}
+
+	// Применяем consumer group middleware цепочку
+	result := kafka.ConsumerGroupHandler(baseHandler)
+	for i := len(consumerGroupMiddlewares) - 1; i >= 0; i-- {
+		result = consumerGroupMiddlewares[i](result)
+	}
+
+	return result
 }
 
 func (g *groupHandler) Setup(sarama.ConsumerGroupSession) error {

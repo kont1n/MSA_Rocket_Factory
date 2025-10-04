@@ -2,6 +2,7 @@ package producer
 
 import (
 	"context"
+	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -14,15 +15,24 @@ import (
 
 type service struct {
 	assemblyProducer kafka.Producer
+	metrics          KafkaMetrics
 }
 
-func NewService(assemblyProducer kafka.Producer) *service {
+// KafkaMetrics интерфейс для метрик Kafka
+type KafkaMetrics interface {
+	RecordProducerMessage(ctx context.Context, topic string, partition int32, success bool, duration time.Duration)
+}
+
+func NewService(assemblyProducer kafka.Producer, metrics KafkaMetrics) *service {
 	return &service{
 		assemblyProducer: assemblyProducer,
+		metrics:          metrics,
 	}
 }
 
 func (p *service) ProduceAssembly(ctx context.Context, event model.ShipAssembledEvent) error {
+	startTime := time.Now()
+
 	msg := &eventsV1.ShipAssembled{
 		EventUuid:    event.EventUUID.String(),
 		OrderUuid:    event.OrderUUID.String(),
@@ -37,6 +47,13 @@ func (p *service) ProduceAssembly(ctx context.Context, event model.ShipAssembled
 	}
 
 	err = p.assemblyProducer.Send(ctx, []byte(event.EventUUID.String()), payload)
+	duration := time.Since(startTime)
+
+	// Записываем метрики
+	if p.metrics != nil {
+		p.metrics.RecordProducerMessage(ctx, "ship-assembled", 0, err == nil, duration)
+	}
+
 	if err != nil {
 		logger.Error(ctx, model.ErrSendToKafka.Error(), zap.Error(err))
 		return err

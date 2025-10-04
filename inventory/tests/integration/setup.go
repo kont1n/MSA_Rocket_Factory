@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -43,12 +44,17 @@ type TestEnvironment struct {
 func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	logger.Info(ctx, "🚀 Подготовка тестового окружения...")
 
-	// Шаг 1: Создаём общую Docker-сеть
-	generatedNetwork, err := network.NewNetwork(ctx, projectName)
+	// Генерируем уникальный суффикс для имен контейнеров, чтобы избежать конфликтов при параллельном запуске
+	uniqueSuffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	uniqueNetworkName := fmt.Sprintf("%s-%s", projectName, uniqueSuffix)
+	uniqueMongoName := fmt.Sprintf("%s-%s", testcontainers.MongoContainerName, uniqueSuffix)
+
+	// Шаг 1: Создаём общую Docker-сеть с уникальным именем
+	generatedNetwork, err := network.NewNetwork(ctx, uniqueNetworkName)
 	if err != nil {
 		logger.Fatal(ctx, "не удалось создать общую сеть", zap.Error(err))
 	}
-	logger.Info(ctx, "✅ Сеть успешно создана")
+	logger.Info(ctx, "✅ Сеть успешно создана", zap.String("network_name", uniqueNetworkName))
 
 	// Получаем переменные окружения для MongoDB с проверкой на наличие
 	mongoUsername := getEnvWithLogging(ctx, testcontainers.MongoUsernameKey)
@@ -59,10 +65,10 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	// Получаем порт gRPC для waitStrategy
 	grpcPort := getEnvWithLogging(ctx, grpcPortKey)
 
-	// Шаг 2: Запускаем контейнер с MongoDB
+	// Шаг 2: Запускаем контейнер с MongoDB с уникальным именем
 	generatedMongo, err := mongo.NewContainer(ctx,
 		mongo.WithNetworkName(generatedNetwork.Name()),
-		mongo.WithContainerName(testcontainers.MongoContainerName),
+		mongo.WithContainerName(uniqueMongoName),
 		mongo.WithImageName(mongoImageName),
 		mongo.WithDatabase(mongoDatabase),
 		mongo.WithAuth(mongoUsername, mongoPassword),
@@ -87,8 +93,8 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		"LOGGER_LEVEL":   "debug",
 		"LOGGER_AS_JSON": "false",
 
-		// Настройки MongoDB - используем значения из конфигурации MongoDB контейнера
-		testcontainers.MongoHostKey:     generatedMongo.Config().ContainerName,
+		// Настройки MongoDB - используем уникальное имя контейнера в сети
+		testcontainers.MongoHostKey:     uniqueMongoName,
 		testcontainers.MongoPortKey:     "27017",
 		testcontainers.MongoDatabaseKey: generatedMongo.Config().Database,
 		testcontainers.MongoUsernameKey: generatedMongo.Config().Username,
@@ -120,6 +126,10 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		logger.Fatal(ctx, "не удалось запустить контейнер приложения", zap.Error(err))
 	}
 	logger.Info(ctx, "✅ Контейнер приложения успешно запущен")
+
+	// Даём дополнительное время для полной инициализации gRPC сервера
+	logger.Info(ctx, "⏳ Ожидание полной инициализации gRPC сервера...")
+	time.Sleep(5 * time.Second)
 
 	logger.Info(ctx, "🎉 Тестовое окружение готово")
 	return &TestEnvironment{

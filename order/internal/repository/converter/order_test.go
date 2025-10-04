@@ -1,7 +1,7 @@
 package converter
 
 import (
-	"errors"
+	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -10,275 +10,485 @@ import (
 	repoModel "github.com/kont1n/MSA_Rocket_Factory/order/internal/repository/model"
 )
 
-func (s *ConverterSuite) TestToRepoOrder_Success() {
-	// Подготовка
-	orderUUID := uuid.New()
+func TestToRepoOrderPostgres(t *testing.T) {
+	// Arrange
 	userUUID := uuid.New()
-	transactionUUID := uuid.New()
 	partUUID1 := uuid.New()
 	partUUID2 := uuid.New()
+	transactionUUID := uuid.New()
 
 	order := &model.Order{
-		OrderUUID:       orderUUID,
+		OrderUUID:       uuid.New(),
 		UserUUID:        userUUID,
 		PartUUIDs:       []uuid.UUID{partUUID1, partUUID2},
-		TotalPrice:      1500.75,
+		TotalPrice:      1500.50,
 		TransactionUUID: transactionUUID,
 		PaymentMethod:   "CARD",
 		Status:          model.StatusPaid,
 	}
 
-	// Выполнение
-	result := ToRepoOrder(order)
+	// Act
+	repoOrder := ToRepoOrderPostgres(order)
 
-	// Проверка
-	assert.NotNil(s.T(), result)
-	assert.Equal(s.T(), orderUUID.String(), result.OrderUUID)
-	assert.Equal(s.T(), userUUID.String(), result.UserUUID)
-	assert.Len(s.T(), result.PartUUIDs, 2)
-	assert.Contains(s.T(), result.PartUUIDs, partUUID1.String())
-	assert.Contains(s.T(), result.PartUUIDs, partUUID2.String())
-	assert.Equal(s.T(), float32(1500.75), result.TotalPrice)
-	assert.Equal(s.T(), transactionUUID.String(), result.TransactionUUID)
-	assert.Equal(s.T(), "CARD", result.PaymentMethod)
-	assert.Equal(s.T(), string(model.StatusPaid), result.Status)
+	// Assert
+	assert.NotNil(t, repoOrder)
+	assert.Equal(t, userUUID, repoOrder.UserUUID)
+	assert.Equal(t, []uuid.UUID{partUUID1, partUUID2}, repoOrder.PartUUIDs)
+	assert.Equal(t, float32(1500.50), repoOrder.TotalPrice)
+	assert.Equal(t, transactionUUID, repoOrder.TransactionUUID)
+	assert.Equal(t, "CARD", repoOrder.PaymentMethod)
+	assert.Equal(t, "PAID", repoOrder.Status)
 }
 
-func (s *ConverterSuite) TestToRepoOrder_EmptyParts() {
-	// Подготовка
-	orderUUID := uuid.New()
-	userUUID := uuid.New()
-	transactionUUID := uuid.New()
-
+func TestToRepoOrderPostgres_WithNilTransactionUUID(t *testing.T) {
+	// Arrange - заказ без TransactionUUID (pending payment)
 	order := &model.Order{
-		OrderUUID:       orderUUID,
-		UserUUID:        userUUID,
-		PartUUIDs:       []uuid.UUID{},
-		TotalPrice:      0,
-		TransactionUUID: transactionUUID,
+		OrderUUID:       uuid.New(),
+		UserUUID:        uuid.New(),
+		PartUUIDs:       []uuid.UUID{uuid.New()},
+		TotalPrice:      500.0,
+		TransactionUUID: uuid.Nil,
 		PaymentMethod:   "",
 		Status:          model.StatusPendingPayment,
 	}
 
-	// Выполнение
-	result := ToRepoOrder(order)
+	// Act
+	repoOrder := ToRepoOrderPostgres(order)
 
-	// Проверка
-	assert.NotNil(s.T(), result)
-	assert.Equal(s.T(), orderUUID.String(), result.OrderUUID)
-	assert.Equal(s.T(), userUUID.String(), result.UserUUID)
-	assert.Empty(s.T(), result.PartUUIDs)
-	assert.Equal(s.T(), float32(0), result.TotalPrice)
-	assert.Equal(s.T(), transactionUUID.String(), result.TransactionUUID)
-	assert.Equal(s.T(), "", result.PaymentMethod)
-	assert.Equal(s.T(), string(model.StatusPendingPayment), result.Status)
+	// Assert
+	assert.NotNil(t, repoOrder)
+	assert.Equal(t, uuid.Nil, repoOrder.TransactionUUID)
+	assert.Equal(t, "", repoOrder.PaymentMethod)
+	assert.Equal(t, "PENDING_PAYMENT", repoOrder.Status)
 }
 
-func (s *ConverterSuite) TestToModelOrder_Success() {
-	// Подготовка
+func TestToRepoOrderPostgres_WithMultipleParts(t *testing.T) {
+	// Arrange - заказ с несколькими деталями
+	partUUIDs := []uuid.UUID{
+		uuid.New(),
+		uuid.New(),
+		uuid.New(),
+		uuid.New(),
+	}
+
+	order := &model.Order{
+		OrderUUID:       uuid.New(),
+		UserUUID:        uuid.New(),
+		PartUUIDs:       partUUIDs,
+		TotalPrice:      5000.0,
+		TransactionUUID: uuid.New(),
+		PaymentMethod:   "SBP",
+		Status:          model.StatusPaid,
+	}
+
+	// Act
+	repoOrder := ToRepoOrderPostgres(order)
+
+	// Assert
+	assert.NotNil(t, repoOrder)
+	assert.Len(t, repoOrder.PartUUIDs, 4)
+	assert.Equal(t, partUUIDs, repoOrder.PartUUIDs)
+}
+
+func TestToRepoOrderPostgres_DifferentStatuses(t *testing.T) {
+	tests := []struct {
+		name   string
+		status model.OrderStatus
+	}{
+		{
+			name:   "pending payment статус",
+			status: model.StatusPendingPayment,
+		},
+		{
+			name:   "paid статус",
+			status: model.StatusPaid,
+		},
+		{
+			name:   "cancelled статус",
+			status: model.StatusCancelled,
+		},
+		{
+			name:   "assembled статус",
+			status: model.StatusAssembled,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			order := &model.Order{
+				OrderUUID:       uuid.New(),
+				UserUUID:        uuid.New(),
+				PartUUIDs:       []uuid.UUID{uuid.New()},
+				TotalPrice:      1000.0,
+				TransactionUUID: uuid.New(),
+				PaymentMethod:   "CARD",
+				Status:          tt.status,
+			}
+
+			// Act
+			repoOrder := ToRepoOrderPostgres(order)
+
+			// Assert
+			assert.NotNil(t, repoOrder)
+			assert.Equal(t, string(tt.status), repoOrder.Status)
+		})
+	}
+}
+
+func TestToModelOrderFromPostgres(t *testing.T) {
+	// Arrange
 	orderUUID := uuid.New()
 	userUUID := uuid.New()
-	transactionUUID := uuid.New()
 	partUUID1 := uuid.New()
 	partUUID2 := uuid.New()
-
-	repoOrder := &repoModel.Order{
-		OrderUUID:       orderUUID.String(),
-		UserUUID:        userUUID.String(),
-		PartUUIDs:       []string{partUUID1.String(), partUUID2.String()},
-		TotalPrice:      1500.75,
-		TransactionUUID: transactionUUID.String(),
-		PaymentMethod:   "CARD",
-		Status:          string(model.StatusPaid),
-	}
-
-	// Выполнение
-	result, err := ToModelOrder(repoOrder)
-
-	// Проверка
-	assert.NoError(s.T(), err)
-	assert.NotNil(s.T(), result)
-	assert.Equal(s.T(), orderUUID, result.OrderUUID)
-	assert.Equal(s.T(), userUUID, result.UserUUID)
-	assert.Len(s.T(), result.PartUUIDs, 2)
-	assert.Contains(s.T(), result.PartUUIDs, partUUID1)
-	assert.Contains(s.T(), result.PartUUIDs, partUUID2)
-	assert.Equal(s.T(), float32(1500.75), result.TotalPrice)
-	assert.Equal(s.T(), transactionUUID, result.TransactionUUID)
-	assert.Equal(s.T(), "CARD", result.PaymentMethod)
-	assert.Equal(s.T(), model.StatusPaid, result.Status)
-}
-
-func (s *ConverterSuite) TestToModelOrder_InvalidOrderUUID() {
-	// Подготовка
-	userUUID := uuid.New()
-	transactionUUID := uuid.New()
-	partUUID := uuid.New()
-
-	repoOrder := &repoModel.Order{
-		OrderUUID:       "invalid-uuid",
-		UserUUID:        userUUID.String(),
-		PartUUIDs:       []string{partUUID.String()},
-		TotalPrice:      1500.75,
-		TransactionUUID: transactionUUID.String(),
-		PaymentMethod:   "CARD",
-		Status:          string(model.StatusPaid),
-	}
-
-	// Выполнение
-	result, err := ToModelOrder(repoOrder)
-
-	// Проверка
-	assert.Error(s.T(), err)
-	assert.Nil(s.T(), result)
-	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
-}
-
-func (s *ConverterSuite) TestToModelOrder_InvalidUserUUID() {
-	// Подготовка
-	orderUUID := uuid.New()
-	transactionUUID := uuid.New()
-	partUUID := uuid.New()
-
-	repoOrder := &repoModel.Order{
-		OrderUUID:       orderUUID.String(),
-		UserUUID:        "invalid-uuid",
-		PartUUIDs:       []string{partUUID.String()},
-		TotalPrice:      1500.75,
-		TransactionUUID: transactionUUID.String(),
-		PaymentMethod:   "CARD",
-		Status:          string(model.StatusPaid),
-	}
-
-	// Выполнение
-	result, err := ToModelOrder(repoOrder)
-
-	// Проверка
-	assert.Error(s.T(), err)
-	assert.Nil(s.T(), result)
-	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
-}
-
-func (s *ConverterSuite) TestToModelOrder_InvalidTransactionUUID() {
-	// Подготовка
-	orderUUID := uuid.New()
-	userUUID := uuid.New()
-	partUUID := uuid.New()
-
-	repoOrder := &repoModel.Order{
-		OrderUUID:       orderUUID.String(),
-		UserUUID:        userUUID.String(),
-		PartUUIDs:       []string{partUUID.String()},
-		TotalPrice:      1500.75,
-		TransactionUUID: "invalid-uuid",
-		PaymentMethod:   "CARD",
-		Status:          string(model.StatusPaid),
-	}
-
-	// Выполнение
-	result, err := ToModelOrder(repoOrder)
-
-	// Проверка
-	assert.Error(s.T(), err)
-	assert.Nil(s.T(), result)
-	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
-}
-
-func (s *ConverterSuite) TestToModelOrder_InvalidPartUUID() {
-	// Подготовка
-	orderUUID := uuid.New()
-	userUUID := uuid.New()
 	transactionUUID := uuid.New()
 
-	repoOrder := &repoModel.Order{
-		OrderUUID:       orderUUID.String(),
-		UserUUID:        userUUID.String(),
-		PartUUIDs:       []string{"invalid-uuid"},
-		TotalPrice:      1500.75,
-		TransactionUUID: transactionUUID.String(),
-		PaymentMethod:   "CARD",
-		Status:          string(model.StatusPaid),
+	repoOrder := &repoModel.OrderPostgres{
+		OrderUUID:       orderUUID,
+		UserUUID:        userUUID,
+		PartUUIDs:       []uuid.UUID{partUUID1, partUUID2},
+		TotalPrice:      2500.75,
+		TransactionUUID: transactionUUID,
+		PaymentMethod:   "CREDIT_CARD",
+		Status:          "PAID",
 	}
 
-	// Выполнение
-	result, err := ToModelOrder(repoOrder)
+	// Act
+	order, err := ToModelOrderFromPostgres(repoOrder)
 
-	// Проверка
-	assert.Error(s.T(), err)
-	assert.Nil(s.T(), result)
-	assert.True(s.T(), errors.Is(err, model.ErrConvertFromRepo))
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, order)
+	assert.Equal(t, orderUUID, order.OrderUUID)
+	assert.Equal(t, userUUID, order.UserUUID)
+	assert.Equal(t, []uuid.UUID{partUUID1, partUUID2}, order.PartUUIDs)
+	assert.Equal(t, float32(2500.75), order.TotalPrice)
+	assert.Equal(t, transactionUUID, order.TransactionUUID)
+	assert.Equal(t, "CREDIT_CARD", order.PaymentMethod)
+	assert.Equal(t, model.StatusPaid, order.Status)
 }
 
-func (s *ConverterSuite) TestToModelOrder_EmptyParts() {
-	// Подготовка
-	orderUUID := uuid.New()
-	userUUID := uuid.New()
-	transactionUUID := uuid.New()
-
-	repoOrder := &repoModel.Order{
-		OrderUUID:       orderUUID.String(),
-		UserUUID:        userUUID.String(),
-		PartUUIDs:       []string{},
-		TotalPrice:      0,
-		TransactionUUID: transactionUUID.String(),
+func TestToModelOrderFromPostgres_WithNilTransactionUUID(t *testing.T) {
+	// Arrange - заказ без TransactionUUID
+	repoOrder := &repoModel.OrderPostgres{
+		OrderUUID:       uuid.New(),
+		UserUUID:        uuid.New(),
+		PartUUIDs:       []uuid.UUID{uuid.New()},
+		TotalPrice:      500.0,
+		TransactionUUID: uuid.Nil,
 		PaymentMethod:   "",
-		Status:          string(model.StatusPendingPayment),
+		Status:          "PENDING_PAYMENT",
 	}
 
-	// Выполнение
-	result, err := ToModelOrder(repoOrder)
+	// Act
+	order, err := ToModelOrderFromPostgres(repoOrder)
 
-	// Проверка
-	assert.NoError(s.T(), err)
-	assert.NotNil(s.T(), result)
-	assert.Equal(s.T(), orderUUID, result.OrderUUID)
-	assert.Equal(s.T(), userUUID, result.UserUUID)
-	assert.Empty(s.T(), result.PartUUIDs)
-	assert.Equal(s.T(), float32(0), result.TotalPrice)
-	assert.Equal(s.T(), transactionUUID, result.TransactionUUID)
-	assert.Equal(s.T(), "", result.PaymentMethod)
-	assert.Equal(s.T(), model.StatusPendingPayment, result.Status)
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, order)
+	assert.Equal(t, uuid.Nil, order.TransactionUUID)
+	assert.Equal(t, "", order.PaymentMethod)
+	assert.Equal(t, model.StatusPendingPayment, order.Status)
 }
 
-func (s *ConverterSuite) TestToModelOrder_AllStatuses() {
-	// Подготовка
-	orderUUID := uuid.New()
-	userUUID := uuid.New()
-	transactionUUID := uuid.New()
-
-	testCases := []struct {
-		status     string
-		expected   model.OrderStatus
-		shouldPass bool
-	}{
-		{string(model.StatusPendingPayment), model.StatusPendingPayment, true},
-		{string(model.StatusPaid), model.StatusPaid, true},
-		{string(model.StatusCancelled), model.StatusCancelled, true},
-		{"INVALID_STATUS", model.OrderStatus("INVALID_STATUS"), true}, // строка просто копируется
+func TestToModelOrderFromPostgres_WithMultipleParts(t *testing.T) {
+	// Arrange - заказ с несколькими деталями
+	partUUIDs := []uuid.UUID{
+		uuid.New(),
+		uuid.New(),
+		uuid.New(),
 	}
 
-	for _, tc := range testCases {
-		repoOrder := &repoModel.Order{
-			OrderUUID:       orderUUID.String(),
-			UserUUID:        userUUID.String(),
-			PartUUIDs:       []string{},
-			TotalPrice:      0,
-			TransactionUUID: transactionUUID.String(),
-			PaymentMethod:   "",
-			Status:          tc.status,
-		}
+	repoOrder := &repoModel.OrderPostgres{
+		OrderUUID:       uuid.New(),
+		UserUUID:        uuid.New(),
+		PartUUIDs:       partUUIDs,
+		TotalPrice:      3000.0,
+		TransactionUUID: uuid.New(),
+		PaymentMethod:   "SBP",
+		Status:          "PAID",
+	}
 
-		// Выполнение
-		result, err := ToModelOrder(repoOrder)
+	// Act
+	order, err := ToModelOrderFromPostgres(repoOrder)
 
-		// Проверка
-		if tc.shouldPass {
-			assert.NoError(s.T(), err)
-			assert.NotNil(s.T(), result)
-			assert.Equal(s.T(), tc.expected, result.Status)
-		} else {
-			assert.Error(s.T(), err)
-			assert.Nil(s.T(), result)
-		}
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, order)
+	assert.Len(t, order.PartUUIDs, 3)
+	assert.Equal(t, partUUIDs, order.PartUUIDs)
+}
+
+func TestToModelOrderFromPostgres_DifferentStatuses(t *testing.T) {
+	tests := []struct {
+		name           string
+		repoStatus     string
+		expectedStatus model.OrderStatus
+	}{
+		{
+			name:           "pending payment статус",
+			repoStatus:     "PENDING_PAYMENT",
+			expectedStatus: model.StatusPendingPayment,
+		},
+		{
+			name:           "paid статус",
+			repoStatus:     "PAID",
+			expectedStatus: model.StatusPaid,
+		},
+		{
+			name:           "cancelled статус",
+			repoStatus:     "CANCELLED",
+			expectedStatus: model.StatusCancelled,
+		},
+		{
+			name:           "assembled статус",
+			repoStatus:     "ASSEMBLED",
+			expectedStatus: model.StatusAssembled,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			repoOrder := &repoModel.OrderPostgres{
+				OrderUUID:       uuid.New(),
+				UserUUID:        uuid.New(),
+				PartUUIDs:       []uuid.UUID{uuid.New()},
+				TotalPrice:      1000.0,
+				TransactionUUID: uuid.New(),
+				PaymentMethod:   "CARD",
+				Status:          tt.repoStatus,
+			}
+
+			// Act
+			order, err := ToModelOrderFromPostgres(repoOrder)
+
+			// Assert
+			assert.NoError(t, err)
+			assert.NotNil(t, order)
+			assert.Equal(t, tt.expectedStatus, order.Status)
+		})
+	}
+}
+
+func TestToModelOrderFromPostgres_EmptyPartsList(t *testing.T) {
+	// Arrange - заказ с пустым списком деталей
+	repoOrder := &repoModel.OrderPostgres{
+		OrderUUID:       uuid.New(),
+		UserUUID:        uuid.New(),
+		PartUUIDs:       []uuid.UUID{},
+		TotalPrice:      0.0,
+		TransactionUUID: uuid.Nil,
+		PaymentMethod:   "",
+		Status:          "PENDING_PAYMENT",
+	}
+
+	// Act
+	order, err := ToModelOrderFromPostgres(repoOrder)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, order)
+	assert.Empty(t, order.PartUUIDs)
+}
+
+func TestToModelOrderFromPostgres_DifferentPaymentMethods(t *testing.T) {
+	tests := []struct {
+		name          string
+		paymentMethod string
+	}{
+		{
+			name:          "оплата картой CARD",
+			paymentMethod: "CARD",
+		},
+		{
+			name:          "оплата через SBP",
+			paymentMethod: "SBP",
+		},
+		{
+			name:          "оплата через CREDIT_CARD",
+			paymentMethod: "CREDIT_CARD",
+		},
+		{
+			name:          "оплата через INVESTOR_MONEY",
+			paymentMethod: "INVESTOR_MONEY",
+		},
+		{
+			name:          "пустой payment method",
+			paymentMethod: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			repoOrder := &repoModel.OrderPostgres{
+				OrderUUID:       uuid.New(),
+				UserUUID:        uuid.New(),
+				PartUUIDs:       []uuid.UUID{uuid.New()},
+				TotalPrice:      1000.0,
+				TransactionUUID: uuid.New(),
+				PaymentMethod:   tt.paymentMethod,
+				Status:          "PAID",
+			}
+
+			// Act
+			order, err := ToModelOrderFromPostgres(repoOrder)
+
+			// Assert
+			assert.NoError(t, err)
+			assert.NotNil(t, order)
+			assert.Equal(t, tt.paymentMethod, order.PaymentMethod)
+		})
+	}
+}
+
+func TestConverters_RoundTrip(t *testing.T) {
+	// Arrange - создаем исходный заказ
+	originalOrder := &model.Order{
+		OrderUUID:       uuid.New(),
+		UserUUID:        uuid.New(),
+		PartUUIDs:       []uuid.UUID{uuid.New(), uuid.New()},
+		TotalPrice:      3500.99,
+		TransactionUUID: uuid.New(),
+		PaymentMethod:   "CARD",
+		Status:          model.StatusPaid,
+	}
+
+	// Act - конвертируем туда и обратно
+	repoOrder := ToRepoOrderPostgres(originalOrder)
+	repoOrder.OrderUUID = originalOrder.OrderUUID // Добавляем OrderUUID, который не копируется в ToRepoOrderPostgres
+	convertedOrder, err := ToModelOrderFromPostgres(repoOrder)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, convertedOrder)
+	assert.Equal(t, originalOrder.OrderUUID, convertedOrder.OrderUUID)
+	assert.Equal(t, originalOrder.UserUUID, convertedOrder.UserUUID)
+	assert.Equal(t, originalOrder.PartUUIDs, convertedOrder.PartUUIDs)
+	assert.Equal(t, originalOrder.TotalPrice, convertedOrder.TotalPrice)
+	assert.Equal(t, originalOrder.TransactionUUID, convertedOrder.TransactionUUID)
+	assert.Equal(t, originalOrder.PaymentMethod, convertedOrder.PaymentMethod)
+	assert.Equal(t, originalOrder.Status, convertedOrder.Status)
+}
+
+func TestConverters_RoundTrip_PendingPayment(t *testing.T) {
+	// Arrange - создаем заказ в статусе pending payment
+	originalOrder := &model.Order{
+		OrderUUID:       uuid.New(),
+		UserUUID:        uuid.New(),
+		PartUUIDs:       []uuid.UUID{uuid.New()},
+		TotalPrice:      1000.0,
+		TransactionUUID: uuid.Nil,
+		PaymentMethod:   "",
+		Status:          model.StatusPendingPayment,
+	}
+
+	// Act - конвертируем туда и обратно
+	repoOrder := ToRepoOrderPostgres(originalOrder)
+	repoOrder.OrderUUID = originalOrder.OrderUUID
+	convertedOrder, err := ToModelOrderFromPostgres(repoOrder)
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, convertedOrder)
+	assert.Equal(t, originalOrder.OrderUUID, convertedOrder.OrderUUID)
+	assert.Equal(t, originalOrder.UserUUID, convertedOrder.UserUUID)
+	assert.Equal(t, originalOrder.Status, convertedOrder.Status)
+	assert.Equal(t, uuid.Nil, convertedOrder.TransactionUUID)
+	assert.Equal(t, "", convertedOrder.PaymentMethod)
+}
+
+func TestToRepoOrderPostgres_PriceTypes(t *testing.T) {
+	tests := []struct {
+		name  string
+		price float32
+	}{
+		{
+			name:  "минимальная цена",
+			price: 0.01,
+		},
+		{
+			name:  "средняя цена",
+			price: 1500.50,
+		},
+		{
+			name:  "большая цена",
+			price: 999999.99,
+		},
+		{
+			name:  "нулевая цена",
+			price: 0.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			order := &model.Order{
+				OrderUUID:       uuid.New(),
+				UserUUID:        uuid.New(),
+				PartUUIDs:       []uuid.UUID{uuid.New()},
+				TotalPrice:      tt.price,
+				TransactionUUID: uuid.New(),
+				PaymentMethod:   "CARD",
+				Status:          model.StatusPaid,
+			}
+
+			// Act
+			repoOrder := ToRepoOrderPostgres(order)
+
+			// Assert
+			assert.NotNil(t, repoOrder)
+			assert.Equal(t, tt.price, repoOrder.TotalPrice)
+		})
+	}
+}
+
+func TestToModelOrderFromPostgres_PriceTypes(t *testing.T) {
+	tests := []struct {
+		name  string
+		price float32
+	}{
+		{
+			name:  "минимальная цена",
+			price: 0.01,
+		},
+		{
+			name:  "средняя цена",
+			price: 2500.75,
+		},
+		{
+			name:  "большая цена",
+			price: 1000000.00,
+		},
+		{
+			name:  "нулевая цена",
+			price: 0.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			repoOrder := &repoModel.OrderPostgres{
+				OrderUUID:       uuid.New(),
+				UserUUID:        uuid.New(),
+				PartUUIDs:       []uuid.UUID{uuid.New()},
+				TotalPrice:      tt.price,
+				TransactionUUID: uuid.New(),
+				PaymentMethod:   "CARD",
+				Status:          "PAID",
+			}
+
+			// Act
+			order, err := ToModelOrderFromPostgres(repoOrder)
+
+			// Assert
+			assert.NoError(t, err)
+			assert.NotNil(t, order)
+			assert.Equal(t, tt.price, order.TotalPrice)
+		})
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/inventory/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	inventoryV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/inventory/v1"
 )
 
@@ -42,6 +43,7 @@ func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initDI,
 		a.initLogger,
+		a.initTracing,
 		a.initCloser,
 		a.initListener,
 		a.initGRPCServer,
@@ -62,15 +64,28 @@ func (a *App) initDI(_ context.Context) error {
 	return nil
 }
 
-func (a *App) initLogger(_ context.Context) error {
+func (a *App) initLogger(ctx context.Context) error {
 	return logger.Init(
+		ctx,
 		config.AppConfig().Logger.Level(),
 		config.AppConfig().Logger.AsJson(),
+		config.AppConfig().Logger.Outputs(),
+		config.AppConfig().Logger.OtelEndpoint(),
+		config.AppConfig().Logger.ServiceName(),
+		"dev", // serviceEnvironment - хардкод для обратной совместимости
 	)
+}
+
+func (a *App) initTracing(ctx context.Context) error {
+	return tracing.InitTracer(ctx, config.AppConfig().Tracing)
 }
 
 func (a *App) initCloser(_ context.Context) error {
 	closer.SetLogger(logger.Logger())
+
+	// Добавляем graceful shutdown для tracing
+	closer.AddNamed("Tracing provider", tracing.ShutdownTracer)
+
 	return nil
 }
 
@@ -94,15 +109,26 @@ func (a *App) initListener(_ context.Context) error {
 }
 
 func (a *App) initGRPCServer(ctx context.Context) error {
-	// Создаем gRPC сервер с аутентификационным интерцептором (если доступен)
+	// Создаем gRPC сервер с интерцепторами
 	authInterceptor := a.diContainer.AuthInterceptor(ctx)
 
 	var opts []grpc.ServerOption
 	opts = append(opts, grpc.Creds(insecure.NewCredentials()))
 
-	// Добавляем AuthInterceptor только если он создан
+	// Создаем цепочку интерцепторов
+	var interceptors []grpc.UnaryServerInterceptor
+
+	// Добавляем трейсинг интерцептор первым
+	interceptors = append(interceptors, tracing.UnaryServerInterceptor("inventory"))
+
+	// Добавляем AuthInterceptor если он создан
 	if authInterceptor != nil {
-		opts = append(opts, grpc.UnaryInterceptor(authInterceptor.Unary()))
+		interceptors = append(interceptors, authInterceptor.Unary())
+	}
+
+	// Применяем цепочку интерцепторов
+	if len(interceptors) > 0 {
+		opts = append(opts, grpc.ChainUnaryInterceptor(interceptors...))
 	}
 
 	a.grpcServer = grpc.NewServer(opts...)

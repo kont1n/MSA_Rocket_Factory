@@ -399,7 +399,7 @@ jobs:
           POSTGRES_IMAGE_NAME: postgres:17.0-alpine3.20
           POSTGRES_HOST: postgres
           POSTGRES_PORT: 5432
-          POSTGRES_DATABASE: order-service
+          POSTGRES_DATABASE: order_service
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           HTTP_PORT: 8081
@@ -407,9 +407,9 @@ jobs:
           MONGO_IMAGE_NAME: mongo:7.0.5
           MONGO_HOST: mongo
           MONGO_PORT: 27017
-          MONGO_DATABASE: inventory-service
-          MONGO_INITDB_ROOT_USERNAME: inventory-service-user
-          MONGO_INITDB_ROOT_PASSWORD: inventory-service-password
+          MONGO_DATABASE: inventory_service
+          MONGO_INITDB_ROOT_USERNAME: inventory_service_user
+          MONGO_INITDB_ROOT_PASSWORD: inventory_service_password
           GRPC_PORT: 50051
         run: |
           echo "📋 Проверка переменных окружения для интеграционных тестов..."
@@ -426,7 +426,7 @@ jobs:
           POSTGRES_IMAGE_NAME: postgres:17.0-alpine3.20
           POSTGRES_HOST: postgres
           POSTGRES_PORT: 5432
-          POSTGRES_DATABASE: order-service
+          POSTGRES_DATABASE: order_service
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           HTTP_PORT: 8081
@@ -434,9 +434,9 @@ jobs:
           MONGO_IMAGE_NAME: mongo:7.0.5
           MONGO_HOST: mongo
           MONGO_PORT: 27017
-          MONGO_DATABASE: inventory-service
-          MONGO_INITDB_ROOT_USERNAME: inventory-service-user
-          MONGO_INITDB_ROOT_PASSWORD: inventory-service-password
+          MONGO_DATABASE: inventory_service
+          MONGO_INITDB_ROOT_USERNAME: inventory_service_user
+          MONGO_INITDB_ROOT_PASSWORD: inventory_service_password
           GRPC_PORT: 50051
         run: |
           echo "🧪 Запуск интеграционных тестов с расширенным логированием..."

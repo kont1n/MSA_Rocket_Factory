@@ -1,5 +1,259 @@
 services:
 
+  otel-collector: # Сервис OpenTelemetry Collector для сбора и обработки телеметрии
+    image: otel/opentelemetry-collector-contrib:0.123.0 # Используем официальный образ OpenTelemetry Collector Contrib
+    container_name: otel-collector # Явное имя контейнера
+    command: ["--config=/etc/otel-collector-config.yaml"] # Указываем путь к файлу конфигурации
+    volumes:
+      - ./otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml # Монтируем конфигурацию коллектора
+    ports:
+      - "${OTEL_GRPC_PORT}:4317" # Порт для протокола OTLP gRPC
+      - "${OTEL_COLLECTOR_METRICS_PORT}:8888" # Prometheus метрики для мониторинга и healthcheck
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети микросервисов
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:8888/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+      # Проверяем готовность коллектора через Prometheus метрики
+    depends_on:
+      jaeger:
+        condition: service_healthy
+      # Коллектор зависит от jaeger, так как экспортирует туда данные
+
+  jaeger: # Сервис Jaeger для распределенной трассировки
+    image: jaegertracing/jaeger:2.6.0 # Последняя стабильная версия Jaeger v2
+    container_name: jaeger # Имя контейнера для удобного обращения
+    ports:
+      - "${JAEGER_UI_PORT}:16686" # Порт для веб-интерфейса Jaeger UI
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true # Включаем поддержку протокола OpenTelemetry
+      - STORAGE_TYPE=badger # Используем Badger как хранилище данных (встроенная key-value БД)
+      - BADGER_EPHEMERAL=false # Сохраняем данные на диск между перезапусками
+      - BADGER_DIRECTORY_VALUE=/badger/data # Директория для хранения значений (спаны, теги, логи)
+      - BADGER_DIRECTORY_KEY=/badger/key # Директория для хранения индексов (для быстрого поиска)
+    volumes:
+      - jaeger_data:/badger/data # Том для хранения данных трейсов
+      - jaeger_key:/badger/key # Том для хранения индексов
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:${JAEGER_UI_PORT}"] # Проверка доступности UI
+      interval: 5s # Интервал проверки
+      timeout: 3s # Таймаут проверки
+      retries: 3 # Количество попыток
+      start_period: 5s # Время ожидания перед началом проверок
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети микросервисов
+
+  elasticsearch:
+    # Официальный образ Elasticsearch версии 9.0.4
+    # Это стабильная версия с поддержкой ECS (Elastic Common Schema)
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.4
+
+    # Имя контейнера для удобства обращения из других контейнеров
+    container_name: elasticsearch
+
+    environment:
+      # РЕЖИМ ОДНОГО УЗЛА: Elasticsearch запускается как single-node кластер
+      # В production обычно используется multi-node кластер для отказоустойчивости
+      - discovery.type=single-node
+
+      # ОТКЛЮЧЕНИЕ БЕЗОПАСНОСТИ: упрощает настройку для обучения
+      # В production ОБЯЗАТЕЛЬНО включать аутентификацию и HTTPS
+      - xpack.security.enabled=false
+
+      # ИМЯ КЛАСТЕРА: логическое имя для группировки узлов
+      - cluster.name=es-docker-cluster
+
+    volumes:
+      # ПОСТОЯННОЕ ХРАНЕНИЕ: данные Elasticsearch сохраняются на диске
+      # Если контейнер перезапустится, данные не потеряются
+      - es_data:/usr/share/elasticsearch/data
+
+    ports:
+      # ПОРТ 9200: REST API для взаимодействия с Elasticsearch
+      # Через этот порт OTel Collector отправляет логи
+      # Также можно делать запросы напрямую: curl localhost:9200/_search
+      - "9200:9200"
+
+    healthcheck:
+      # ПРОВЕРКА ЗДОРОВЬЯ: Docker проверяет, что Elasticsearch готов к работе
+      # Проверяем статус кластера через REST API
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 10s        # проверяем каждые 10 секунд
+      timeout: 5s          # ждем ответ максимум 5 секунд
+      retries: 20          # максимум 20 попыток (итого ~3 минуты)
+      start_period: 30s    # ждем 30 секунд перед первой проверкой
+
+    # АВТОМАТИЧЕСКИЙ ПЕРЕЗАПУСК: если контейнер упадет, Docker его перезапустит
+    restart: unless-stopped
+
+    networks:
+      # ПОДКЛЮЧЕНИЕ К СЕТИ: все сервисы в одной сети могут общаться по имени
+      - microservices-net
+
+  kibana:
+    # Официальный образ Kibana той же версии, что и Elasticsearch
+    # Важно: версии Kibana и Elasticsearch должны совпадать!
+    image: docker.elastic.co/kibana/kibana:9.0.4
+
+    container_name: kibana
+
+    environment:
+      # ПОДКЛЮЧЕНИЕ К ELASTICSEARCH: указываем адрес Elasticsearch
+      # Используем имя контейнера 'elasticsearch' как DNS имя
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+
+      # ОТКЛЮЧЕНИЕ БЕЗОПАСНОСТИ: соответствует настройкам Elasticsearch
+      - XPACK_SECURITY_ENABLED=false
+
+    depends_on:
+      # ЗАВИСИМОСТЬ ОТ ELASTICSEARCH: Kibana запустится только после того,
+      # как Elasticsearch будет healthy (пройдет healthcheck)
+      elasticsearch:
+        condition: service_healthy
+
+    ports:
+      # ПОРТ 5601: веб-интерфейс Kibana
+      # Открываем в браузере http://localhost:5601 для просмотра логов
+      - "5601:5601"
+
+    healthcheck:
+      # ПРОВЕРКА ЗДОРОВЬЯ KIBANA: проверяем готовность веб-интерфейса
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+    restart: unless-stopped
+    networks:
+      - microservices-net
+
+  kibana-init:
+    # Легкий Alpine Linux образ для выполнения скриптов инициализации
+    image: alpine:3.20
+
+    container_name: kibana-init
+
+    depends_on:
+      # ЖДЕМ ГОТОВНОСТИ KIBANA: запускаемся только после успешного healthcheck
+      kibana:
+        condition: service_healthy
+
+    # КОМАНДА ИНИЦИАЛИЗАЦИИ: выполняется один раз при запуске контейнера
+    command:
+      - sh      # запускаем shell
+      - -c      # выполняем команду из строки
+      - |       # многострочная команда (YAML literal block)
+        set -e  # останавливаем скрипт при первой ошибке
+        
+        # УСТАНОВКА УТИЛИТ: curl для HTTP запросов, jq для обработки JSON
+        echo "Installing curl and jq..."
+        apk add --no-cache curl jq >/dev/null 2>&1
+        
+        # ОЖИДАНИЕ ГОТОВНОСТИ KIBANA: дополнительная проверка доступности API
+        echo "Waiting for Kibana..."
+        for i in $$(seq 1 60); do  # максимум 60 попыток (2 минуты)
+          if curl -sSf http://kibana:5601/api/status >/dev/null; then break; fi
+          sleep 2  # ждем 2 секунды между попытками
+        done
+        
+        # СОЗДАНИЕ DATA VIEW: настраиваем Kibana для просмотра логов
+        echo "Creating Data View easy-logs* ..."
+        # Создаем Data View через Kibana API
+        RESPONSE=$$(curl -sS -X POST http://kibana:5601/api/data_views/data_view \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          --data '{"data_view":{"title":"easy-logs*","name":"Easy Logs","timeFieldName":"@timestamp","allowNoIndex":true},"override":true}' || echo "{}")
+        
+        # ИЗВЛЕЧЕНИЕ ID DATA VIEW: парсим JSON ответ для получения ID
+        echo "Response: $$RESPONSE"
+        DATA_VIEW_ID=$$(echo "$$RESPONSE" | jq -r ".data_view.id // empty")
+        echo "Data View ID: $$DATA_VIEW_ID"
+        
+        # УСТАНОВКА КАК DEFAULT DATA VIEW: чтобы Kibana автоматически использовал его
+        if [ -n "$$DATA_VIEW_ID" ]; then
+          echo "Setting as default data view..."
+          curl -sS -X POST http://kibana:5601/api/data_views/default \
+            -H "kbn-xsrf: true" \
+            -H "Content-Type: application/json" \
+            -d "{\"data_view_id\": \"$$DATA_VIEW_ID\", \"force\": true}" || true
+          echo "Default data view set successfully."
+        else
+          echo "Failed to get data view ID"
+        fi
+        echo "Done."
+
+    networks:
+      - microservices-net
+
+    # НЕ ПЕРЕЗАПУСКАТЬ: это одноразовая задача инициализации
+    restart: "no"
+
+  prometheus: # Сервис Prometheus для сбора и хранения метрик
+    image: prom/prometheus:v3.3.1 # Используем официальный образ Prometheus последней стабильной версии
+    container_name: prometheus # Явное имя контейнера
+    ports:
+      - "${PROMETHEUS_PORT}:9090" # Пробрасываем порт Prometheus на хост-машину
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml # Монтируем конфигурацию Prometheus
+      - prometheus_data:/prometheus # Подключаем volume для хранения данных Prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml' # Указываем путь к файлу конфигурации
+      - '--storage.tsdb.path=/prometheus' # Директория для хранения временных рядов
+      - '--web.enable-lifecycle' # Включает HTTP API для управления Prometheus
+      - '--web.enable-remote-write-receiver' # Включает поддержку remote write API для приема метрик
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--spider", "http://localhost:9090/-/healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+      # Проверяем готовность Prometheus по endpoint /-/healthy
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети микросервисов
+
+  grafana: # Сервис Grafana для визуализации метрик
+    image: grafana/grafana:12.0.0 # Используем официальный образ Grafana последней стабильной версии
+    container_name: grafana # Явное имя контейнера
+    ports:
+      - "${GRAFANA_PORT}:3000" # Пробрасываем порт Grafana на хост-машину
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin} # Имя пользователя администратора
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin} # Пароль администратора
+      - GF_USERS_ALLOW_SIGN_UP=false # Запрещаем регистрацию новых пользователей
+    volumes:
+      - grafana_data:/var/lib/grafana # Подключаем volume для хранения данных Grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning # Монтируем директорию с настройками для автоматического провижининга
+      - ./grafana/dashboards:/var/lib/grafana/dashboards # Монтируем директорию с дашбордами
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      # Гарантируем, что Grafana стартует только после того, как Prometheus станет healthy
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--spider", "http://localhost:3000/api/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+      # Проверяем готовность Grafana по endpoint /api/health
+    restart: unless-stopped
+    # Автоматически перезапускаем контейнер при сбоях, но не при ручной остановке
+    networks:
+      - microservices-net
+      # Подключаем контейнер к общей сети микросервисов
+
   kafka: # Сервис Kafka
     image: confluentinc/cp-kafka:7.9.0 # Образ Kafka от компании Confluent, версия 7.9.0 (современная, с поддержкой KRaft)
     container_name: kafka # Явное имя контейнера, чтобы легче обращаться к нему
@@ -129,6 +383,14 @@ services:
       # Подключаем контейнер к общей сети, в которой живут все сервисы микросервисной архитектуры
 
 volumes: # Раздел с определением томов
+  jaeger_data: # Именованный том для хранения данных Jaeger
+  # Хранит данные трассировки
+  jaeger_key: # Именованный том для хранения ключей Jaeger
+  es_data: # ДАННЫЕ ELASTICSEARCH: индексы, логи, метаданные
+  prometheus_data: # Именованный том для хранения данных Prometheus
+  # Хранит временные ряды с метриками
+  grafana_data: # Именованный том для хранения данных Grafana
+  # Хранит настройки, пользователей и другие данные Grafana
   kafka_data: # Именованный том для хранения данных Kafka
   # Docker сам управляет этим хранилищем, данные сохраняются между перезапусками контейнеров.
 

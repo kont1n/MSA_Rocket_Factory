@@ -19,6 +19,7 @@ type service struct {
 	inventoryClient   grpc.InventoryClient
 	paymentClient     grpc.PaymentClient
 	orderPaidProducer def.OrderPaidProducer
+	metrics           *orderMetrics
 }
 
 func NewService(
@@ -27,11 +28,19 @@ func NewService(
 	paymentClient grpc.PaymentClient,
 	orderPaidProducer def.OrderPaidProducer,
 ) *service {
+	// Инициализируем метрики
+	metrics, err := newOrderMetrics()
+	if err != nil {
+		// В случае ошибки создаем nil метрики - сервис должен работать без них
+		metrics = nil
+	}
+
 	return &service{
 		orderRepository:   orderRepository,
 		inventoryClient:   inventoryClient,
 		paymentClient:     paymentClient,
-		orderPaidProducer: orderPaidProducer,
+		orderPaidProducer: orderPaidProducer, // Может быть nil
+		metrics:           metrics,
 	}
 }
 
@@ -54,4 +63,9 @@ func (s *service) UpdateOrderStatus(ctx context.Context, orderUUID string, statu
 	}
 
 	return nil
+}
+
+// SetOrderPaidProducer устанавливает producer для отправки событий OrderPaid
+func (s *service) SetOrderPaidProducer(producer def.OrderPaidProducer) {
+	s.orderPaidProducer = producer
 }

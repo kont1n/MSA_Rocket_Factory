@@ -1,9 +1,15 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "events/v1/order_paid.proto",
+    "title": "inventory/v1/inventory.proto",
+    "description": "Package inventory.v1 содержит API для хранения и предоставления информации о деталях для сборки космических кораблей.",
     "version": "version not set"
   },
+  "tags": [
+    {
+      "name": "InventoryService"
+    }
+  ],
   "consumes": [
     "application/json"
   ],
@@ -39,6 +45,212 @@
           }
         }
       }
+    },
+    "v1Category": {
+      "type": "string",
+      "enum": [
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_ENGINE",
+        "CATEGORY_FUEL",
+        "CATEGORY_PORTHOLE",
+        "CATEGORY_WING"
+      ],
+      "default": "CATEGORY_UNSPECIFIED",
+      "description": "- CATEGORY_UNSPECIFIED: 0 - Неизвестная категория\n - CATEGORY_ENGINE: 1 - Двигатель\n - CATEGORY_FUEL: 2 - Топливо\n - CATEGORY_PORTHOLE: 3 - Иллюминатор\n - CATEGORY_WING: 4 - Крыло",
+      "title": "Category категория детали"
+    },
+    "v1Dimensions": {
+      "type": "object",
+      "properties": {
+        "length": {
+          "type": "number",
+          "format": "double",
+          "title": "length длина"
+        },
+        "width": {
+          "type": "number",
+          "format": "double",
+          "title": "width ширина"
+        },
+        "height": {
+          "type": "number",
+          "format": "double",
+          "title": "height высота"
+        },
+        "weight": {
+          "type": "number",
+          "format": "double",
+          "title": "weight вес"
+        }
+      },
+      "title": "Dimensions размеры детали"
+    },
+    "v1GetPartResponse": {
+      "type": "object",
+      "properties": {
+        "part": {
+          "$ref": "#/definitions/v1Part",
+          "title": "part информация о детали"
+        }
+      },
+      "title": "GetPartResponse отвечает за запрос информации о детали по UUID"
+    },
+    "v1ListPartsResponse": {
+      "type": "object",
+      "properties": {
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Part"
+          },
+          "title": "part информация о деталях"
+        }
+      },
+      "title": "ListPartsResponse отвечает за запрос списка деталей"
+    },
+    "v1Manufacturer": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "name название производителя"
+        },
+        "country": {
+          "type": "string",
+          "title": "country страна производителя"
+        },
+        "url": {
+          "type": "string",
+          "title": "url ссылка на страницу производителя"
+        }
+      },
+      "title": "Manufacturer информация о производителе"
+    },
+    "v1Part": {
+      "type": "object",
+      "properties": {
+        "part_uuid": {
+          "type": "string",
+          "title": "part_uuid уникальный идентификатор детали"
+        },
+        "name": {
+          "type": "string",
+          "title": "name название детали"
+        },
+        "description": {
+          "type": "string",
+          "title": "description описание детали"
+        },
+        "price": {
+          "type": "number",
+          "format": "double",
+          "title": "price цена за единицу"
+        },
+        "stock_quantity": {
+          "type": "string",
+          "format": "int64",
+          "title": "stock_quantity количество на складе"
+        },
+        "category": {
+          "$ref": "#/definitions/v1Category",
+          "title": "category категория"
+        },
+        "dimensions": {
+          "$ref": "#/definitions/v1Dimensions",
+          "title": "dimensions размеры детали"
+        },
+        "manufacturer": {
+          "$ref": "#/definitions/v1Manufacturer",
+          "title": "manufacturer информация о производителе"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "tags теги для быстрого поиска"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1Value"
+          },
+          "title": "metadata гибкие метаданные"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "created_at дата создания"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "updated_at дата обновления"
+        }
+      },
+      "title": "Part информация о детали"
+    },
+    "v1PartsFilter": {
+      "type": "object",
+      "properties": {
+        "part_uuid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "part_uuid уникальный идентификатор детали"
+        },
+        "part_name": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "part_name имя детали"
+        },
+        "category": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Category"
+          },
+          "title": "category категория детали"
+        },
+        "manufacturer_country": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "manufacturer_country страна производителя детали"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "tags теги детали"
+        }
+      },
+      "title": "PartsFilter фильтр для списка деталей"
+    },
+    "v1Value": {
+      "type": "object",
+      "properties": {
+        "string_value": {
+          "type": "string"
+        },
+        "int64_value": {
+          "type": "string",
+          "format": "int64"
+        },
+        "double_value": {
+          "type": "number",
+          "format": "double"
+        },
+        "bool_value": {
+          "type": "boolean"
+        }
+      },
+      "title": "Универсальное значение одного из возможных типов"
     }
   }
 }

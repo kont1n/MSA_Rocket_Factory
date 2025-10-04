@@ -1,4 +1,4 @@
-boilerplate-file: ".mockery_boilerplate_text.txt"
+boilerplate-file: "config/.mockery_boilerplate_text.txt"
 dir: "{{.InterfaceDir}}/mocks"
 filename: "mock_{{.InterfaceNameSnake}}.go"
 outpkg: "mocks"

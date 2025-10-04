@@ -16,10 +16,11 @@ type Logger interface {
 }
 
 type consumer struct {
-	group       sarama.ConsumerGroup
-	topics      []string
-	logger      Logger
-	middlewares []Middleware
+	group                    sarama.ConsumerGroup
+	topics                   []string
+	logger                   Logger
+	middlewares              []Middleware
+	consumerGroupMiddlewares []kafka.ConsumerGroupHandlerMiddleware
 }
 
 // NewConsumer — создаёт новый consumer.
@@ -32,9 +33,26 @@ func NewConsumer(group sarama.ConsumerGroup, topics []string, logger Logger, mid
 	}
 }
 
+// NewConsumerWithConsumerGroupMiddleware — создаёт новый consumer с consumer group middleware.
+func NewConsumerWithConsumerGroupMiddleware(group sarama.ConsumerGroup, topics []string, logger Logger, messageMiddlewares []Middleware, consumerGroupMiddlewares []kafka.ConsumerGroupHandlerMiddleware) *consumer {
+	return &consumer{
+		group:                    group,
+		topics:                   topics,
+		logger:                   logger,
+		middlewares:              messageMiddlewares,
+		consumerGroupMiddlewares: consumerGroupMiddlewares,
+	}
+}
+
 // Consume запускает консьюмер для списка топиков.
 func (c *consumer) Consume(ctx context.Context, handler kafka.MessageHandler) error {
-	newGroupHandler := NewGroupHandler(handler, c.logger, c.middlewares...)
+	var newGroupHandler kafka.ConsumerGroupHandler
+
+	if len(c.consumerGroupMiddlewares) > 0 {
+		newGroupHandler = NewGroupHandlerWithConsumerGroupMiddleware(handler, c.logger, c.middlewares, c.consumerGroupMiddlewares)
+	} else {
+		newGroupHandler = NewGroupHandler(handler, c.logger, c.middlewares...)
+	}
 
 	for {
 		if err := c.group.Consume(ctx, c.topics, newGroupHandler); err != nil {

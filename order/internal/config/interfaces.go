@@ -1,11 +1,18 @@
 package config
 
-import "github.com/IBM/sarama"
+import (
+	"time"
+
+	"github.com/IBM/sarama"
+)
 
 // LoggerConfig интерфейс для конфигурации логгера
 type LoggerConfig interface {
 	Level() string
 	AsJson() bool
+	Outputs() string
+	OtelEndpoint() string
+	ServiceName() string
 }
 
 // HTTPConfig интерфейс для конфигурации HTTP сервера
@@ -21,16 +28,17 @@ type DBConfig interface {
 	MigrationsDir() string
 }
 
+// KafkaConfig интерфейс для конфигурации Kafka
+type KafkaConfig interface {
+	Brokers() []string
+	Config() *sarama.Config
+}
+
 // GRPCClientConfig интерфейс для конфигурации gRPC клиентов
 type GRPCClientConfig interface {
 	InventoryAddress() string
 	PaymentAddress() string
 	IAMAddress() string
-}
-
-// KafkaConfig интерфейс для конфигурации Kafka
-type KafkaConfig interface {
-	Brokers() []string
 }
 
 // OrderPaidProducerConfig интерфейс для конфигурации Kafka producer
@@ -44,4 +52,18 @@ type ShipAssemblyConsumerConfig interface {
 	Topic() string
 	GroupID() string
 	Config() *sarama.Config
+}
+
+// MetricsConfig интерфейс для конфигурации метрик
+type MetricsConfig interface {
+	CollectorEndpoint() string
+	CollectorInterval() time.Duration
+}
+
+// TracingConfig интерфейс для конфигурации трассировки
+type TracingConfig interface {
+	CollectorEndpoint() string
+	ServiceName() string
+	Environment() string
+	ServiceVersion() string
 }

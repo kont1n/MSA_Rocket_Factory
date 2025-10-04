@@ -14,6 +14,7 @@ type OrderService interface {
 	PayOrder(ctx context.Context, order *model.Order) (*model.Order, error)
 	CancelOrder(ctx context.Context, order *model.Order) (*model.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderUUID string, status model.OrderStatus) error
+	SetOrderPaidProducer(producer OrderPaidProducer)
 }
 
 type OrderPaidProducer interface {
@@ -22,4 +23,5 @@ type OrderPaidProducer interface {
 
 type ShipAssembledConsumer interface {
 	RunConsumer(ctx context.Context) error
+	SetOrderService(service OrderService)
 }

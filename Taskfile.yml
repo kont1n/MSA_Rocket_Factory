@@ -278,151 +278,72 @@ tasks:
     cmds:
       - |
         echo '🧪 Генерация моков...'
-        {{.MOCKERY}}
+        {{.MOCKERY}} --config config/.mockery.yaml
 
 
   test-coverage:
-    desc: "Тесты с покрытием бизнес-логики, автоматический поиск и анализ всех модулей"
+    desc: "Тесты с покрытием бизнес-логики (service/repository), отчёт по каждому модулю + общий"
     cmds:
       - |
         echo "🧪 Запускаем расчёт покрытия..."
         rm -rf {{.COVERAGE_DIR}}
         mkdir -p {{.COVERAGE_DIR}}
         
-        # Массив для хранения путей к файлам покрытия
-        COVERAGE_FILES=()
-        
-        # Обрабатываем каждый модуль
+        ERR=0
         for mod in {{.MODULES}}; do
-          if [ -d "$mod" ] && [ -f "$mod/go.mod" ]; then
-            echo "🧪 Обрабатываем модуль $mod"
+          echo "📦 Обрабатываем модуль: $mod"
         
-            # Переходим в директорию модуля
-            cd "$mod"
+          TARGET_PKGS=$(go list ./$mod/... \
+            | grep -E '/(internal/(service|repository))' \
+            | grep -vE '/(mocks|testdata|pkg|api|proto|pb|cmd)' \
+            | paste -sd "," -)
         
-            # Проверяем наличие тестов
-            if ! go list ./internal/... 2>/dev/null | grep -q .; then
-              echo "⚠️ В модуле $mod нет пакетов internal"
-              cd ..
-              continue
-            fi
+          if [ -z "$TARGET_PKGS" ]; then
+            echo "⚠️  Нет подходящих пакетов в $mod"
+            continue
+          fi
         
-            # Находим все пакеты для покрытия (исключаем mocks и отдельные test пакеты, но включаем tests директории)
-            TARGET_PACKAGES=$(go list ./internal/... 2>/dev/null | grep -v "/mocks" | grep -v "/test$" | tr '\n' ',')
+          go test -coverpkg="$TARGET_PKGS" \
+            -coverprofile={{.COVERAGE_DIR}}/$mod.out \
+            -covermode=atomic \
+            $(echo "$TARGET_PKGS" | tr "," " ") || ERR=1
+        done
         
-            if [ -n "$TARGET_PACKAGES" ]; then
-              echo "📦 Пакеты для покрытия в $mod: $TARGET_PACKAGES"
+        if [ $ERR -ne 0 ]; then
+          echo "❌ Ошибки во время тестов"
+          exit $ERR
+        fi
         
-              # Запускаем тесты с покрытием для модуля
-              COVERAGE_FILE="{{.COVERAGE_DIR}}/coverage_${mod}.out"
-        
-              # Создаем пустой файл покрытия если тесты не найдены
-              touch "$COVERAGE_FILE"
-        
-              # Запускаем тесты и собираем покрытие
-              # Убираем последнюю запятую из TARGET_PACKAGES
-              TARGET_PACKAGES=${TARGET_PACKAGES%,}
-        
-              echo "🔍 Запускаем: go test -v -coverprofile=$COVERAGE_FILE -coverpkg=$TARGET_PACKAGES ./internal/..."
-        
-              # Запускаем тесты с покрытием
-              go test -v -coverprofile="$COVERAGE_FILE" -coverpkg="$TARGET_PACKAGES" ./internal/... 2>/dev/null
-              TEST_EXIT_CODE=$?
-        
-              if [ $TEST_EXIT_CODE -eq 0 ]; then
-                echo "🔍 Проверяем файл покрытия: $COVERAGE_FILE"
-                echo "🔍 Размер файла: $(ls -la "$COVERAGE_FILE" 2>/dev/null || echo 'файл не существует')"
-        
-                if [ -s "$COVERAGE_FILE" ]; then
-                  COVERAGE_FILES+=("$COVERAGE_FILE")
-                  echo "✅ Покрытие для $mod сохранено в $COVERAGE_FILE"
-                else
-                  echo "⚠️ Нет покрытия для модуля $mod (пустой файл)"
-                  rm -f "$COVERAGE_FILE"
-                fi
-              else
-                echo "⚠️ Ошибка при запуске тестов в модуле $mod (код: $TEST_EXIT_CODE)"
-                rm -f "$COVERAGE_FILE"
-              fi
-            else
-              echo "⚠️ Не найдено пакетов для тестирования в $mod"
-            fi
-        
-            # Возвращаемся в корневую директорию
-            cd ..
-          else
-            echo "⚠️ Модуль $mod не найден или не содержит go.mod"
+        echo
+        echo "📊 Покрытие по каждому модулю:"
+        for mod in {{.MODULES}}; do
+          OUTFILE="{{.COVERAGE_DIR}}/$mod.out"
+          if [ -f "$OUTFILE" ]; then
+            printf " • %s: " "$mod"
+            go tool cover -func="$OUTFILE" | tail -n1
           fi
         done
         
-        # Объединяем все файлы покрытия
-        if [ ${#COVERAGE_FILES[@]} -gt 0 ]; then
-          echo "🔗 Объединяем файлы покрытия..."
+        echo
+        echo "📦 Склеиваем все покрытия..."
+        {
+          echo "mode: atomic"
+          find {{.COVERAGE_DIR}} -type f -name '*.out' ! -name '{{.COVERAGE_FILE}}' \
+            -exec grep -h -v "^mode:" {} +
+        } > {{.COVERAGE_DIR}}/{{.COVERAGE_FILE}}
         
-          # Создаем общий файл покрытия
-          COMBINED_COVERAGE="{{.COVERAGE_DIR}}/coverage.out"
-        
-          # Очищаем файл перед объединением
-          > "$COMBINED_COVERAGE"
-        
-          # Объединяем файлы покрытия
-          echo "🔍 Файлы для объединения: ${COVERAGE_FILES[*]}"
-        
-          # Создаем временный файл для объединения
-          TEMP_COVERAGE=$(mktemp)
-        
-          for file in "${COVERAGE_FILES[@]}"; do
-            echo "🔍 Проверяем файл: $file"
-            echo "🔍 Файл существует: $([ -f "$file" ] && echo "да" || echo "нет")"
-            echo "🔍 Файл не пустой: $([ -s "$file" ] && echo "да" || echo "нет")"
-            if [ -f "$file" ] && [ -s "$file" ]; then
-              echo "🔗 Добавляем файл: $file"
-              # Пропускаем первую строку (mode: set) для всех файлов кроме первого
-              if [ -s "$TEMP_COVERAGE" ]; then
-                tail -n +2 "$file" >> "$TEMP_COVERAGE"
-              else
-                cat "$file" >> "$TEMP_COVERAGE"
-              fi
-            else
-              echo "⚠️ Пропускаем файл: $file"
-            fi
-          done
-        
-          # Перемещаем временный файл в итоговый
-          mv "$TEMP_COVERAGE" "$COMBINED_COVERAGE"
-        
-          # Проверяем, что общий файл не пустой
-          if [ -s "$COMBINED_COVERAGE" ]; then
-            echo "🧾 Общее покрытие:"
-            # Выполняем команду go tool cover из первого доступного модуля
-            (cd inventory && go tool cover -func="../coverage/coverage.out" | tail -n1) || echo "total:                                                                                          (statements) 19.3%"
-          else
-            echo "⚠️ Общий файл покрытия пустой после объединения"
-            echo "total: (statements) 0.0%"
-          fi
-        else
-          echo "⚠️ Не удалось собрать покрытие ни для одного модуля"
-          echo "total: (statements) 0.0%"
-          # Создаем пустой файл покрытия для совместимости
-          touch "{{.COVERAGE_DIR}}/coverage.out"
-        fi
+        echo
+        echo "🧾 Общее покрытие по всем модулям:"
+        go tool cover -func={{.COVERAGE_DIR}}/{{.COVERAGE_FILE}} | tail -n1
 
   coverage:html:
     desc: "Генерирует HTML-отчёт покрытия и открывает его в браузере"
     deps: [ test-coverage ]
     cmds:
       - |
-        OUTPUT="{{.COVERAGE_DIR}}/coverage.html"
+        OUTPUT={{.COVERAGE_DIR}}/coverage.html
         echo "🌐 Генерируем HTML-отчёт..."
-        # Переходим в первый доступный модуль для выполнения go tool cover
-        for mod in {{.MODULES}}; do
-          if [ -d "$mod" ] && [ -f "$mod/go.mod" ]; then
-            cd "$mod"
-            go tool cover -html="../coverage/coverage.out" -o "$OUTPUT"
-            cd ..
-            break
-          fi
-        done
+        go tool cover -html={{.COVERAGE_DIR}}/{{.COVERAGE_FILE}} -o $OUTPUT
 
         echo "🚀 Открываем $OUTPUT"
         if command -v open &> /dev/null; then
@@ -480,14 +401,14 @@ tasks:
     dir: deploy/compose/payment
     cmds:
       - echo "[task] 📦 Поднимаем Payment с зависимостями"
-      - docker compose up --build --detach      
+      - docker compose up --build --detach
 
   up-assembly:
     desc: Поднять Assembly сервис и все его зависимости
     dir: deploy/compose/assembly
     cmds:
       - echo "[task] 📦 Поднимаем Assembly с зависимостями"
-      - docker compose up --build --detach      
+      - docker compose up --build --detach
 
   up-notification:
     desc: Поднять Notification сервис и все его зависимости
@@ -495,20 +416,6 @@ tasks:
     cmds:
       - echo "[task] 📦 Поднимаем Notification с зависимостями"
       - docker compose up --build --detach
-
-  up-iam:
-    desc: Поднять IAM сервис и все его зависимости
-    dir: deploy/compose/iam
-    cmds:
-      - echo "[task] 📦 Поднимаем IAM с зависимостями"
-      - docker compose up --build --detach
-
-  down-iam:
-    desc: Остановить и удалить IAM сервис и все его зависимости
-    dir: deploy/compose/iam
-    cmds:
-      - echo "[task] 🛑 Останавливаем IAM с зависимостями"
-      - docker compose down --volumes
 
   down-payment:
     desc: Остановить и удалить Payment сервис и все его зависимости
@@ -552,16 +459,30 @@ tasks:
       - echo "[task] 🛑 Останавливаем Order с зависимостями"
       - docker compose down --volumes
 
+  up-iam:
+    desc: Поднять IAM сервис и все его зависимости
+    dir: deploy/compose/iam
+    cmds:
+      - echo "[task] 📦 Поднимаем IAM с зависимостями"
+      - docker compose up --build --detach
+
+  down-iam:
+    desc: Остановить и удалить IAM сервис и все его зависимости
+    dir: deploy/compose/iam
+    cmds:
+      - echo "[task] 🛑 Останавливаем IAM с зависимостями"
+      - docker compose down --volumes
+
   up-all:
     desc: Поднять все сервисы по очереди вместе с зависимостями
     cmds:
       - task up-core
+      - task up-iam
       - task up-inventory
       - task up-payment
       - task up-order
       - task up-assembly
       - task up-notification
-      - task up-iam
 
   down-all:
     desc: Остановить и удалить все сервисы по очереди вместе с зависимостями
@@ -572,7 +493,7 @@ tasks:
       - task down-assembly
       - task down-notification
       - task down-iam
-      - task down-core      
+      - task down-core
 
   grpcurl:install:
     desc: "Устанавливает grpcurl в каталог bin"
@@ -592,8 +513,43 @@ tasks:
       - |
         echo "🧪 Тестирование API микросервисов через gRPC и REST"
         
-        echo "📦 Тест 1: Получение списка деталей из Inventory"
-        PARTS_RESPONSE=$({{.GRPCURL}} -plaintext -d '{"filter":{}}' localhost:50051 inventory.v1.InventoryService/ListParts)
+        echo "🔐 Этап 1: Создание тестового пользователя и получение сессии"
+        # Генерируем уникальные данные для тестового пользователя
+        TEST_LOGIN="testuser_$(date +%s)"
+        TEST_EMAIL="test_$(date +%s)@example.com"
+        TEST_PASSWORD="TestP@ss123!"
+        
+        echo "📝 Регистрация тестового пользователя: $TEST_LOGIN"
+        REGISTER_RESPONSE=$({{.GRPCURL}} -plaintext -d "{\"info\":{\"info\":{\"login\":\"$TEST_LOGIN\",\"email\":\"$TEST_EMAIL\",\"notificationMethods\":[]},\"password\":\"$TEST_PASSWORD\"}}" localhost:50053 iam.v1.UserService/Register)
+        
+        if [[ -z "$REGISTER_RESPONSE" || "$REGISTER_RESPONSE" == *"error"* ]]; then
+          echo "❌ Не удалось зарегистрировать тестового пользователя."
+          echo "🔍 Ответ сервера: $REGISTER_RESPONSE"
+          exit 1
+        fi
+        echo "✅ Тестовый пользователь зарегистрирован"
+        
+        echo "🔑 Вход в систему"
+        LOGIN_RESPONSE=$({{.GRPCURL}} -plaintext -d "{\"login\":\"$TEST_LOGIN\",\"password\":\"$TEST_PASSWORD\"}" localhost:50053 iam.v1.AuthService/Login)
+        
+        if [[ -z "$LOGIN_RESPONSE" || "$LOGIN_RESPONSE" == *"error"* ]]; then
+          echo "❌ Не удалось войти в систему."
+          echo "🔍 Ответ сервера: $LOGIN_RESPONSE"
+          exit 1
+        fi
+        
+        # Извлекаем session UUID из ответа
+        SESSION_UUID=$(echo $LOGIN_RESPONSE | grep -o '"sessionUuid": "[^"]*' | cut -d'"' -f4)
+        if [ -z "$SESSION_UUID" ]; then
+          echo "❌ Не удалось извлечь session UUID из ответа."
+          echo "🔍 Ответ сервера: $LOGIN_RESPONSE"
+          exit 1
+        fi
+        echo "✅ Успешно получен session UUID: $SESSION_UUID"
+        
+        echo
+        echo "📦 Тест 2: Получение списка деталей из Inventory"
+        PARTS_RESPONSE=$({{.GRPCURL}} -plaintext -H "session-uuid: $SESSION_UUID" -d '{"filter":{}}' localhost:50051 inventory.v1.InventoryService/ListParts)
         
         if [[ -z "$PARTS_RESPONSE" || "$PARTS_RESPONSE" == *"error"* ]]; then
           echo "❌ Не удалось получить список деталей."
@@ -611,8 +567,8 @@ tasks:
         echo "✅ Успешно получен список деталей, первая UUID: $PART_UUID"
         
         echo
-        echo "🔍 Тест 2: Получение информации о детали по UUID"
-        PART_RESPONSE=$({{.GRPCURL}} -plaintext -d "{\"partUuid\":\"$PART_UUID\"}" localhost:50051 inventory.v1.InventoryService/GetPart)
+        echo "🔍 Тест 3: Получение информации о детали по UUID"
+        PART_RESPONSE=$({{.GRPCURL}} -plaintext -H "session-uuid: $SESSION_UUID" -d "{\"partUuid\":\"$PART_UUID\"}" localhost:50051 inventory.v1.InventoryService/GetPart)
         
         if [[ -z "$PART_RESPONSE" || "$PART_RESPONSE" == *"error"* ]]; then
           echo "❌ Не удалось получить информацию о детали."
@@ -630,15 +586,16 @@ tasks:
         echo "✅ Успешно получена деталь: $PART_NAME"
         
         echo
-        echo "👤 Тест 3: Создание пользователя для тестов"
+        echo "👤 Тест 4: Создание пользователя для тестов"
         # Генерируем уникальный UUID для пользователя
-        USER_UUID=124df92b-39ff-474f-8eb9-79d41dd7fc93
+        USER_UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
         echo "✅ Сгенерирован UUID пользователя: $USER_UUID"
         
         echo
-        echo "📝 Тест 4: Создание заказа (REST API)"
+        echo "📝 Тест 5: Создание заказа (REST API)"
         ORDER_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders" \
           -H "Content-Type: application/json" \
+          -H "X-Session-Uuid: $SESSION_UUID" \
           -d "{\"user_uuid\":\"$USER_UUID\",\"part_uuids\":[\"$PART_UUID\"]}")
         
         if [[ -z "$ORDER_RESPONSE" || "$ORDER_RESPONSE" == *"error"* ]]; then
@@ -660,8 +617,9 @@ tasks:
         echo "✅ Успешно создан заказ с UUID: $ORDER_UUID"
         
         echo
-        echo "📊 Тест 5: Проверка начального статуса заказа (должен быть PENDING_PAYMENT)"
-        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID")
+        echo "📊 Тест 6: Проверка начального статуса заказа (должен быть PENDING_PAYMENT)"
+        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID" \
+          -H "X-Session-Uuid: $SESSION_UUID")
         
         if [[ -z "$ORDER_INFO_RESPONSE" || "$ORDER_INFO_RESPONSE" == *"error"* ]]; then
           echo "❌ Не удалось получить информацию о заказе."
@@ -688,9 +646,10 @@ tasks:
         echo "✅ Начальный статус заказа корректный: $ORDER_STATUS"
         
         echo
-        echo "💰 Тест 6: Оплата заказа (REST API)"
+        echo "💰 Тест 7: Оплата заказа (REST API)"
         PAY_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER_UUID/pay" \
           -H "Content-Type: application/json" \
+          -H "X-Session-Uuid: $SESSION_UUID" \
           -d "{\"payment_method\":\"CARD\"}")
         
         if [[ "$PAY_RESPONSE" == *"error"* ]]; then
@@ -701,8 +660,9 @@ tasks:
         echo "✅ Заказ успешно оплачен"
         
         echo
-        echo "📊 Тест 7: Проверка статуса после оплаты (должен быть PAID)"
-        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID")
+        echo "📊 Тест 8: Проверка статуса после оплаты (должен быть PAID)"
+        ORDER_INFO_RESPONSE=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER_UUID" \
+          -H "X-Session-Uuid: $SESSION_UUID")
         
         # Извлекаем статус заказа
         ORDER_STATUS=$(echo $ORDER_INFO_RESPONSE | grep -o '"status":"[^"]*' | cut -d'"' -f4)
@@ -718,9 +678,10 @@ tasks:
         echo "✅ Статус заказа после оплаты: $ORDER_STATUS"
         
         echo
-        echo "📝 Тест 8: Создание второго заказа для отмены (REST API)"
+        echo "📝 Тест 9: Создание второго заказа для отмены (REST API)"
         ORDER2_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/orders" \
           -H "Content-Type: application/json" \
+          -H "X-Session-Uuid: $SESSION_UUID" \
           -d "{\"user_uuid\":\"$USER_UUID\",\"part_uuids\":[\"$PART_UUID\"]}")
         
         if [[ -z "$ORDER2_RESPONSE" || "$ORDER2_RESPONSE" == *"error"* ]]; then
@@ -742,7 +703,8 @@ tasks:
         echo "✅ Успешно создан второй заказ с UUID: $ORDER2_UUID"
         
         # Проверяем его начальный статус
-        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID")
+        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID" \
+          -H "X-Session-Uuid: $SESSION_UUID")
         ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status":"[^"]*' | cut -d'"' -f4)
         if [ -z "$ORDER2_STATUS" ]; then
           ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status": "[^"]*' | cut -d'"' -f4)
@@ -755,15 +717,17 @@ tasks:
         echo "✅ Начальный статус второго заказа: $ORDER2_STATUS"
         
         echo
-        echo "❌ Тест 9: Отмена второго заказа (REST API)"
+        echo "❌ Тест 10: Отмена второго заказа (REST API)"
         echo "Ожидаем 2 секунды перед отменой..."
         sleep 2
         
-        curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER2_UUID/cancel"
+        curl -s -X POST "http://localhost:8080/api/v1/orders/$ORDER2_UUID/cancel" \
+          -H "X-Session-Uuid: $SESSION_UUID"
         
         echo "Проверяем статус после отмены..."
         
-        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID")
+        ORDER2_INFO=$(curl -s -X GET "http://localhost:8080/api/v1/orders/$ORDER2_UUID" \
+          -H "X-Session-Uuid: $SESSION_UUID")
         ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status":"[^"]*' | cut -d'"' -f4)
         if [ -z "$ORDER2_STATUS" ]; then
           ORDER2_STATUS=$(echo $ORDER2_INFO | grep -o '"status": "[^"]*' | cut -d'"' -f4)
@@ -830,3 +794,8 @@ tasks:
           fi
         done
         exit $ERR
+
+  generate-test-metrics:
+    desc: "📊 Генерация тестовых данных для метрик"
+    cmds:
+      - ./scripts/generate_test_metrics.sh

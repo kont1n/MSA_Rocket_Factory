@@ -37,5 +37,10 @@ func (s service) CancelOrder(ctx context.Context, order *model.Order) (*model.Or
 		return nil, fmt.Errorf("service: failed to update order in repository: %w", err)
 	}
 
+	// Записываем метрики при успешной отмене заказа
+	if s.metrics != nil {
+		s.metrics.recordOrderCancelled(ctx, float64(order.TotalPrice), "USD") // По умолчанию USD
+	}
+
 	return order, nil
 }

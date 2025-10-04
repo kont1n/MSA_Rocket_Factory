@@ -48,12 +48,17 @@ type TestEnvironment struct {
 func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	logger.Info(ctx, "🚀 Подготовка тестового окружения...")
 
-	// Шаг 1: Создаём общую Docker-сеть
-	generatedNetwork, err := network.NewNetwork(ctx, projectName)
+	// Генерируем уникальный суффикс для имен контейнеров, чтобы избежать конфликтов при параллельном запуске
+	uniqueSuffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	uniqueNetworkName := fmt.Sprintf("%s-%s", projectName, uniqueSuffix)
+	uniquePostgresName := fmt.Sprintf("%s-%s", testcontainers.PostgresContainerName, uniqueSuffix)
+
+	// Шаг 1: Создаём общую Docker-сеть с уникальным именем
+	generatedNetwork, err := network.NewNetwork(ctx, uniqueNetworkName)
 	if err != nil {
 		logger.Fatal(ctx, "не удалось создать общую сеть", zap.Error(err))
 	}
-	logger.Info(ctx, "✅ Сеть успешно создана")
+	logger.Info(ctx, "✅ Сеть успешно создана", zap.String("network_name", uniqueNetworkName))
 
 	// Получаем переменные окружения для PostgreSQL с проверкой на наличие и значениями по умолчанию
 	postgresUsername := getEnvWithDefault(ctx, testcontainers.PostgresUsernameKey, testcontainers.PostgresUsername)
@@ -64,10 +69,10 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	// Получаем порт HTTP для waitStrategy
 	httpPort := getEnvWithDefault(ctx, httpPortKey, "8080")
 
-	// Шаг 2: Запускаем контейнер с PostgreSQL
+	// Шаг 2: Запускаем контейнер с PostgreSQL с уникальным именем
 	generatedPostgres, err := postgres.NewContainer(ctx,
 		postgres.WithNetworkName(generatedNetwork.Name()),
-		postgres.WithContainerName(testcontainers.PostgresContainerName),
+		postgres.WithContainerName(uniquePostgresName),
 		postgres.WithImageName(postgresImageName),
 		postgres.WithDatabase(postgresDatabase),
 		postgres.WithAuth(postgresUsername, postgresPassword),
@@ -130,8 +135,8 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 		"LOGGER_LEVEL":   "debug",
 		"LOGGER_AS_JSON": "false",
 
-		// Настройки PostgreSQL - используем правильные ключи переменных окружения
-		"POSTGRES_HOST":           "postgres",
+		// Настройки PostgreSQL - используем уникальное имя контейнера в сети
+		"POSTGRES_HOST":           uniquePostgresName,
 		"POSTGRES_PORT":           "5432",
 		"POSTGRES_DATABASE":       generatedPostgres.Config().Database,
 		"POSTGRES_USER":           generatedPostgres.Config().Username,

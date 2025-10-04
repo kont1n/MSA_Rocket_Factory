@@ -12,12 +12,18 @@ import (
 
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
 type Gateway struct {
 	mux    *runtime.ServeMux
 	server *http.Server
+}
+
+// GetMux возвращает текущий mux
+func (g *Gateway) GetMux() *runtime.ServeMux {
+	return g.mux
 }
 
 func NewGateway() *Gateway {
@@ -27,10 +33,11 @@ func NewGateway() *Gateway {
 }
 
 func (g *Gateway) RegisterHandlers(ctx context.Context) error {
-	// Создаем подключение к gRPC серверу
+	// Создаем подключение к gRPC серверу с трейсингом
 	conn, err := grpc.NewClient(
 		config.AppConfig().GRPC.Address(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(tracing.UnaryClientInterceptor("payment-gateway")),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to connect to gRPC server: %w", err)
@@ -46,9 +53,16 @@ func (g *Gateway) RegisterHandlers(ctx context.Context) error {
 }
 
 func (g *Gateway) Start(ctx context.Context) error {
+	// Определяем handler для сервера
+	var handler http.Handler = g.mux
+	if g.mux == nil {
+		// Если mux не установлен, создаем новый
+		handler = runtime.NewServeMux()
+	}
+
 	g.server = &http.Server{
 		Addr:              config.AppConfig().Http.Address(),
-		Handler:           g.mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 30 * time.Second, // Защита от Slowloris атак
 	}
 
@@ -60,6 +74,22 @@ func (g *Gateway) Start(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// SetHandler устанавливает HTTP handler с middleware
+func (g *Gateway) SetHandler(handler http.Handler) {
+	// Если handler является *runtime.ServeMux, сохраняем его напрямую
+	if mux, ok := handler.(*runtime.ServeMux); ok {
+		g.mux = mux
+	} else {
+		// Иначе просто заменяем mux на handler
+		// Это работает, потому что http.Server принимает любой http.Handler
+		g.mux = nil
+		// Обновляем server handler
+		if g.server != nil {
+			g.server.Handler = handler
+		}
+	}
 }
 
 func (g *Gateway) Stop(ctx context.Context) error {

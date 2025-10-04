@@ -25,7 +25,9 @@ func (s *AssemblyServiceSuite) TestAssemble_Success() {
 		// Проверяем, что переданы правильные данные
 		assert.Equal(s.T(), event.OrderUUID, event.OrderUUID)
 		assert.Equal(s.T(), event.UserUUID, event.UserUUID)
-		assert.Equal(s.T(), int64(10), event.BuildTime) // delayTime = 10
+		// BuildTime должно быть в диапазоне от 5 до 15 секунд (случайное значение)
+		assert.GreaterOrEqual(s.T(), event.BuildTime, int64(5))
+		assert.LessOrEqual(s.T(), event.BuildTime, int64(15))
 		return nil
 	}
 

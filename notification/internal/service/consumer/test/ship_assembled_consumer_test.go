@@ -38,6 +38,7 @@ func (s *ShipAssembledConsumerTestSuite) SetupSuite() {
 		s.shipAssembledConsumer,
 		s.shipAssembledDecoder,
 		s.notificationService,
+		nil, // mock metrics
 	)
 }
 

@@ -5,16 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"sync"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 
+	paymentMiddleware "github.com/kont1n/MSA_Rocket_Factory/payment/internal/api/middleware"
 	"github.com/kont1n/MSA_Rocket_Factory/payment/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/grpc/health"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	platformHTTPMiddleware "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/http"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	paymentV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/proto/payment/v1"
 )
 
@@ -43,6 +48,7 @@ func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initDI,
 		a.initLogger,
+		a.initTracing,
 		a.initCloser,
 		a.initListener,
 		a.initGRPCServer,
@@ -64,15 +70,28 @@ func (a *App) initDI(_ context.Context) error {
 	return nil
 }
 
-func (a *App) initLogger(_ context.Context) error {
+func (a *App) initLogger(ctx context.Context) error {
 	return logger.Init(
+		ctx,
 		config.AppConfig().Logger.Level(),
 		config.AppConfig().Logger.AsJson(),
+		config.AppConfig().Logger.Outputs(),
+		config.AppConfig().Logger.OtelEndpoint(),
+		config.AppConfig().Logger.ServiceName(),
+		"dev", // serviceEnvironment - хардкод для обратной совместимости
 	)
+}
+
+func (a *App) initTracing(ctx context.Context) error {
+	return tracing.InitTracer(ctx, config.AppConfig().Tracing)
 }
 
 func (a *App) initCloser(_ context.Context) error {
 	closer.SetLogger(logger.Logger())
+
+	// Добавляем graceful shutdown для tracing
+	closer.AddNamed("Tracing provider", tracing.ShutdownTracer)
+
 	return nil
 }
 
@@ -96,7 +115,10 @@ func (a *App) initListener(_ context.Context) error {
 }
 
 func (a *App) initGRPCServer(ctx context.Context) error {
-	a.grpcServer = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
+	a.grpcServer = grpc.NewServer(
+		grpc.Creds(insecure.NewCredentials()),
+		grpc.UnaryInterceptor(tracing.UnaryServerInterceptor("payment")),
+	)
 	closer.AddNamed("gRPC server", func(ctx context.Context) error {
 		a.grpcServer.GracefulStop()
 		return nil
@@ -144,6 +166,27 @@ func (a *App) runServers(ctx context.Context) error {
 	go func() {
 		defer wg.Done()
 		gateway := a.diContainer.Gateway(ctx)
+		httpMetrics := a.diContainer.HTTPMetrics(ctx)
+
+		// Настраиваем HTTP middleware
+		existingMux := gateway.GetMux()
+		if existingMux == nil {
+			// Если mux не инициализирован, создаем новый
+			existingMux = runtime.NewServeMux()
+		}
+
+		// Применяем middleware в правильном порядке
+		handler := http.Handler(existingMux)
+
+		// Добавляем трейсинг middleware
+		handler = platformHTTPMiddleware.TracingMiddleware("payment")(handler)
+
+		// Добавляем метрики middleware, если доступен
+		if httpMetrics != nil {
+			handler = paymentMiddleware.MetricsMiddleware(httpMetrics)(handler)
+		}
+
+		gateway.SetHandler(handler)
 
 		err := gateway.Start(ctx)
 		if err != nil {

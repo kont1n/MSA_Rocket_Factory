@@ -15,6 +15,7 @@ type config struct {
 	GRPC       GRPCConfig
 	Mongo      MongoConfig
 	GRPCClient GRPCClientConfig
+	Tracing    TracingConfig
 }
 
 func Load(path ...string) error {
@@ -43,11 +44,17 @@ func Load(path ...string) error {
 		return err
 	}
 
+	tracingCfg, err := env.NewTracingConfig()
+	if err != nil {
+		return err
+	}
+
 	appConfig = &config{
 		Logger:     loggerCfg,
 		GRPC:       GRPCCfg,
 		Mongo:      mongoCfg,
 		GRPCClient: GRPCClientCfg,
+		Tracing:    tracingCfg,
 	}
 
 	return nil

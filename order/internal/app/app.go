@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/api/health"
@@ -18,6 +19,9 @@ import (
 	"github.com/kont1n/MSA_Rocket_Factory/order/internal/config"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/closer"
 	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/logger"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/metrics"
+	platformHTTPMiddleware "github.com/kont1n/MSA_Rocket_Factory/platform/pkg/middleware/http"
+	"github.com/kont1n/MSA_Rocket_Factory/platform/pkg/tracing"
 	orderV1 "github.com/kont1n/MSA_Rocket_Factory/shared/pkg/openapi/order/v1"
 )
 
@@ -152,6 +156,8 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) initDeps(ctx context.Context) error {
 	inits := []func(context.Context) error{
 		a.initLogger,
+		a.initTracing,
+		a.initMetrics,
 	}
 
 	// Проверяем и создаем БД перед инициализацией DI только если не отключено для тестов
@@ -175,28 +181,95 @@ func (a *App) initDeps(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) initDI(_ context.Context) error {
+func (a *App) initDI(ctx context.Context) error {
+	logger.Info(ctx, "🔧 Начинаем инициализацию DI контейнера")
 	a.diContainer = NewDiContainer()
+	logger.Info(ctx, "✅ DI контейнер создан")
+
+	// Инициализируем OrderPaidProducer и ShipAssembledConsumer и устанавливаем их зависимости
+	// Это нужно делать после создания DI контейнера, но до запуска сервера
+	if os.Getenv("SKIP_KAFKA_CONSUMER") != "true" {
+		logger.Info(ctx, "🔧 Создаем OrderPaidProducer")
+		_ = a.diContainer.OrderPaidProducer(ctx) // Создаем producer
+		logger.Info(ctx, "✅ OrderPaidProducer создан")
+
+		logger.Info(ctx, "🔧 Создаем ShipAssembledConsumer")
+		_ = a.diContainer.ShipAssembledConsumer(ctx) // Создаем consumer
+		logger.Info(ctx, "✅ ShipAssembledConsumer создан")
+	} else {
+		logger.Info(ctx, "⏭️ Пропускаем создание Kafka компонентов (SKIP_KAFKA_CONSUMER=true)")
+	}
+
+	// Создаем OrderService и устанавливаем зависимости после создания всех компонентов
+	logger.Info(ctx, "🔧 Создаем OrderService")
+	_ = a.diContainer.OrderService(ctx) // Создаем OrderService
+	logger.Info(ctx, "✅ OrderService создан")
+
+	logger.Info(ctx, "🔧 Создаем OrderV1API")
+	_ = a.diContainer.OrderV1API(ctx) // Создаем OrderV1API
+	logger.Info(ctx, "✅ OrderV1API создан")
+
+	logger.Info(ctx, "🔧 Устанавливаем зависимости")
+	a.diContainer.SetupOrderPaidProducer(ctx) // Устанавливаем producer в OrderService
+	logger.Info(ctx, "✅ OrderPaidProducer установлен в OrderService")
+
+	a.diContainer.SetupShipAssembledConsumer(ctx) // Устанавливаем OrderService в consumer
+	logger.Info(ctx, "✅ OrderService установлен в ShipAssembledConsumer")
+
+	a.diContainer.SetupOrderV1API(ctx) // Устанавливаем OrderService в API
+	logger.Info(ctx, "✅ OrderService установлен в OrderV1API")
+
+	logger.Info(ctx, "🎉 Инициализация DI контейнера завершена")
 	return nil
 }
 
-func (a *App) initLogger(_ context.Context) error {
+func (a *App) initLogger(ctx context.Context) error {
 	return logger.Init(
+		ctx,
 		config.AppConfig().Logger.Level(),
 		config.AppConfig().Logger.AsJson(),
+		config.AppConfig().Logger.Outputs(),
+		config.AppConfig().Logger.OtelEndpoint(),
+		config.AppConfig().Logger.ServiceName(),
+		"dev", // serviceEnvironment - хардкод для обратной совместимости
 	)
+}
+
+func (a *App) initTracing(ctx context.Context) error {
+	return tracing.InitTracer(ctx, config.AppConfig().Tracing)
+}
+
+func (a *App) initMetrics(ctx context.Context) error {
+	return metrics.InitProvider(ctx, config.AppConfig().Metrics)
 }
 
 func (a *App) initCloser(_ context.Context) error {
 	closer.SetLogger(logger.Logger())
+
+	// Добавляем graceful shutdown для метрик
+	closer.AddNamed("Metrics provider", metrics.Shutdown)
+
+	// Добавляем graceful shutdown для tracing
+	closer.AddNamed("Tracing provider", tracing.ShutdownTracer)
+
 	return nil
 }
 
 func (a *App) initHTTPServer(ctx context.Context) error {
-	// Создаем OpenAPI сервер
-	orderServer, err := orderV1.NewServer(a.diContainer.OrderV1API(ctx))
+	// Создаем OpenAPI сервер с OpenTelemetry конфигурацией
+	orderServer, err := orderV1.NewServer(
+		a.diContainer.OrderV1API(ctx),
+		orderV1.WithMeterProvider(metrics.GetMeterProvider()),
+		orderV1.WithTracerProvider(otel.GetTracerProvider()),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create OpenAPI server: %w", err)
+	}
+
+	// Создаем HTTP метрики
+	httpMetrics, err := customMiddleware.NewHTTPMetrics()
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP metrics: %w", err)
 	}
 
 	// Настраиваем роутер
@@ -204,7 +277,9 @@ func (a *App) initHTTPServer(ctx context.Context) error {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(10 * time.Second))
+	r.Use(platformHTTPMiddleware.TracingMiddleware("order")) // Добавляем трейсинг middleware
 	r.Use(customMiddleware.RequestLogger)
+	r.Use(customMiddleware.MetricsMiddleware(httpMetrics))
 
 	// Добавляем middleware аутентификации для всех API роутов
 	authMiddleware := a.diContainer.AuthMiddleware(ctx)

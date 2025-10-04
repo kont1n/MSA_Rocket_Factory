@@ -39,7 +39,9 @@ func TestAPI_ListParts_WithAuth(t *testing.T) {
 
 	// Мокаем ответ от сервиса
 	expectedResponse := &[]model.Part{}
-	mockService.On("ListParts", ctx, (*model.Filter)(nil)).Return(expectedResponse, nil)
+	mockService.On("ListParts", mock.MatchedBy(func(ctx context.Context) bool {
+		return true // Принимаем любой контекст
+	}), (*model.Filter)(nil)).Return(expectedResponse, nil)
 
 	// Act
 	resp, err := api.ListParts(ctx, &inventoryV1.ListPartsRequest{})
@@ -60,7 +62,9 @@ func TestAPI_ListParts_WithoutAuth(t *testing.T) {
 
 	// Мокаем ответ от сервиса
 	expectedResponse := &[]model.Part{}
-	mockService.On("ListParts", ctx, (*model.Filter)(nil)).Return(expectedResponse, nil)
+	mockService.On("ListParts", mock.MatchedBy(func(ctx context.Context) bool {
+		return true // Принимаем любой контекст
+	}), (*model.Filter)(nil)).Return(expectedResponse, nil)
 
 	// Act
 	resp, err := api.ListParts(ctx, &inventoryV1.ListPartsRequest{})

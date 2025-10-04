@@ -1,6 +1,7 @@
 package payment_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -17,7 +18,7 @@ type ServiceSuite struct {
 
 func (s *ServiceSuite) SetupSuite() {
 	// Инициализируем логгер для тестов
-	err := logger.Init("info", false)
+	err := logger.Init(context.Background(), "info", false, "stdout", "", "payment-test", "test")
 	if err != nil {
 		s.T().Fatalf("Failed to initialize logger: %v", err)
 	}

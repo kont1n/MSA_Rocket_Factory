@@ -3,6 +3,9 @@ package config
 type LoggerConfig interface {
 	Level() string
 	AsJson() bool
+	Outputs() string
+	OtelEndpoint() string
+	ServiceName() string
 }
 
 type GRPCConfig interface {
@@ -11,4 +14,11 @@ type GRPCConfig interface {
 
 type HttpConfig interface {
 	Address() string
+}
+
+type TracingConfig interface {
+	CollectorEndpoint() string
+	ServiceName() string
+	Environment() string
+	ServiceVersion() string
 }
