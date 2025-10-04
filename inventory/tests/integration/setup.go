@@ -121,6 +121,10 @@ func setupTestEnvironment(ctx context.Context) *TestEnvironment {
 	}
 	logger.Info(ctx, "✅ Контейнер приложения успешно запущен")
 
+	// Даём дополнительное время для полной инициализации gRPC сервера
+	logger.Info(ctx, "⏳ Ожидание полной инициализации gRPC сервера...")
+	time.Sleep(5 * time.Second)
+
 	logger.Info(ctx, "🎉 Тестовое окружение готово")
 	return &TestEnvironment{
 		Network: generatedNetwork,
