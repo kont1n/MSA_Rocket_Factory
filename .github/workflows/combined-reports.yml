@@ -678,9 +678,11 @@ jobs:
           if task test-coverage > coverage_output.txt 2>&1; then
             echo "✅ Покрытие успешно сгенерировано"
             
-            # Копируем файлы покрытия из coverage/ директории
-            if [ -f "coverage/coverage.out" ] && [ -s "coverage/coverage.out" ]; then
-              cp coverage/coverage.out coverage.out
+            # Проверяем правильный путь к файлу покрытия
+            COVERAGE_FILE="coverage/total.out"
+            if [ -f "$COVERAGE_FILE" ] && [ -s "$COVERAGE_FILE" ]; then
+              echo "📁 Найден файл покрытия: $COVERAGE_FILE"
+              cp "$COVERAGE_FILE" coverage.out
               
               # Генерируем функциональный отчет
               if go tool cover -func=coverage.out > cover.out 2>&1; then
@@ -744,9 +746,82 @@ jobs:
                 echo "<html><body><h1>Failed to generate coverage report</h1><p>Error generating function report</p></body></html>" > .github_pages/index.html
               fi
             else
-              echo "⚠️ Файл покрытия не найден или пустой"
-              echo "total:                  (statements)   0.0%" > cover.out
-              echo "<html><body><h1>No coverage data available</h1><p>No coverage file generated</p></body></html>" > .github_pages/index.html
+              echo "⚠️ Файл покрытия не найден или пустой: $COVERAGE_FILE"
+              echo "🔍 Проверяем альтернативные пути..."
+              
+              # Проверяем другие возможные файлы покрытия
+              for alt_file in "coverage/coverage.out" "coverage.out" "final_coverage.out"; do
+                if [ -f "$alt_file" ] && [ -s "$alt_file" ]; then
+                  echo "✅ Найден альтернативный файл покрытия: $alt_file"
+                  cp "$alt_file" coverage.out
+                  
+                  # Генерируем функциональный отчет
+                  if go tool cover -func=coverage.out > cover.out 2>&1; then
+                    echo "✅ Функциональный отчет создан из $alt_file"
+                    
+                    # Показываем итоговое покрытие
+                    echo "📈 Итоговое покрытие бизнес-логики:"
+                    tail -1 cover.out
+                    
+                    # Генерируем HTML отчет
+                    echo "🌐 Генерация HTML отчета..."
+                    if gocov convert coverage.out | gocov-html > .github_pages/index.html 2>&1; then
+                      echo "✅ HTML отчет создан"
+                      
+                      # Добавляем навигацию к HTML отчету покрытия
+                      sed -i '/<\/head>/i\
+                      <style>\
+                      .navigation {\
+                        position: fixed;\
+                        top: 10px;\
+                        right: 10px;\
+                        background: white;\
+                        padding: 10px;\
+                        border: 1px solid #ccc;\
+                        border-radius: 5px;\
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.2);\
+                        z-index: 1000;\
+                      }\
+                      .nav-link {\
+                        display: inline-block;\
+                        margin: 0 5px;\
+                        padding: 5px 10px;\
+                        background: #f6f8fa;\
+                        color: #24292f;\
+                        text-decoration: none;\
+                        border-radius: 3px;\
+                        border: 1px solid #d1d9e0;\
+                        font-size: 12px;\
+                      }\
+                      .nav-link:hover {\
+                        background: #e1e4e8;\
+                      }\
+                      </style>' .github_pages/index.html
+                      
+                      sed -i '/<body>/a\
+                      <div class="navigation">\
+                        <a href="./" class="nav-link">📊 Coverage</a>\
+                        <a href="./tests/" class="nav-link">🧪 Unit Tests</a>\
+                        <a href="./integration/" class="nav-link">🔗 Integration Tests</a>\
+                        <a href="./lint/" class="nav-link">🔍 Lint</a>\
+                        <a href="./reports.html" class="nav-link">📋 All Reports</a>\
+                      </div>' .github_pages/index.html
+                      break
+                    else
+                      echo "❌ Ошибка создания HTML отчета"
+                    fi
+                  else
+                    echo "❌ Ошибка создания функционального отчета из $alt_file"
+                  fi
+                fi
+              done
+              
+              # Если ни один файл не найден, создаем заглушку
+              if [ ! -f "coverage.out" ]; then
+                echo "❌ Не удалось найти файл покрытия"
+                echo "total:                  (statements)   0.0%" > cover.out
+                echo "<html><body><h1>No coverage data available</h1><p>No coverage file generated</p></body></html>" > .github_pages/index.html
+              fi
             fi
           else
             echo "❌ Ошибка генерации покрытия"
@@ -760,6 +835,8 @@ jobs:
           echo "coverage.out размер: $(ls -la coverage.out 2>/dev/null || echo 'не найден')"
           echo "cover.out содержимое:"
           cat cover.out 2>/dev/null || echo "cover.out не найден"
+          echo "📁 Содержимое директории coverage/:"
+          ls -la coverage/ 2>/dev/null || echo "директория coverage/ не найдена"
 
       - name: 🔗 Create main reports index
         run: |
